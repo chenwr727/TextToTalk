@@ -17,6 +17,18 @@
 
 ---
 
+## 效果演示
+
+<div align="center">
+
+<video src="https://github.com/user-attachments/assets/ac7f4cf8-7ca5-4cc0-a854-771effc233e9" width="100%" controls playsinline></video>
+
+**一镜到底、无剪辑：粘贴文案 → AI 出大纲 → 逐页展开分镜 → 渲染导出 MP4**
+
+</div>
+
+---
+
 ## 它解决什么问题
 
 做一集 3 分钟的科普讲解视频，通常要过五关：写稿 → 做 PPT → 配图 → 录音 → 剪辑。
