@@ -1,0 +1,8 @@
+# pnpm 11 默认启用 minimumReleaseAge 供应链策略，会拒绝刚发布的依赖，这里关闭
+minimumReleaseAge: 0
+# server 与 render 是相互独立的 pnpm 项目。
+# 本文件仅用于 server 自身（记录 esbuild/msedge-tts 构建脚本审批）；
+# render 子目录有独立的 pnpm-workspace.yaml，不会被本 workspace 捕获。
+allowBuilds:
+  esbuild: true
+  msedge-tts: true

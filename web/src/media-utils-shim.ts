@@ -1,0 +1,12 @@
+export const useAudioData = (..._args: unknown[]): null => null;
+export const visualizeAudio = (..._args: unknown[]): number[] => [];
+export const getAudioData = (): Promise<never> => Promise.reject(new Error("shim"));
+export const getAudioDurationInSeconds = (): Promise<number> => Promise.resolve(0);
+export const getAudioDuration = (): Promise<number> => Promise.resolve(0);
+export const getImageDimensions = (): Promise<{ width: number; height: number }> => Promise.resolve({ width: 0, height: 0 });
+export const getVideoMetadata = (): Promise<unknown> => Promise.resolve(null);
+export const getWaveformPortion = (): number[] => [];
+export const audioBufferToDataUrl = (): string => "";
+export const createSmoothSvgPath = (): string => "";
+export const useWindowedAudioData = (): { audioData: null; dataOffsetInSeconds: 0 } => ({ audioData: null, dataOffsetInSeconds: 0 });
+export const visualizeAudioWaveform = (): number[] => [];

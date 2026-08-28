@@ -1,0 +1,27 @@
+{
+  "name": "texttotalk-render",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@remotion/cli": "4.0.514",
+    "@remotion/fonts": "4.0.514",
+    "@remotion/google-fonts": "4.0.514",
+    "@remotion/layout-utils": "4.0.514",
+    "@remotion/media-utils": "4.0.514",
+    "@remotion/paths": "4.0.514",
+    "@remotion/rough-notation": "4.0.514",
+    "@remotion/shapes": "4.0.514",
+    "@remotion/transitions": "4.0.514",
+    "remotion": "4.0.514"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

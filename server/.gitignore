@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+*.mp4
+out/
+assets/tts/
+assets/bgm/
+data/

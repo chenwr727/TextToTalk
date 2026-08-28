@@ -1,0 +1,28 @@
+# 依赖
+node_modules
+**/node_modules
+
+# 构建产物
+web/dist
+server/dist
+
+# 运行时生成（成片 mp4、TTS/BGM wav）
+server/out
+server/assets
+server/tts
+
+# 渲染产物
+server/render/out
+server/render/gen
+
+# 环境与本地配置
+server/.env
+.env
+*.log
+
+# 版本控制与 IDE
+.git
+.gitignore
+.vscode
+.idea
+**/tsconfig.tsbuildinfo

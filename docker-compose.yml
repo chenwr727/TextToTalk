@@ -1,0 +1,18 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: texttotalk:latest
+    container_name: texttotalk
+    ports:
+      - "8080:80"
+    env_file:
+      - server/.env
+    environment:
+      NODE_ENV: production
+    volumes:
+      - ./server/out:/app/server/out
+      - ./server/assets:/app/server/assets
+      - ./server/tts:/app/server/tts
+    restart: unless-stopped

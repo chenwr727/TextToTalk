@@ -1,0 +1,11 @@
+# Node
+node_modules/
+*.tsbuildinfo
+
+# 构建 / 渲染临时产物
+dist/
+out/
+src/gen/
+
+# 日志
+*.log

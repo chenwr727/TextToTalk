@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": false,
+    "paths": {
+      "react": ["./node_modules/@types/react"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"],
+      "react/jsx-dev-runtime": ["./node_modules/@types/react/jsx-dev-runtime"],
+      "remotion": ["./src/remotion-shim.ts"],
+      "@remotion/rough-notation": ["./src/rough-notation-shim.ts"],
+      "@remotion/paths": ["./src/paths-shim.ts"],
+      "@remotion/media-utils": ["./src/media-utils-shim.ts"],
+      "@remotion/layout-utils": ["./src/layout-utils-shim.ts"],
+      "@remotion/shapes": ["./src/shapes-shim.ts"]
+    }
+  },
+  "include": ["src", "../shared", "../server/render/src/shared"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

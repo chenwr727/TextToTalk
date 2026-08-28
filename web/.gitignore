@@ -1,0 +1,13 @@
+# Node
+node_modules/
+*.tsbuildinfo
+
+# 构建产物（Vite）
+dist/
+.vite/
+
+# 环境 / 本地
+*.local
+
+# 日志
+*.log
