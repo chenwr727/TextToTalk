@@ -171,8 +171,8 @@ export function OutlinePreview({
       <div className="dsh-pages">
         {pages.map((p, i) => (
           <div key={i} className="dsh-card dsh-page">
-            <div className="dsh-page-row">
-              <span className="dsh-page-num">P{i + 1}</span>
+            <div className="dsh-page-head">
+              <span className="dsh-page-badge">P{i + 1}</span>
               <textarea
                 className="dsh-field dsh-page-idea"
                 value={p.idea ?? ""}
@@ -187,33 +187,33 @@ export function OutlinePreview({
             </div>
 
             <div className="dsh-page-opts">
-              <label className="dsh-opt">
-                版式
-                <select value={p.layout ?? "points"} onChange={(e) => setPage(i, { layout: e.target.value })}>
+              <div className="dsh-opt">
+                <span className="dsh-opt-label">版式</span>
+                <select className="dsh-field" value={p.layout ?? "points"} onChange={(e) => setPage(i, { layout: e.target.value })}>
                   {LAYOUTS.map((l) => <option key={l} value={l}>{LAYOUT_LABEL[l]}</option>)}
                 </select>
-              </label>
-              <label className="dsh-opt">
-                关系图
-                <select value={p.art ?? ""} onChange={(e) => setPage(i, { art: e.target.value || undefined })}>
+              </div>
+              <div className="dsh-opt">
+                <span className="dsh-opt-label">关系图</span>
+                <select className="dsh-field" value={p.art ?? ""} onChange={(e) => setPage(i, { art: e.target.value || undefined })}>
                   <option value="">无</option>
                   {ARTS.map((a) => <option key={a} value={a}>{ART_LABEL[a]}</option>)}
                 </select>
-              </label>
-              <label className="dsh-opt">
-                角色
-                <select value={p.role ?? ""} onChange={(e) => setPage(i, { role: e.target.value || undefined })}>
+              </div>
+              <div className="dsh-opt">
+                <span className="dsh-opt-label">角色</span>
+                <select className="dsh-field" value={p.role ?? ""} onChange={(e) => setPage(i, { role: e.target.value || undefined })}>
                   <option value="">无</option>
                   {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                 </select>
-              </label>
-              <label className="dsh-opt">
-                图标
-                <select value={p.icon ?? ""} onChange={(e) => setPage(i, { icon: e.target.value || undefined })}>
+              </div>
+              <div className="dsh-opt">
+                <span className="dsh-opt-label">图标</span>
+                <select className="dsh-field" value={p.icon ?? ""} onChange={(e) => setPage(i, { icon: e.target.value || undefined })}>
                   <option value="">无</option>
                   {ICONS.map((ic) => <option key={ic} value={ic}>{ICON_EMOJI[ic]} {ic}</option>)}
                 </select>
-              </label>
+              </div>
               <button onClick={() => addPage(i)} className="dsh-ghost dsh-insert">＋ 在此后插入</button>
             </div>
           </div>

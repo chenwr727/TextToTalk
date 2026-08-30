@@ -1,0 +1,8 @@
+node_modules/
+dist/
+release/
+bin/
+*.log
+
+# build/ 下的图标与 ffmpeg 均由脚本生成，勿提交
+build/

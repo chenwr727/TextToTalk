@@ -1,0 +1,58 @@
+appId: com.texttotalk.app
+productName: TextToTalk
+copyright: Copyright © TextToTalk contributors
+
+directories:
+  output: release
+  buildResources: build
+
+icon: build/icon.ico
+
+files:
+  - dist/**/*
+  - assets/**/*
+  - package.json
+
+asar: true
+
+extraResources:
+  - from: build/bin
+    to: bin
+  - from: build/resources/payload
+    to: .
+  - from: ../web/dist
+    to: web
+
+extraFiles:
+  - from: portable.txt
+    to: portable.txt
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: zip
+      arch: [x64]
+  artifactName: ${productName}-${version}-win.${ext}
+
+nsis:
+  perMachine: false
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  shortcutName: TextToTalk
+  deleteAppDataOnUninstall: false
+
+mac:
+  icon: build/icon.icns
+  target:
+    - dmg
+  category: public.app-category.video
+  minimumSystemVersion: "11.0"
+
+linux:
+  icon: build/icon.png
+  target:
+    - AppImage
+  category: AudioVideo
+
+compression: maximum

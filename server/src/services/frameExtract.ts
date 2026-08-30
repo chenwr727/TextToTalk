@@ -1,14 +1,13 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { writeRenderEntry } from "./entry.js";
 import type { Storyboard } from "../types.js";
 import type { TtsSentence } from "./ttsService.js";
+import { outDir, renderDir } from "./runtime.js";
+import { spawnRemotion } from "./remotionRun.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const serverRoot = path.join(__dirname, "..", "..");
-const RENDER_DIR = path.join(serverRoot, "render");
+const RENDER_DIR = renderDir;
 
 export type FramePage = Storyboard["pages"][number] & { sentences?: TtsSentence[] };
 
@@ -47,14 +46,14 @@ export async function renderPageFrames(
   onProgress?: (p: number) => void,
   opts?: { theme?: string; width?: number; height?: number }
 ): Promise<string[]> {
-  const framesDir = path.join(serverRoot, "out", taskId, "frames");
+  const framesDir = path.join(outDir, taskId, "frames");
   mkdirSync(framesDir, { recursive: true });
   const captures = previewCaptureFrames(pages, fps);
   const written: string[] = [];
 
   const entryName = `pv_${taskId}`;
   const entryPath = writeRenderEntry(taskId, storyboard, pages, fps, false, null, entryName, opts);
-  const video = path.join(serverRoot, "out", `${taskId}.mp4`);
+  const video = path.join(outDir, `${taskId}.mp4`);
   const canFfmpeg = existsSync(video);
 
   for (let i = 0; i < storyboard.pages.length; i++) {
@@ -102,8 +101,6 @@ function renderStill(
   outPng: string
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const binName = process.platform === "win32" ? "remotion.cmd" : "remotion";
-    const remotionBin = path.join(renderDir, "node_modules", ".bin", binName);
     const args = [
       "still",
       entryPath,
@@ -115,8 +112,7 @@ function renderStill(
     const systemBrowser = process.env.CHROME_PATH || null;
     if (systemBrowser) args.push("--browser-executable", systemBrowser);
 
-    const cmdLine = [remotionBin, ...args].map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ");
-    const child = spawn(cmdLine, { cwd: renderDir, env: { ...process.env }, shell: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawnRemotion(args, { cwd: renderDir });
     let err = "";
     child.stderr?.on("data", (c: Buffer) => { err += c.toString(); });
     child.on("error", reject);

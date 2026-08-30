@@ -123,8 +123,8 @@ export function App() {
   const cur = STEPS.findIndex((s) => s.id === phase);
 
   return (
-    <div className="dsh-app" style={{ minHeight: "100vh", padding: "26px 20px 60px" }}>
-      <header style={{ maxWidth: 980, margin: "0 auto 30px" }}>
+    <div className="dsh-app" style={{ minHeight: "100vh", padding: "26px 18px 60px" }}>
+      <header style={{ maxWidth: 1320, margin: "0 auto 30px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src="/favicon.svg" alt="TextToTalk" width={42} height={42} style={{ borderRadius: 13, boxShadow: "0 4px 14px rgba(47,109,246,.32)" }} />
           <div style={{ textAlign: "left" }}>
@@ -160,7 +160,7 @@ export function App() {
         </div>
       </header>
 
-      <main style={{ maxWidth: 980, margin: "0 auto" }}>
+      <main style={{ maxWidth: 1320, margin: "0 auto" }}>
         {phase === "input" && (
           <ScriptInput
             prompt={prompt}

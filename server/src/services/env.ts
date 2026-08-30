@@ -18,7 +18,7 @@ function load() {
   for (const k of Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[]) {
     if (process.env[k]) values[k] = process.env[k]!;
   }
-  const file = path.join(serverRoot, ".env");
+  const file = process.env.TTT_ENV_FILE || path.join(serverRoot, ".env");
   if (existsSync(file)) {
     for (const line of readFileSync(file, "utf-8").split(/\r?\n/)) {
       const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);

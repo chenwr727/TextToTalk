@@ -4,9 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import type { Storyboard } from "../types.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const serverRoot = path.join(__dirname, "..", "..");
+import { assetsDir, mediaUrl } from "./runtime.js";
+import { wavDurationSeconds } from "./deps.js";
 
 export interface TtsSentence {
   text: string;
@@ -84,14 +83,17 @@ async function mp3toWav(mp3: string, wav: string): Promise<void> {
 }
 
 async function measureSeconds(wav: string): Promise<number> {
+  const parsed = wavDurationSeconds(wav);
+  if (parsed !== null && Number.isFinite(parsed) && parsed > 0) return parsed;
   try {
     const out = await run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "json", wav]);
-    return parseFloat(JSON.parse(out).format.duration);
+    const d = parseFloat(JSON.parse(out).format.duration);
+    return Number.isFinite(d) && d > 0 ? d : 2;
   } catch { return 2; }
 }
 
 export async function generateTts(taskId: string, storyboard: Storyboard, voice?: string): Promise<TtsResult> {
-  const audioDir = path.join(serverRoot, "assets", "tts", taskId, "audio");
+  const audioDir = path.join(assetsDir, "tts", taskId, "audio");
   mkdirSync(audioDir, { recursive: true });
   const v = voice || DEFAULT_VOICE;
 
@@ -144,7 +146,7 @@ export async function generateTts(taskId: string, storyboard: Storyboard, voice?
     page.sentences.push({
       text: it.text,
       seconds,
-      audioUrl: `http://127.0.0.1:4000/api/media/tts/${taskId}/audio/${path.basename(it.wav)}`,
+      audioUrl: mediaUrl(`tts/${taskId}/audio/${path.basename(it.wav)}`),
     });
   }
   for (const page of pages) {

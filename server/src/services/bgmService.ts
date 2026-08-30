@@ -1,9 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const serverRoot = path.join(__dirname, "..", "..");
+import { assetsDir, mediaUrl } from "./runtime.js";
 
 export interface BgmResult {
   audioUrl: string;
@@ -74,11 +71,11 @@ async function synthBgmWav(durationSec: number): Promise<Buffer> {
 
 export async function generateBgm(taskId: string, durationSec: number): Promise<BgmResult | null> {
   try {
-    const dir = path.join(serverRoot, "assets", "bgm");
+    const dir = path.join(assetsDir, "bgm");
     mkdirSync(dir, { recursive: true });
     const out = path.join(dir, `${taskId}.wav`);
     writeFileSync(out, await synthBgmWav(Math.max(3, durationSec)));
-    return { audioUrl: `http://127.0.0.1:4000/api/media/bgm/${taskId}.wav`, seconds: durationSec };
+    return { audioUrl: mediaUrl(`bgm/${taskId}.wav`), seconds: durationSec };
   } catch (e) {
     console.error("[bgm] 生成失败（忽略，继续渲染）", e);
     return null;

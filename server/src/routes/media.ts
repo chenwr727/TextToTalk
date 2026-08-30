@@ -1,10 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { assetsDir } from "../services/runtime.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MEDIA_ROOT = path.resolve(__dirname, "..", "..", "assets");
+const MEDIA_ROOT = path.normalize(assetsDir);
 
 export function registerMediaRoutes(app: FastifyInstance) {
   app.get("/api/media/*", async (req, reply) => {

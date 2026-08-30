@@ -1,20 +1,19 @@
-import { spawn } from "node:child_process";
 import { cpus } from "node:os";
-import { mkdirSync, rmSync } from "node:fs";
+import { mkdirSync, rmSync, appendFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { patchTask, getTask } from "./taskStore.js";
+import { outDir, renderDir } from "./runtime.js";
+import { checkRenderDeps, describeMissingDeps } from "./deps.js";
 import { generateTts, type TtsSentence } from "./ttsService.js";
 import { generateBgm } from "./bgmService.js";
 import { writeRenderEntry } from "./entry.js";
 import { enqueueRender } from "./renderQueue.js";
 import { renderPageFrames } from "./frameExtract.js";
+import { spawnRemotion } from "./remotionRun.js";
 import type { Storyboard } from "../types.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const serverRoot = path.join(__dirname, "..", "..");
-export const OUT_DIR = path.join(serverRoot, "out");
-const RENDER_DIR = path.join(serverRoot, "render");
+export const OUT_DIR = outDir;
+const RENDER_DIR = renderDir;
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -72,6 +71,7 @@ export async function renderTaskSync(
     `src/gen/${entryName}.tsx`, "DynamicVideo", output,
     "--log=warn",
     `--gl=${gl}`,
+    "--force-ipv4",
   ];
   const conc = Number(process.env.RENDER_CONCURRENCY || Math.max(1, Math.round(cpus().length / 2)));
   if (Number.isFinite(conc) && conc > 0) args.push(`--concurrency=${conc}`);
@@ -93,25 +93,30 @@ export async function renderTaskSync(
   console.log("[render] browser:", systemBrowser || "(none, will download Headless Shell)");
   console.log("[render] user-data-dir:", userDataDir);
   console.log("[render] spawn remotion for task", taskId, "args:", args.join(" "));
-  const binName = process.platform === "win32" ? "remotion.cmd" : "remotion";
-  const remotionBin = path.join(RENDER_DIR, "node_modules", ".bin", binName);
-  const cmdLine = [remotionBin, ...args].map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" ");
+
+  const renderLogFile = path.join(path.dirname(output), `${taskId}.render.log`);
+  try { mkdirSync(path.dirname(renderLogFile), { recursive: true }); } catch {}
 
   await new Promise<string>((resolve, reject) => {
-    const child = spawn(cmdLine, {
-      cwd: RENDER_DIR,
-      env: { ...process.env },
-      shell: true,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const child = spawnRemotion(args, { cwd: RENDER_DIR });
     const progressRe =
       /(?:Rendering|Rendered|Stitching|Encoding)\s+(?:still|stills|frames?)?\s*[^\d]*?(\d+)\s*\/\s*(\d+)/gi;
+    const logChunks: string[] = [];
+    const MAX_LOG = 200;
+    const appendLog = (line: string) => {
+      const clean = line.trim();
+      if (!clean) return;
+      logChunks.push(clean);
+      if (logChunks.length > MAX_LOG) logChunks.splice(0, logChunks.length - MAX_LOG);
+      try { appendFileSync(renderLogFile, clean + "\n"); } catch {}
+    };
     const onStdout = (chunk: Buffer) => {
+      const text = chunk.toString();
+      for (const line of text.split(/\r?\n/)) appendLog("[out] " + line);
       if (!onProgress) return;
       let m: RegExpExecArray | null;
       let last = 0;
       progressRe.lastIndex = 0;
-      const text = chunk.toString();
       while ((m = progressRe.exec(text)) !== null) {
         const done = Number(m[1]);
         const total = Number(m[2]);
@@ -121,15 +126,27 @@ export async function renderTaskSync(
     };
     const onStderr = (chunk: Buffer) => {
       const text = chunk.toString();
-      if (text.trim()) console.error("[render][remotion]", text.trim());
+      for (const line of text.split(/\r?\n/)) {
+        if (line.trim()) {
+          appendLog("[err] " + line);
+          console.error("[render][remotion]", line.trim());
+        }
+      }
     };
     child.stdout?.on("data", onStdout);
     child.stderr?.on("data", onStderr);
-    child.on("error", (e2) => reject(e2));
+    child.on("error", (e2) => {
+      appendLog("[fatal] " + (e2 instanceof Error ? e2.message : String(e2)));
+      reject(e2);
+    });
     child.on("close", (code) => {
       try { rmSync(userDataDir, { recursive: true, force: true }); } catch {}
-      if (code === 0) resolve(output);
-      else reject(new Error("Remotion 渲染退出码 " + code + "，详见上方 [render][remotion] 日志"));
+      if (code === 0) {
+        resolve(output);
+      } else {
+        const tail = logChunks.slice(-12).join("\n") || "(无输出，请查看 " + renderLogFile + ")";
+        reject(new Error(`Remotion 渲染退出码 ${code}。完整日志：${renderLogFile}\n${tail}`));
+      }
     });
   });
 
@@ -151,6 +168,20 @@ export function renderTaskInBackground(taskId: string): void {
   const { fps, subtitles, bgm, theme, width, height, voice } = task.params;
   enqueueRender(taskId, async () => {
     patchTask(taskId, { warning: null });
+
+    const deps = await checkRenderDeps();
+    if (!deps.ok) {
+      const err = describeMissingDeps(deps);
+      patchTask(taskId, { status: "FAILED", error: err });
+      console.error("[render] 依赖缺失，已跳过:", deps.missing.join(", "));
+      return;
+    }
+    if (deps.chrome === null) {
+      patchTask(taskId, {
+        warning: "未指定 Chromium 内核，Remotion 将尝试联网下载自带浏览器；若网络不通会渲染失败。可在设置里指定 Edge / Chrome 路径。",
+      });
+    }
+
     try {
       const outPath = await renderTaskSync(
         taskId, storyboard, fps || 30, subtitles !== false,

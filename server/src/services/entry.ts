@@ -1,11 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Storyboard } from "../types.js";
+import { renderDir } from "./runtime.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const serverRoot = path.join(__dirname, "..", "..");
-const RENDER_DIR = path.join(serverRoot, "render");
+const RENDER_DIR = renderDir;
 
 export function writeRenderEntry(
   taskId: string,

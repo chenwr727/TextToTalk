@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TextToTalk · 设置</title>
+<style>
+  :root {
+    --bg: #f6f9ff;
+    --panel: #fff;
+    --panel-2: #fbfdff;
+    --line: #e7eefb;
+    --text: #1e2a3a;
+    --muted: #5a6b82;
+    --accent: #2f6df6;
+    --ok: #16a34a;
+    --warn: #d97706;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 30px 26px;
+    color: var(--text);
+    background:
+      radial-gradient(900px 480px at 10% -10%, #e8f0ff 0%, transparent 58%),
+      radial-gradient(760px 420px at 92% 4%, #eafbf4 0%, transparent 55%),
+      linear-gradient(180deg, #f6f9ff 0%, #f2f6fc 100%);
+    background-attachment: fixed;
+    font: 14px/1.6 "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; letter-spacing: .3px; color: #14223a; }
+  .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 22px; }
+  .group {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
+    box-shadow: 0 8px 28px rgba(31, 66, 135, .07), 0 1px 3px rgba(20, 40, 80, .04);
+  }
+  .group h2 { font-size: 13px; margin: 0 0 12px; color: var(--muted); font-weight: 600; letter-spacing: .5px; }
+  label { display: block; font-size: 12.5px; color: var(--muted); margin: 12px 0 6px; }
+  label:first-of-type { margin-top: 0; }
+  input {
+    width: 100%; padding: 9px 11px; border-radius: 10px;
+    border: 1.5px solid #dbe4f4; background: var(--panel-2); color: var(--text);
+    font-size: 13px; font-family: inherit; outline: none;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,109,246,.14); }
+  .hint { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+  .dep {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 14px;
+    align-items: start;
+    padding: 10px 0;
+    font-size: 12.5px;
+    border-bottom: 1px dashed var(--line);
+  }
+  .dep:last-child { border-bottom: 0; }
+  .dep-name { color: var(--muted); font-weight: 500; line-height: 1.45; }
+  .dep-value { display: flex; flex-direction: column; gap: 3px; line-height: 1.45; }
+  .ok, .bad { font-weight: 700; }
+  .ok { color: var(--ok); }
+  .bad { color: var(--warn); }
+  .path { font-size: 11px; color: #9aa9c3; word-break: break-all; line-height: 1.5; }
+  @media (max-width: 480px) {
+    .dep { grid-template-columns: 110px 1fr; gap: 10px; }
+  }
+  footer { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+  button {
+    padding: 9px 16px; border-radius: 10px; border: 1px solid #dfe7f5;
+    background: #fff; color: #5a6b82; font-size: 13px; cursor: pointer; font-family: inherit;
+    transition: background .12s ease, color .12s ease, filter .12s ease, box-shadow .12s ease;
+  }
+  button:hover { background: #f2f6ff; color: var(--accent); }
+  button.primary {
+    background: linear-gradient(135deg, #2f6df6, #4c7dff);
+    border-color: transparent; color: #fff; font-weight: 700;
+    box-shadow: 0 6px 18px rgba(47, 109, 246, .28);
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  button:disabled { opacity: .55; cursor: default; }
+  .status { flex: 1; font-size: 12px; color: var(--muted); }
+  .status.err { color: var(--warn); }
+</style>
+</head>
+<body>
+  <h1>TextToTalk 设置</h1>
+  <div class="sub">配置保存在应用数据目录，修改后会自动重启本地服务。</div>
+
+  <div class="group">
+    <h2>LLM 接口</h2>
+    <label for="key">API Key</label>
+    <input id="key" type="password" placeholder="sk-..." autocomplete="off" />
+    <div class="hint">必填。OpenAI 兼容接口的密钥。</div>
+
+    <label for="url">接口地址</label>
+    <input id="url" placeholder="https://api.deepseek.com/v1/chat/completions" />
+    <div class="hint">需填写完整 endpoint 路径。</div>
+
+    <label for="model">模型</label>
+    <input id="model" placeholder="deepseek-v4-flash" />
+  </div>
+
+  <div class="group">
+    <h2>渲染</h2>
+    <label for="chrome">Chromium 路径（可选）</label>
+    <input id="chrome" placeholder="留空则自动探测 Edge / Chrome" />
+
+    <label for="conc">并发导帧数（可选）</label>
+    <input id="conc" placeholder="留空 = CPU 核数一半" />
+    <div class="hint">显存 / 内存紧张时可设为 1。</div>
+  </div>
+
+  <div class="group">
+    <h2>本机环境</h2>
+    <div id="deps"></div>
+    <div class="dep" id="outRow">
+      <div class="dep-name">输出目录</div>
+      <div class="dep-value"><span class="path" id="outPath">—</span></div>
+    </div>
+    <div class="dep">
+      <div class="dep-name">运行模式</div>
+      <div class="dep-value"><span class="path" id="modeText">—</span></div>
+    </div>
+  </div>
+
+  <footer>
+    <button class="primary" id="save">保存并重启服务</button>
+    <button id="openOut">打开输出目录</button>
+    <button id="close">关闭</button>
+    <div class="status" id="status"></div>
+  </footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const api = window.ttt;
+
+  function setStatus(text, isErr) {
+    const el = $("status");
+    el.textContent = text || "";
+    el.className = "status" + (isErr ? " err" : "");
+  }
+
+  function depRow(name, value) {
+    const cls = value ? "ok" : "bad";
+    const text = value ? "已就绪" : "未找到";
+    return (
+      '<div class="dep">' +
+        '<div class="dep-name">' + name + '</div>' +
+        '<div class="dep-value">' +
+          '<span class="' + cls + '">' + text + '</span>' +
+          (value ? '<div class="path">' + value + "</div>" : "") +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  async function refresh() {
+    const [runtime, cfgWrap] = await Promise.all([api.getRuntime(), api.getConfig()]);
+    const c = cfgWrap.config || {};
+    $("key").value = c.LLM_API_KEY || "";
+    $("url").value = c.LLM_API_URL || (cfgWrap.llm && cfgWrap.llm.baseUrl) || "";
+    $("model").value = c.LLM_MODEL || (cfgWrap.llm && cfgWrap.llm.model) || "";
+    $("chrome").value = c.CHROME_PATH || "";
+    $("conc").value = c.RENDER_CONCURRENCY || "";
+
+    $("deps").innerHTML =
+      depRow("Chromium（渲染）", runtime.deps.chrome) +
+      depRow("ffmpeg（配音转码）", runtime.deps.ffmpeg);
+
+    $("outPath").textContent = runtime.outDir;
+    $("modeText").textContent = runtime.portable
+      ? "免安装版 · 数据保存在应用目录，可整个文件夹拷走"
+      : "安装版 · 数据保存在系统应用数据目录";
+    return runtime;
+  }
+
+  async function save() {
+    const btn = $("save");
+    btn.disabled = true;
+    setStatus("正在重启本地服务…");
+    try {
+      const res = await api.saveConfig({
+        LLM_API_KEY: $("key").value.trim(),
+        LLM_API_URL: $("url").value.trim(),
+        LLM_MODEL: $("model").value.trim(),
+        CHROME_PATH: $("chrome").value.trim(),
+        RENDER_CONCURRENCY: $("conc").value.trim(),
+      });
+      if (!res.ok) throw new Error(res.error || "保存失败");
+      await refresh();
+      setStatus("已保存，服务已重启：" + res.baseUrl);
+    } catch (e) {
+      setStatus(String((e && e.message) || e), true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $("save").addEventListener("click", save);
+  $("close").addEventListener("click", () => api.closeSelf());
+  $("openOut").addEventListener("click", async () => {
+    const err = await api.openOutputDir();
+    if (err) setStatus(err, true);
+  });
+  document.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") save();
+  });
+
+  refresh().catch((e) => setStatus(String(e && e.message ? e.message : e), true));
+</script>
+</body>
+</html>

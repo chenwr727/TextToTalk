@@ -79,18 +79,48 @@ export function PageEditor({
     }
   };
 
+  const captionCount = captions.split(/[，,]/).map((s) => s.trim()).filter(Boolean).length;
+  const pointCount = points.split("\n").map((s) => s.trim()).filter(Boolean).length;
+
   return (
     <div className="dsh-editor">
-      <div className="dsh-editor-title">✏️ 编辑本页</div>
-      <div className="dsh-grid-2">
-        <div>
+      <div className="dsh-editor-head">
+        <span className="dsh-editor-badge">P{page.pageIndex + 1}</span>
+        <span className="dsh-editor-title">编辑本页</span>
+        <span className="dsh-editor-sub">保存后旧成片会失效，需重新渲染</span>
+      </div>
+
+      <div className="dsh-editor-grid">
+        <div className="dsh-editor-col">
           {field("标题", <input className="dsh-field" value={title} onChange={(e) => setTitle(e.target.value)} />)}
-          {field("解说词 / 字幕（用逗号分隔多句）", <textarea className="dsh-field" style={{ minHeight: 64, resize: "vertical" }} value={captions} onChange={(e) => setCaptions(e.target.value)} />, "配音与画面字幕都以此为准，每句用逗号分隔")}
+          {field(
+            "解说词 / 字幕",
+            <textarea
+              className="dsh-field dsh-editor-body"
+              placeholder="每句用逗号分隔"
+              value={captions}
+              onChange={(e) => setCaptions(e.target.value)}
+            />,
+            "配音与画面字幕都以此为准",
+            `${captionCount} 句`,
+          )}
         </div>
-        <div>
-          {field("要点（每行一条）", <textarea className="dsh-field" style={{ minHeight: 96, resize: "vertical" }} value={points} onChange={(e) => setPoints(e.target.value)} />)}
-          <div className="dsh-grid-2">
-            {field("时长（秒）", <input className="dsh-field" type="number" min={1} max={120} value={durationSec} onChange={(e) => setDurationSec(e.target.value)} />)}
+        <div className="dsh-editor-col">
+          {field(
+            "要点",
+            <textarea
+              className="dsh-field dsh-editor-body"
+              placeholder="每行一条"
+              value={points}
+              onChange={(e) => setPoints(e.target.value)}
+            />,
+            undefined,
+            `${pointCount} 条`,
+          )}
+          <div className="dsh-editor-row">
+            {field("时长（秒）", (
+              <input className="dsh-field" type="number" min={1} max={120} value={durationSec} onChange={(e) => setDurationSec(e.target.value)} />
+            ))}
             {field("版式", (
               <select className="dsh-field" value={layout} onChange={(e) => setLayout(e.target.value as Layout)}>
                 {LAYOUTS.map((l) => <option key={l} value={l}>{LAYOUT_LABEL[l] ?? l}</option>)}
@@ -99,7 +129,8 @@ export function PageEditor({
           </div>
         </div>
       </div>
-      {error && <div className="dsh-editor-error">{error}</div>}
+
+      {error && <div className="dsh-editor-error">⚠️ {error}</div>}
       <div className="dsh-editor-actions">
         <button onClick={onCancel} className="dsh-ghost" disabled={saving}>取消</button>
         <button onClick={onSaveClick} className="dsh-btn" disabled={saving}>
@@ -145,10 +176,13 @@ export function PageEditor({
   );
 }
 
-function field(label: string, children: ReactNode, hint?: string) {
+function field(label: string, children: ReactNode, hint?: string, meta?: string) {
   return (
     <label className="dsh-field-label">
-      <div className="dsh-field-label-text">{label}</div>
+      <div className="dsh-field-label-head">
+        <span className="dsh-field-label-text">{label}</span>
+        {meta != null && <span className="dsh-field-label-meta">{meta}</span>}
+      </div>
       {children}
       {hint && <div className="dsh-field-hint">{hint}</div>}
     </label>

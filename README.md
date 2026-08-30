@@ -10,7 +10,7 @@
 ![React](https://img.shields.io/badge/React-19-087ea4?logo=react&logoColor=white)
 ![Remotion](https://img.shields.io/badge/Remotion-4-000000?logo=remotion&logoColor=white)
 ![Fastify](https://img.shields.io/badge/Fastify-5-000000?logo=fastify&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-一键起-2496ED?logo=docker&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-桌面版-47848F?logo=electron&logoColor=white)
 ![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen)
 
 </div>
@@ -26,6 +26,35 @@
 **一镜到底、无剪辑：粘贴文案 → AI 出大纲 → 逐页展开分镜 → 渲染导出 MP4**
 
 </div>
+
+---
+
+## 30 秒上手
+
+三种运行方式，挑一个：
+
+### Docker（想立刻跑起来）
+
+```bash
+git clone https://github.com/<你的用户名>/TextToTalk.git
+cd TextToTalk
+cp server/.env.example server/.env    # 至少填 LLM_API_KEY
+docker compose up -d --build          # 构建完打开 http://localhost:8080
+```
+
+### 本地开发（要改代码）
+
+```bash
+cd server && pnpm install && pnpm approve-builds && pnpm run dev   # :4000
+cd server/render && npm install                                     # 渲染工程
+cd web && pnpm install && pnpm run dev                              # :3000
+```
+
+### 桌面版（当普通软件用）
+
+下载 `TextToTalk-0.1.0-win.zip` 解压即用，无需 Node、无需 Docker、ffmpeg 已内置。
+
+> 完整说明见 [部署与开发](docs/DEPLOYMENT.md) · [桌面版](docs/DESKTOP.md) · [配置](docs/CONFIGURATION.md)
 
 ---
 
@@ -62,62 +91,8 @@ TextToTalk 把中间三步压缩成一次回车：
 - 🔗 **链接直接进，公众号也能抓**
   贴 URL 自动抓正文；静态页走内置 fetch，JS 动态渲染页（公众号 / 知乎等）自动回退 Playwright 真浏览器。
 
-- 🐳 **一条 Docker 命令跑全套**
-  镜像内置 nginx + Node 后端 + Chromium + 中文字体 + ffmpeg + Playwright 内核，国内源已配好。
-
----
-
-## 30 秒上手（Docker）
-
-```bash
-git clone https://github.com/<你的用户名>/TextToTalk.git
-cd TextToTalk
-
-cp server/.env.example server/.env    # 至少填 LLM_API_KEY
-docker compose up -d --build          # 构建完打开 http://localhost:8080
-```
-
-粘贴一段文案，点生成，等一杯咖啡的时间就能下载 MP4。
-
-<details>
-<summary>Docker 常用命令</summary>
-
-```bash
-docker compose logs -f app   # 看后端日志
-docker compose down          # 停止（数据保留在 ./server/out、./server/assets）
-docker compose up -d --build # 改完代码重建
-```
-
-- 端口默认 `8080:80`，改 `docker-compose.yml` 的 `ports` 即可。
-- 成片、音频、TTS 缓存以 **bind mount** 挂载到宿主机（`./server/out`、`./server/assets`、`./server/tts`），重建容器不丢。
-- 镜像已配 npm（npmmirror）与 Alpine（清华 TUNA）国内源，Playwright 内核走 npmmirror 镜像。
-- 单容器：nginx 监听 80 反代 `/api`，后端监听 4000。
-
-</details>
-
----
-
-## 本地开发
-
-三个工程各起一个终端：
-
-```bash
-# 1) 后端  http://localhost:4000
-cd server && pnpm install
-cp .env.example .env
-pnpm approve-builds            # 放行 esbuild / msedge-tts 安装脚本（pnpm v10+ 必需）
-pnpm run dev                   # tsx watch 热载
-
-# 2) 渲染工程（独立的 Remotion 工程，npm / pnpm 均可）
-cd server/render && npm install
-
-# 3) 前端  http://localhost:3000（已配 /api 代理到 :4000）
-cd web && pnpm install && pnpm run dev
-```
-
-> **环境要求**：Node **20.19+ / 22.12+**（推荐 22 或 24，Docker 镜像为 `node:24-alpine`）、pnpm 9+、ffmpeg + ffprobe（TTS 与抽帧依赖）。
-> **Playwright 内核**仅「抓 JS 动态页」时需要：`npx playwright install chromium`。
-> 首次渲染较慢（Remotion 逐帧导出），几十秒到一分钟；想提速见 [渲染加速](#渲染加速)。
+- 🖥️ **桌面版开箱即用**
+  Electron 封装，内置 ffmpeg，设置面板配好 Key 就能用；也支持[免安装模式](docs/DESKTOP.md#免安装版)，整个文件夹拷 U 盘带走。
 
 ---
 
@@ -171,126 +146,15 @@ cd web && pnpm install && pnpm run dev
 
 ---
 
-## 生成流水线
+## 文档
 
-后端 `storyboardGenerator` 采用「大纲 → 分镜」两段式 LLM 流水线，中间夹一层强类型归一化：
-
-| 阶段 | 作用 |
+| 文档 | 内容 |
 |---|---|
-| **Pass 1 · 大纲规划** | 定全局 `arc` 叙事弧线与每页 `role / icon / layout / art / chart / table / rhythm`，流式流出供确认与编辑 |
-| **Pass 2 · 逐页展开** | 基于确认后的大纲逐页填充标题 / 要点 / 解说 / 字幕，注入上一页上下文保持连贯（SSE 实时流出） |
-| **normalize** | LLM JSON → 强类型分镜；越界值收敛、缺失字段补全，并产出「某页与大纲版式偏差 / 图表未兑现 / 要点过多」等偏差告警 |
-| **fallbackDirect** | 管线异常时直出兜底分镜，保证不中断 |
-
-**渲染阶段**：逐句 TTS（3 并发 + 3 次退避重试）→ 按整片时长合成 BGM → 生成自包含 Remotion 入口 → 无头 Chromium 逐帧导出带声 MP4。
-
----
-
-## 配置
-
-复制 `server/.env.example` 为 `server/.env`，`tsx` 会自动加载。
-
-### LLM（必填）
-
-| 变量 | 说明 |
-|---|---|
-| `LLM_API_KEY` | **必填**，OpenAI 兼容接口的 Key |
-| `LLM_API_URL` | **必填完整 endpoint 路径**，如 `https://api.deepseek.com/v1/chat/completions`；智谱填 `https://open.bigmodel.cn/api/coding/paas/v4/chat/completions` |
-| `LLM_MODEL` | 模型名，默认 `deepseek-v4-flash` |
-| `LLM_ENABLE_THINKING` | 是否保留模型的 thinking 内容，默认 `false` |
-
-### 渲染（可选）
-
-| 变量 | 默认 | 说明 |
-|---|---|---|
-| `RENDER_CONCURRENCY` | CPU 核数一半 | 并发导帧数。多核可设为核数；`=1` 最稳（低内存 / 受限容器） |
-| `RENDER_SCALE` | 不设置 | `<1` 降分辨率以提速，适合草稿预览；终版不要设 |
-| `RENDER_GL` | `swiftshader` | 本机有独显时设 `angle` 走 WebGL 硬件加速 |
-| `RENDER_HW_ACCEL` | `0` | 硬件编解码开关 |
-| `RENDER_MAX_TASKS` | `1` | 渲染队列并发上限 |
-| `RENDER_X264_PRESET` | `veryfast` | x264 编码预设 |
-| `CHROME_PATH` | 自动探测 | 指定 Chromium 可执行文件（Docker 内已指向 `/usr/bin/chromium`） |
-
----
-
-## 渲染加速
-
-渲染是逐帧完整 Chromium 截图，耗时 ≈ **分辨率 × 帧数**。按收益排序：
-
-1. **多核并发**（首选，默认已开）—— 把 `RENDER_CONCURRENCY` 设为核数（如 8）；内存紧张或受限容器设 `=1`。
-2. **GPU 硬件加速** —— 有独显时设 `RENDER_GL=angle`，从软件 `swiftshader` 切到 WebGL，提速明显。
-3. **降分辨率跑草稿** —— 设 `RENDER_SCALE=0.75`（约 1440×810）校对效果，确认后去掉再出终版。
-4. **降低帧率** —— `fps` 从 30 降到 24 / 15，帧数近乎线性下降，PPT 讲解类完全可接受。
-
-> 以上变量改完无需重启前端，`tsx watch` 已热载后端。
-
----
-
-## API
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/health` | 健康检查 |
-| POST | `/api/generate` | 一步式创建生成任务 `{ prompt, params }` → `{ taskId, token }`；`prompt` 可为文案或链接 |
-| POST | `/api/outline` | **第一步**仅生成大纲（Pass 1），SSE 回流 `meta / token / stage / section / final` |
-| POST | `/api/storyboard` | **第二步**基于已确认大纲 `{ prompt, outline, params }` 创建分镜任务 |
-| GET | `/api/tasks/:id` | 查询任务（状态 / 分镜 / 进度 / 告警） |
-| GET | `/api/stream?id=&token=` | SSE 订阅生成与渲染进度事件 |
-| POST | `/api/tasks/:id/render` | 提交渲染成片 |
-| POST | `/api/tasks/:id/pages/:page/regenerate` | 单页重新生成 |
-| PATCH | `/api/tasks/:id/pages/:page` | 单页就地编辑（标题 / 旁白 / 字幕 / 要点 / 时长 / 版式） |
-| POST | `/api/tasks/:id/preview-frames` | 后台生成各页预览帧 PNG |
-| GET | `/api/tasks/:id/frames/:page` | 返回某页预览帧 PNG |
-| GET | `/api/tasks/:id/download` | 在线播放（支持 HTTP Range / 206） |
-| GET | `/api/tasks/:id/download?download=1` | 下载（`attachment`） |
-| GET | `/api/media/*` | TTS / BGM 音频点播（供 Remotion 拉取，支持 Range） |
-
-> 任务类接口需携带创建时返回的 `token`（`?token=` 或 `Authorization: Bearer`），不匹配返回 401。前端封装见 `web/src/api.ts`。
-
----
-
-## 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 前端 | React 19 · Vite 8 · TypeScript |
-| 后端 | Node.js · Fastify 5 · TypeScript（`tsx watch` 热载） |
-| 渲染 | Remotion 4.0（无头 Chromium）· transitions · rough-notation · paths · shapes · media-utils |
-| 网页抓取 | Node 内置 fetch（轻量）+ Playwright（JS 动态页兜底） |
-| TTS | msedge-tts（Edge 在线音色）+ ffmpeg 转码 |
-| BGM | 自研纯 Node 合成（44.1kHz 手写 WAV，无任何音频素材） |
-| LLM | OpenAI 兼容接口（`/chat/completions` 流式） |
-
----
-
-## 项目结构
-
-```
-├─ shared/                      # 前后端共享类型契约
-├─ web/                         # 前端（React + Vite）
-│   └─ src/
-│       ├─ App.tsx              # 四步流程壳 + 步骤条
-│       ├─ api.ts               # /api 客户端 + SSE 订阅
-│       └─ components/          # 输入 / 大纲 / 分镜 / 缩略图 / 渲染 / 页编辑器
-└─ server/
-    ├─ src/
-    │   ├─ index.ts             # Fastify 入口（:4000）
-    │   ├─ routes/              # generate / stream / tasks / media / health
-    │   └─ services/
-    │       ├─ storyboardGenerator.ts  # 大纲 + 多 pass 分镜管线
-    │       ├─ prompts.ts / normalize.ts   # prompt 模板 / JSON 归一化与告警
-    │       ├─ renderService.ts / entry.ts  # 渲染编排 / Remotion 入口生成
-    │       ├─ frameExtract.ts          # 预览帧导出（ffmpeg 优先，remotion still 回退）
-    │       ├─ ttsService.ts / bgmService.ts
-    │       ├─ fetchUrl.ts / llmClient.ts   # 网页抓取 / LLM 流式客户端
-    │       └─ taskStore / sseHub / renderQueue / auth / env
-    ├─ render/                  # Remotion 渲染工程
-    │   └─ src/shared/render/
-    │       ├─ DynamicVideo.tsx # 主组件（TransitionSeries + 转场 + 频谱）
-    │       ├─ sceneRegistry.ts # 26 条版式分发规则
-    │       └─ scenes/          # 16 个场景组件
-    └─ out/  assets/  tts/      # 运行时产物：成片 mp4、预览帧 PNG、TTS / BGM wav
-```
+| [部署与开发](docs/DEPLOYMENT.md) | Docker 一键起、本地开发三终端、环境要求、生产注意事项 |
+| [桌面版](docs/DESKTOP.md) | 开发模式、打包流程与自检、免安装版、设置面板、常见问题 |
+| [配置](docs/CONFIGURATION.md) | LLM / 渲染环境变量、桌面版配置、渲染加速 |
+| [API](docs/API.md) | 接口列表、鉴权、SSE 事件 |
+| [架构](docs/ARCHITECTURE.md) | 整体结构、项目结构、技术栈、生成与渲染流水线 |
 
 ---
 
@@ -299,14 +163,15 @@ cd web && pnpm install && pnpm run dev
 - 目前**仅支持 1920×1080 横屏**（9:16 竖屏已预埋但尚未开放）。
 - 任务状态存于内存，TTL 24 小时，重启进程会丢失；适合单机 / 小团队自用，非多实例生产架构。
 - TTS 走 Edge 在线服务，需要外网；音色以中文为主。
-- 渲染是逐帧 CPU 密集任务，成片时长越长等待越久（见 [渲染加速](#渲染加速)）。
+- 渲染是逐帧 CPU 密集任务，成片时长越长等待越久（见[渲染加速](docs/CONFIGURATION.md#渲染加速)）。
+- 桌面版打包时跳过了 Playwright 浏览器下载，**抓取 JS 动态页的兜底能力不可用**，静态页抓取不受影响。
 
 ---
 
 ## Roadmap
 
 - [ ] 9:16 / 1:1 竖屏与方形画幅
-- [ ] 任务持久化（SQLite）与多实例渲染worker
+- [ ] 任务持久化（SQLite）与多实例渲染 worker
 - [ ] 更多 TTS 引擎与多语种音色
 - [ ] 分镜模板市场与自定义主题配色
 - [ ] 成片导出字幕文件（SRT）
