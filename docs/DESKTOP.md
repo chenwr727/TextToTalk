@@ -47,7 +47,7 @@ cd ../desktop && npm install && npm run dev
 
 ```bash
 cd desktop
-npm run dist:win     # 一次产出两个包 → desktop/release
+npm run dist:win     # Windows zip
 npm run dist:mac     # macOS dmg
 npm run dist:linux   # Linux AppImage
 ```
@@ -56,8 +56,7 @@ npm run dist:linux   # Linux AppImage
 
 | 文件 | 体积 | 说明 |
 |---|---|---|
-| `TextToTalk-0.1.0-win.exe` | 200 MB | NSIS 安装包 |
-| `TextToTalk-0.1.0-win.zip` | 266 MB | 免安装版，解压即用 |
+| `TextToTalk-0.2.0-win-portable.zip` | 199 MB | 免安装版，解压即用 |
 
 ### 打包自检
 
@@ -82,7 +81,7 @@ cd desktop && npm run verify
 | 2 | `npm run ffmpeg` | 把 `ffmpeg-static` 的二进制复制到 `build/bin` |
 | 3 | `npm run stage` | 把后端暂存到 `build/resources/payload/server` |
 | 4 | `tsc` | 编译主进程与 preload |
-| 5 | `electron-builder` | 产出安装包与 zip |
+| 5 | `electron-builder` | 产出免安装 zip 包 |
 | 6 | `npm run verify` | 产物自检 |
 
 第 3 步是关键，它绕开了两个坑：
@@ -101,7 +100,7 @@ cd desktop && npm run verify
 
 ## 免安装版
 
-解压 `TextToTalk-0.1.0-win.zip` 后直接双击 `TextToTalk.exe`，不写注册表、不装系统目录。
+解压 `TextToTalk-0.2.0-win-portable.zip` 后直接双击 `TextToTalk.exe`，不写注册表、不装系统目录。
 
 模式由 exe 同级的 **`portable.txt`** 控制：
 
@@ -235,4 +234,4 @@ headless shell（+269MB），适合目标机器可能没有 Chromium 内核的�
 
 ---
 
-**相关文档**：[部署与开发](DEPLOYMENT.md) · [配置](CONFIGURATION.md) · [架构](ARCHITECTURE.md)
+**相关文档**：[部署与开发](DEPLOYMENT.md) · [配置](CONFIGURATION.md) · [TTS 配音](TTS.md) · [架构](ARCHITECTURE.md)

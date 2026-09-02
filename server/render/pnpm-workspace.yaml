@@ -1,6 +1,5 @@
-# render 是独立 pnpm 项目，此文件使其成为独立的 workspace 根，
-# 避免被 /app/server 的 workspace（pnpm-workspace.yaml）捕获而导致依赖安装失败。
-# minimumReleaseAge: 0 关闭 pnpm 11 的供应链发布年龄策略（会拒绝刚发布的 Remotion）。
+allowBuilds:
+  esbuild: false
 minimumReleaseAge: 0
 packages:
   - .

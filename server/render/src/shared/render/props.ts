@@ -126,6 +126,7 @@ export interface StoryPage {
   customSvg?: CustomSvgSpec;
   map?: MapSpec | null;
   sentences?: TtsSentence[];
+  sentenceGap?: number;
 }
 
 export interface TtsSentence {
@@ -134,7 +135,12 @@ export interface TtsSentence {
   audioUrl: string;
 }
 
-export interface RenderProps {
+/**
+ * 注意：此处必须使用 type 别名而非 interface。
+ * Remotion 的 Composition 泛型约束为 `Props extends Record<string, unknown>`，
+ * 而 TS 只会为对象类型别名生成隐式索引签名，interface 不会，改用 interface 会报 TS2344。
+ */
+export type RenderProps = {
   projectTitle: string;
   pages: StoryPage[];
   fps: number;
@@ -143,4 +149,4 @@ export interface RenderProps {
   theme?: string;
   width?: number;
   height?: number;
-}
+};

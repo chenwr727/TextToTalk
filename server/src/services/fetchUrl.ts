@@ -61,8 +61,21 @@ export async function fetchUrlContent(url: string): Promise<{ title: string; tex
 }
 
 export async function fetchUrlContentWithBrowser(url: string): Promise<{ title: string; text: string }> {
-  const { chromium } = await import("playwright");
-  const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  const { chromium } = await import("playwright-core");
+  const { resolveChromiumPath } = await import("./chromium.js");
+  const executablePath =
+    process.env.CHROME_PATH ||
+    process.env.REMOTION_BROWSER_EXECUTABLE ||
+    (await resolveChromiumPath()) ||
+    undefined;
+  if (!executablePath) {
+    throw new Error("未检测到 Chromium 内核（Edge / Chrome），无法抓取该网页。可设置 CHROME_PATH 指定浏览器路径。");
+  }
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
   try {
     const context = await browser.newContext({
       userAgent:

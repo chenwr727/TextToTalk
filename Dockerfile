@@ -30,10 +30,6 @@ RUN pnpm install --registry="$NPM_REGISTRY" || true \
  && pnpm approve-builds --all \
  && pnpm install --registry="$NPM_REGISTRY"
 
-ENV PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright \
-    PLAYWRIGHT_BROWSERS_PATH=/app/server/ms-playwright
-RUN npx --prefix /app/server playwright install chromium || true
-
 FROM node:24-alpine AS runtime
 ARG APK_MIRROR
 
@@ -73,7 +69,6 @@ COPY shared/ /app/shared/
 COPY server/ /app/server/
 COPY --from=server-deps /app/server/node_modules /app/server/node_modules
 COPY --from=server-deps /app/server/render /app/server/render
-COPY --from=server-deps /app/server/ms-playwright /app/server/ms-playwright
 COPY --from=web-build /app/web/dist /usr/share/nginx/html
 
 COPY nginx.conf /etc/nginx/http.d/default.conf
@@ -81,8 +76,9 @@ COPY nginx.conf /etc/nginx/http.d/default.conf
 ENV REMOTION_BROWSER_EXECUTABLE=/usr/bin/chromium \
     REMOTION_BROWSER=/usr/bin/chromium \
     CHROME_PATH=/usr/bin/chromium \
-    PLAYWRIGHT_BROWSERS_PATH=/app/server/ms-playwright \
     NODE_ENV=production
+
+RUN node /app/server/render/scripts/bundle.mjs
 
 EXPOSE 80
 

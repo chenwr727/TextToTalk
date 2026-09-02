@@ -1,11 +1,10 @@
 import { execFile } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync, renameSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 import type { Storyboard } from "../types.js";
 import { assetsDir, mediaUrl } from "./runtime.js";
 import { wavDurationSeconds } from "./deps.js";
+import { resolveEngine, ttsEngines, type TtsEngine, type TtsSynthOptions } from "./tts/index.js";
 
 export interface TtsSentence {
   text: string;
@@ -24,7 +23,6 @@ export interface TtsResult {
   failedCount: number;
 }
 
-const DEFAULT_VOICE = "zh-CN-XiaoxiaoNeural";
 const SENTENCE_GAP = 0.5;
 const FPS = 30;
 const CONCURRENCY = 3;
@@ -33,38 +31,20 @@ const TTS_RETRY_DELAY_MS = 1500;
 
 function run(cmd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, { maxBuffer: 64 * 1024 * 1024 }, (err, stdout) => {
+    execFile(cmd, args, { maxBuffer: 64 * 1024 * 1024 }, (err: Error | null, stdout: string | Buffer) => {
       if (err) reject(err);
       else resolve(stdout.toString());
     });
   });
 }
 
-async function synthToFileOnce(text: string, mp3Path: string, voice: string): Promise<void> {
-  const tts = new MsEdgeTTS();
-  try {
-    await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
-    const { audioStream } = (tts as unknown as { toStream: (t: string) => { audioStream: import("stream").Readable } }).toStream(text);
-    const chunks: Buffer[] = [];
-    for await (const chunk of audioStream as unknown as AsyncIterable<Uint8Array>) {
-      chunks.push(Buffer.from(chunk));
-    }
-    writeFileSync(mp3Path, Buffer.concat(chunks));
-  } finally {
-    try {
-      if (typeof (tts as unknown as { close?: () => void }).close === "function")
-        (tts as unknown as { close: () => void }).close();
-    } catch { /* ignore */ }
-  }
-}
-
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function synthToFile(text: string, mp3Path: string, voice: string): Promise<void> {
+async function synthToFile(engine: TtsEngine, text: string, outPath: string, voice: string, options?: TtsSynthOptions): Promise<void> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= TTS_RETRIES; attempt++) {
     try {
-      await synthToFileOnce(text, mp3Path, voice);
+      await engine.synthToFile(text, outPath, voice, options);
       return;
     } catch (e) {
       lastErr = e;
@@ -78,8 +58,12 @@ async function synthToFile(text: string, mp3Path: string, voice: string): Promis
   throw lastErr;
 }
 
-async function mp3toWav(mp3: string, wav: string): Promise<void> {
-  await run("ffmpeg", ["-y", "-v", "error", "-i", mp3, "-ar", "44100", "-ac", "2", wav]);
+async function toWav(src: string, wav: string): Promise<void> {
+  if (src.toLowerCase().endsWith(".wav")) {
+    if (src !== wav) renameSync(src, wav);
+    return;
+  }
+  await run("ffmpeg", ["-y", "-v", "error", "-i", src, "-ar", "44100", "-ac", "2", wav]);
 }
 
 async function measureSeconds(wav: string): Promise<number> {
@@ -92,21 +76,37 @@ async function measureSeconds(wav: string): Promise<number> {
   } catch { return 2; }
 }
 
-export async function generateTts(taskId: string, storyboard: Storyboard, voice?: string): Promise<TtsResult> {
+export async function generateTts(
+  taskId: string,
+  storyboard: Storyboard,
+  voice?: string,
+  engineId?: string,
+  options?: TtsSynthOptions,
+): Promise<TtsResult> {
+  const eng = engineId ? ttsEngines[engineId] ?? resolveEngine() : resolveEngine();
+  if (!eng) {
+    throw new Error("未配置可用的 TTS 引擎，请在设置中配置引擎及所需环境变量后重试");
+  }
   const audioDir = path.join(assetsDir, "tts", taskId, "audio");
   mkdirSync(audioDir, { recursive: true });
-  const v = voice || DEFAULT_VOICE;
+  const v = voice || eng.voices[0]?.id || "";
+  if (!v) {
+    throw new Error(`TTS 引擎 "${eng.id}" 未配置任何音色，请在 tts.config.json 中补充 voices`);
+  }
 
-  const items: { pi: number; si: number; text: string; mp3: string; wav: string }[] = [];
+  const items: { pi: number; si: number; text: string; src: string; wav: string }[] = [];
   for (const p of storyboard.pages) {
     for (let si = 0; si < p.captions.length; si++) {
       const stem = `${taskId}_${p.pageIndex}_${si}`;
       items.push({
         pi: p.pageIndex, si, text: p.captions[si],
-        mp3: path.join(audioDir, `._${stem}.mp3`),
+        src: path.join(audioDir, `._${stem}.audio`),
         wav: path.join(audioDir, `${stem}.wav`),
       });
     }
+  }
+  if (items.length === 0) {
+    throw new Error("故事板中没有可配音的字幕，无法生成配音");
   }
 
   let cursor = 0;
@@ -117,9 +117,9 @@ export async function generateTts(taskId: string, storyboard: Storyboard, voice?
       if (idx >= items.length) break;
       const it = items[idx];
       try {
-        await synthToFile(it.text, it.mp3, v);
-        await mp3toWav(it.mp3, it.wav);
-        try { rmSync(it.mp3); } catch { /* ignore */ }
+        await synthToFile(eng, it.text, it.src, v, options);
+        await toWav(it.src, it.wav);
+        try { rmSync(it.src); } catch { /* ignore */ }
       } catch (e) {
         failed++;
         console.error("[tts] 句失败:", it.text, e);

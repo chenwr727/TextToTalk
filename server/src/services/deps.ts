@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { resolveChromiumPath } from "./chromium.js";
 
 export interface RenderDeps {
   ok: boolean;
@@ -36,6 +37,10 @@ export async function checkRenderDeps(): Promise<RenderDeps> {
   if (hasChromePath) chrome = true;
   else if (chromeEnv === "0") chrome = false;
   else chrome = null;
+
+  if (chrome === null && (await resolveChromiumPath())) {
+    chrome = true;
+  }
 
   const missing: ("ffmpeg" | "chrome")[] = [];
   if (!ffmpeg) missing.push("ffmpeg");

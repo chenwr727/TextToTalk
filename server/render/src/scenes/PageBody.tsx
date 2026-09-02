@@ -4,8 +4,9 @@ import { CaptionSentence, AudioSentence } from "../components/Caption";
 import type { PageBodyProps } from "../shared/render/scenes/types";
 
 export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirst, Scene }) => {
+  const gapFrames = Math.round((page.sentenceGap || 0) * fps);
   const pageFrames = page.sentences && page.sentences.length
-    ? page.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * fps)), 0)
+    ? page.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * fps)), 0) + gapFrames * Math.max(0, page.sentences.length - 1)
     : Math.round((page.durationSec || 4) * fps);
 
   return (
@@ -23,7 +24,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
                 <AudioSentence sentence={s} fps={fps} subtitles={subtitles} />
               </Sequence>
             );
-            off += dur;
+            off += dur + gapFrames;
             return el;
           });
         })()

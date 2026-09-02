@@ -34,6 +34,8 @@ export function App() {
     coreMessage: "",
     audienceOutcome: "",
     voice: "zh-CN-XiaoxiaoNeural",
+    ttsSpeed: 1,
+    ttsVolume: 1,
   });
 
   const [outline, setOutline] = useState<Outline | null>(null);

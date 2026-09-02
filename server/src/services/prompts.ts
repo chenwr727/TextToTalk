@@ -37,7 +37,7 @@ function contractDesc(params?: VideoParams): string {
 function durationHint(params?: VideoParams): string {
   const sec = params?.targetDurationSec;
   if (!sec || sec <= 0) return "";
-  const maxPages = Math.max(2, Math.floor(sec / 10)); // 每页约 10 秒，反推页数上限
+  const maxPages = Math.max(2, Math.floor(sec / 10));
   return `目标成片时长约 ${sec} 秒。这是硬约束：按每页约 10 秒估算，本片 pages 最多 ${maxPages} 个（含封面/结尾），严禁超过。若信息量超出，就合并信息点、精简每页要点，确保成片落在目标时长附近，不要超时。`;
 }
 

@@ -14,5 +14,5 @@ services:
     volumes:
       - ./server/out:/app/server/out
       - ./server/assets:/app/server/assets
-      - ./server/tts:/app/server/tts
+      - ./server/tts.config.json:/app/server/tts.config.json
     restart: unless-stopped

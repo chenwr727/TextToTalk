@@ -111,4 +111,4 @@ npx playwright install chromium
 
 ---
 
-**相关文档**：[桌面版](DESKTOP.md) · [配置](CONFIGURATION.md) · [架构](ARCHITECTURE.md)
+**相关文档**：[桌面版](DESKTOP.md) · [配置](CONFIGURATION.md) · [TTS 配音](TTS.md) · [架构](ARCHITECTURE.md)

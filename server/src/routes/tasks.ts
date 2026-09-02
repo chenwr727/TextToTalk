@@ -7,6 +7,7 @@ import { publish } from "../services/sseHub.js";
 import { renderTaskInBackground, OUT_DIR } from "../services/renderService.js";
 import { renderPageFrames } from "../services/frameExtract.js";
 import { authorizeTask } from "../services/auth.js";
+import type { VideoParams } from "../types.js";
 
 export function registerTaskRoutes(app: FastifyInstance) {
   app.get("/api/tasks/:id", async (req, reply) => {
@@ -21,6 +22,19 @@ export function registerTaskRoutes(app: FastifyInstance) {
     const task = authorizeTask(req, reply, taskId);
     if (!task) return reply;
     if (!task.storyboard) return reply.code(409).send({ error: "storyboard 未就绪" });
+
+    const body = (req.body ?? {}) as { params?: Record<string, unknown> };
+    const p = body.params;
+    if (p && typeof p === "object") {
+      const allowed = ["engine", "voice", "ttsSpeed", "ttsVolume", "narration", "bgm", "subtitles"] as const;
+      const merged: VideoParams = { ...task.params };
+      for (const k of allowed) {
+        const v = p[k];
+        if (v !== undefined) (merged as unknown as Record<string, unknown>)[k] = v;
+      }
+      patchTask(taskId, { params: merged });
+    }
+
     patchTask(taskId, { status: "RENDERING", progress: 0 });
     void renderTaskInBackground(taskId);
     return reply.send(getTask(taskId));

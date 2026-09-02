@@ -53,4 +53,4 @@
 
 ---
 
-**相关文档**：[部署与开发](DEPLOYMENT.md) · [架构](ARCHITECTURE.md) · [配置](CONFIGURATION.md)
+**相关文档**：[部署与开发](DEPLOYMENT.md) · [架构](ARCHITECTURE.md) · [配置](CONFIGURATION.md) · [TTS 配音](TTS.md)

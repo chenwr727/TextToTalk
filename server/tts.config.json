@@ -1,0 +1,92 @@
+{
+  "defaultEngine": "edge",
+  "engines": [
+    {
+      "id": "edge",
+      "name": "Edge 在线语音",
+      "enabled": true,
+      "voices": [
+        { "id": "zh-CN-XiaoxiaoNeural", "label": "👩 晓晓（女声）" },
+        { "id": "zh-CN-YunxiNeural", "label": "👨 云希（男声）" },
+        { "id": "zh-CN-YunyangNeural", "label": "👨 云扬（男声·新闻）" },
+        { "id": "zh-CN-XiaoyiNeural", "label": "👧 晓伊（女声·活泼）" },
+        { "id": "zh-CN-liaoning-XiaobeiNeural", "label": "👦 晓北（东北·男声）" }
+      ]
+    },
+    {
+      "id": "dashscope",
+      "name": "阿里云百炼 CosyVoice",
+      "enabled": true,
+      "type": "dashscope",
+      "model": "cosyvoice-v3-flash",
+      "sampleRate": 24000,
+      "format": "wav",
+      "requiresEnv": [
+        { "name": "DASHSCOPE_API_KEY", "label": "DashScope API Key", "secret": true, "placeholder": "sk-..." },
+        { "name": "DASHSCOPE_WORKSPACE_ID", "label": "DashScope Workspace ID", "placeholder": "工作空间 ID" },
+        { "name": "DASHSCOPE_REGION", "label": "DashScope Region", "required": false, "placeholder": "默认 cn-beijing" }
+      ],
+      "voices": [
+        { "id": "longanyang", "label": "👨 龙阳（男声）" },
+        { "id": "longxiaoxia", "label": "👩 龙小夏（女声）" },
+        { "id": "longxiaochun", "label": "👧 龙小春（女声·活泼）" },
+        { "id": "longxiaoyu", "label": "👦 龙小玉（男声·少年）" },
+        { "id": "longshange", "label": "👨 龙山歌（男声·方言）" },
+        { "id": "longanhuan_v3", "label": "👩 龙安欢（女声·方言）" }
+      ]
+    },
+    {
+      "id": "qwen-audio",
+      "name": "阿里云百炼 Qwen-Audio-TTS",
+      "enabled": true,
+      "type": "dashscope",
+      "model": "qwen-audio-3.0-tts-flash",
+      "sampleRate": 24000,
+      "format": "wav",
+      "requiresEnv": [
+        { "name": "DASHSCOPE_API_KEY", "label": "DashScope API Key", "secret": true, "placeholder": "sk-..." },
+        { "name": "DASHSCOPE_WORKSPACE_ID", "label": "DashScope Workspace ID", "placeholder": "工作空间 ID" },
+        { "name": "DASHSCOPE_REGION", "label": "DashScope Region", "required": false, "placeholder": "默认 cn-beijing" }
+      ],
+      "voices": [
+        { "id": "longanfengyue", "label": "👩 龙安风悦（女·自然亲切）" },
+        { "id": "longanyuanfei", "label": "👩 龙安元妃（女·高傲妃子）" },
+        { "id": "longanlingxi", "label": "👩 龙安灵希（女·可爱甜美）" },
+        { "id": "longanxiaoxin", "label": "👩 龙安小昕（女·亲切活泼）" },
+        { "id": "longanhuan_v3.6", "label": "👩 龙安欢（女）" },
+        { "id": "longjielidou_v3.6", "label": "👦 龙杰力豆（男童·天真）" },
+        { "id": "longpaopao_v3.6", "label": "👧 龙泡泡（女童·软糯）" },
+        { "id": "longhuohuo_v3.6", "label": "👦 龙火火（男·顽皮少年）" },
+        { "id": "longchuanshu_v3.6", "label": "👨 龙川叔（男·川普大叔）" },
+        { "id": "loongmary", "label": "👩 Loong Mary（英音·温暖）" },
+        { "id": "loongeva_v3.6", "label": "👩 Loong Eva（美音·高智）" },
+        { "id": "loongjohn", "label": "👨 Loong John（美音·沉稳）" }
+      ]
+    },
+    {
+      "id": "seedtts",
+      "name": "火山引擎 Seed-TTS",
+      "enabled": true,
+      "type": "seedtts",
+      "model": "seed-tts-2.0-expressive",
+      "sampleRate": 24000,
+      "format": "mp3",
+      "requiresEnv": [
+        { "name": "SEED_TTS_API_KEY", "label": "Seed-TTS API Key", "secret": true, "placeholder": "火山引擎 API Key" },
+        { "name": "SEED_TTS_RESOURCE_ID", "label": "Seed-TTS Resource ID", "placeholder": "默认 seed-tts-2.0" }
+      ],
+      "voices": [
+        { "id": "zh_female_vv_uranus_bigtts", "label": "👩 vivi 2.0（女声）" },
+        { "id": "zh_female_xiaohe_uranus_bigtts", "label": "👩 小何（女声）" },
+        { "id": "zh_male_m191_uranus_bigtts", "label": "👨 云舟（男声）" },
+        { "id": "zh_male_taocheng_uranus_bigtts", "label": "👨 小天（男声）" },
+        { "id": "en_male_tim_uranus_bigtts", "label": "👨 Tim（英文男声）" },
+        { "id": "saturn_zh_female_cancan_tob", "label": "👩 知性灿灿（角色扮演）" },
+        { "id": "saturn_zh_female_keainvsheng_tob", "label": "👩 可爱女生（角色扮演）" },
+        { "id": "saturn_zh_female_tiaopigongzhu_tob", "label": "👧 调皮公主（角色扮演）" },
+        { "id": "saturn_zh_male_shuanglangshaonian_tob", "label": "👦 爽朗少年（角色扮演）" },
+        { "id": "saturn_zh_male_tiancaitongzhuo_tob", "label": "👦 天才同桌（角色扮演）" }
+      ]
+    }
+  ]
+}

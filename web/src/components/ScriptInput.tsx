@@ -30,9 +30,6 @@ export function ScriptInput({
     onSubmit(prompt.trim(), params);
   };
 
-  const toggle = (k: "narration" | "subtitles") =>
-    onParamsChange({ ...params, [k]: !params[k] });
-
   const [goalOpen, setGoalOpen] = useState(false);
   const [genOpen, setGenOpen] = useState(false);
 
@@ -144,7 +141,6 @@ export function ScriptInput({
                     onParamsChange({ ...params, width: w, height: h });
                   }}>
                     <option value="1920x1080">16:9 横屏 1920×1080</option>
-                    {/* <option value="1080x1920">9:16 竖屏 1080×1920</option> */}
                   </select>
                 </div>
                 <div>
@@ -157,32 +153,6 @@ export function ScriptInput({
                     <option value="dark">🌌 深空</option>
                   </select>
                 </div>
-                <div>
-                  <div className="dsh-param-label">配音音色</div>
-                  <select className="dsh-field" value={params.voice ?? "zh-CN-XiaoxiaoNeural"} onChange={(e) => onParamsChange({ ...params, voice: e.target.value as any })}>
-                    <option value="zh-CN-XiaoxiaoNeural">👩 晓晓（女声）</option>
-                    <option value="zh-CN-YunxiNeural">👨 云希（男声）</option>
-                    <option value="zh-CN-YunyangNeural">👨 云扬（男声·新闻）</option>
-                    <option value="zh-CN-XiaoyiNeural">👧 晓伊（女声·活泼）</option>
-                    <option value="zh-CN-liaoning-XiaobeiNeural">👦 晓北（东北·男声）</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="dsh-param-label">背景配乐</div>
-                  <select className="dsh-field" value={params.bgm} onChange={(e) => onParamsChange({ ...params, bgm: e.target.value as any })}>
-                    <option value="default">🎵 轻快配乐</option>
-                    <option value="none">静音（无配乐）</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="dsh-checks">
-                {(["narration", "subtitles"] as const).map((k) => (
-                  <label key={k} className="dsh-check">
-                    <input type="checkbox" checked={params[k]} onChange={() => toggle(k)} />
-                    {k === "narration" ? "AI 配音" : "底部字幕"}
-                  </label>
-                ))}
               </div>
             </div>
           )}

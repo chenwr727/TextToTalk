@@ -8,6 +8,8 @@ export interface AppConfig {
   LLM_MODEL?: string;
   CHROME_PATH?: string;
   RENDER_CONCURRENCY?: string;
+  DASHSCOPE_API_KEY?: string;
+  DASHSCOPE_WORKSPACE_ID?: string;
   [key: string]: string | undefined;
 }
 
@@ -17,6 +19,8 @@ const DEFAULTS: AppConfig = {
   LLM_MODEL: "deepseek-v4-flash",
   CHROME_PATH: "",
   RENDER_CONCURRENCY: "",
+  DASHSCOPE_API_KEY: "",
+  DASHSCOPE_WORKSPACE_ID: "",
 };
 
 function configFile(): string {

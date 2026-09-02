@@ -48,7 +48,6 @@ export function OutlinePreview({
         pages: (outline.pages ?? []).map((p) => ({ ...p })),
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outlinePageCount]);
 
   const setPage = (i: number, patch: Partial<OutlineBlock>) => {
@@ -83,7 +82,6 @@ export function OutlinePreview({
   return (
     <div className="dsh-outline">
       <div className="dsh-card dsh-outline-head">
-        <button onClick={onBack} className="dsh-ghost">← 返回</button>
         <div style={{ flex: 1 }}>
           <div className="dsh-outline-title">
             大纲预览
@@ -94,9 +92,10 @@ export function OutlinePreview({
           <div className="dsh-outline-sub">
             {generating
               ? "AI 正在规划大纲，实时回流中"
-              : "可直接编辑每页内容与顺序，确认后 AI 将基于此逐页展开生成分镜"}
+              : "可直接编辑每页内容与顺序，确认后 AI 将基于此页逐页展开生成分镜"}
           </div>
         </div>
+        <button onClick={onBack} className="dsh-ghost">← 返回</button>
       </div>
 
       {tokens && (

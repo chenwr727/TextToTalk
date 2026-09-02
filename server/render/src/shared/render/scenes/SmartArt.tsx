@@ -107,7 +107,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
 
   const BASE_NODE_W = 345;
   const nodeW = Math.max(210, BASE_NODE_W - Math.max(0, N - 4) * 20);
-  const TEXT_W = Math.max(80, nodeW - 80); // 左右 padding 16*2 + 图标 26 + 间距 12
+  const TEXT_W = Math.max(80, nodeW - 80);
   const maxChars = Math.max(1, ...list.map((it, i) => Array.from(pointText(it, i)).length));
   const FS_CANDIDATES = [32, 28, 24, 20];
   const MAX_LINES = 3;
@@ -115,9 +115,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
   const lines = Math.ceil(maxChars / Math.max(1, Math.floor(TEXT_W / nodeFs)));
   const nodeH = Math.min(260, Math.max(116, Math.ceil(lines * nodeFs * 1.4) + 32));
 
-  // 纵向半径：用此公式时，顶/底节点的外边缘恒为固定值，与 nodeH 无关，不会溢出标题区或底部安全区
   const RY = (BOTTOM_SAFE - HEADER_BOTTOM) / 2 - nodeH / 2 - 24;
-  // 横向半径独立计算：下限避免节点撞上中心的「循环」圆，上限避免超出画布边距
   const RX = Math.min(900 - nodeW / 2 - 30, Math.max(RY + 40, nodeW / 2 + 105));
 
   return (

@@ -29,18 +29,9 @@ extraFiles:
 
 win:
   target:
-    - target: nsis
-      arch: [x64]
     - target: zip
       arch: [x64]
-  artifactName: ${productName}-${version}-win.${ext}
-
-nsis:
-  perMachine: false
-  oneClick: false
-  allowToChangeInstallationDirectory: true
-  shortcutName: TextToTalk
-  deleteAppDataOnUninstall: false
+  artifactName: ${productName}-${version}-win-portable.${ext}
 
 mac:
   icon: build/icon.icns

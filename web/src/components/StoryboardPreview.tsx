@@ -205,7 +205,6 @@ export function StoryboardPreview({
   return (
     <div className="dsh-sb">
       <div className="dsh-card dsh-sb-head" style={{ padding: "16px 20px", marginBottom: 18 }}>
-        <button onClick={onBack} className="dsh-ghost">← 返回</button>
         <div style={{ flex: 1 }}>
           <div className="dsh-outline-title">
             分镜预览
@@ -214,12 +213,13 @@ export function StoryboardPreview({
           </div>
           <div style={{ fontSize: 12.5, color: "#8a99b0", marginTop: 2 }}>
             {done ? (
-              <>全片预计约 <b style={{ color: "#5a6b82" }}>{Math.max(1, Math.round(totalSec))} 秒</b> · 逐页可单独重新生成，随时可以继续</>
+              <>全片预计约 <b style={{ color: "#5a6b82" }}>{Math.max(1, Math.round(totalSec))} 秒</b> · 逐页可随时重生成，随时可以继续</>
             ) : (
               "逐页预览实时更新中"
             )}
           </div>
         </div>
+        <button onClick={onBack} className="dsh-ghost">← 返回</button>
       </div>
 
       {!done && (

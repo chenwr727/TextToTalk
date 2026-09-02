@@ -27,6 +27,9 @@ export interface VideoParams {
   coreMessage?: string;
   audienceOutcome?: string;
   voice?: string;
+  engine?: string;
+  ttsSpeed?: number;
+  ttsVolume?: number;
   targetDurationSec?: number;
 }
 

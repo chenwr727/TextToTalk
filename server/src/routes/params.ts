@@ -11,5 +11,13 @@ export function normalizeParams(p?: Partial<VideoParams>): VideoParams {
     bgm: p?.bgm ?? "default",
     granularity: p?.granularity ?? "medium",
     targetDurationSec: p?.targetDurationSec,
+    theme: p?.theme,
+    audience: p?.audience,
+    coreMessage: p?.coreMessage,
+    audienceOutcome: p?.audienceOutcome,
+    voice: p?.voice,
+    engine: p?.engine,
+    ttsSpeed: p?.ttsSpeed,
+    ttsVolume: p?.ttsVolume,
   };
 }

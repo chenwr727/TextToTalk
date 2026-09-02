@@ -18,16 +18,19 @@
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 28px 30px 26px;
+    margin: 0; padding: 28px 30px 0;
     color: var(--text);
     background:
-      radial-gradient(900px 480px at 10% -10%, #e8f0ff 0%, transparent 58%),
+      radial-gradient(900px 600px at 10% -10%, #e8f0ff 0%, transparent 58%),
       radial-gradient(760px 420px at 92% 4%, #eafbf4 0%, transparent 55%),
       linear-gradient(180deg, #f6f9ff 0%, #f2f6fc 100%);
     background-attachment: fixed;
     font: 14px/1.6 "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column;
+    height: 100vh; overflow: hidden;
   }
+  main { flex: 1; overflow-y: auto; padding: 0 0 26px; }
   h1 { font-size: 19px; margin: 0 0 4px; letter-spacing: .3px; color: #14223a; }
   .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 22px; }
   .group {
@@ -46,6 +49,16 @@
   }
   input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,109,246,.14); }
   .hint { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+  .tts-engine { padding-top: 2px; }
+  .tts-engine + .tts-engine { margin-top: 16px; }
+  .tts-engine-title {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; color: #14223a; letter-spacing: .3px;
+    margin: 0 0 2px; padding-bottom: 7px;
+    border-bottom: 1px solid var(--line);
+  }
+  .tts-engine-title .dot { width: 7px; height: 7px; border-radius: 50%; background: linear-gradient(135deg, #2f6df6, #4c7dff); }
+  .tts-engine-title .tag { font-weight: 400; color: #9aa9c3; font-size: 11px; margin-left: auto; }
   .dep {
     display: grid;
     grid-template-columns: 160px 1fr;
@@ -65,7 +78,11 @@
   @media (max-width: 480px) {
     .dep { grid-template-columns: 110px 1fr; gap: 10px; }
   }
-  footer { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+  footer {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 0 18px; flex: none;
+    background: linear-gradient(180deg, rgba(246, 249, 255, 0) 0%, rgba(246, 249, 255, .92) 30%, #f2f6fc 100%);
+  }
   button {
     padding: 9px 16px; border-radius: 10px; border: 1px solid #dfe7f5;
     background: #fff; color: #5a6b82; font-size: 13px; cursor: pointer; font-family: inherit;
@@ -79,11 +96,13 @@
   }
   button.primary:hover { filter: brightness(1.08); }
   button:disabled { opacity: .55; cursor: default; }
-  .status { flex: 1; font-size: 12px; color: var(--muted); }
+  .status { margin-right: auto; font-size: 12px; color: var(--muted); }
+  footer .actions { display: flex; align-items: center; gap: 10px; }
   .status.err { color: var(--warn); }
 </style>
 </head>
 <body>
+  <main>
   <h1>TextToTalk 设置</h1>
   <div class="sub">配置保存在应用数据目录，修改后会自动重启本地服务。</div>
 
@@ -111,6 +130,12 @@
     <div class="hint">显存 / 内存紧张时可设为 1。</div>
   </div>
 
+  <div class="group" id="ttsGroup">
+    <h2>TTS 配音</h2>
+    <div id="ttsFields"></div>
+    <div class="hint" id="ttsHint">按引擎分组填写，只填想用的即可；缺哪个密钥对应引擎自动隐藏，互不影响（Edge 免密钥始终可用）。</div>
+  </div>
+
   <div class="group">
     <h2>本机环境</h2>
     <div id="deps"></div>
@@ -124,11 +149,14 @@
     </div>
   </div>
 
+  </main>
   <footer>
-    <button class="primary" id="save">保存并重启服务</button>
-    <button id="openOut">打开输出目录</button>
-    <button id="close">关闭</button>
     <div class="status" id="status"></div>
+    <div class="actions">
+      <button class="primary" id="save">保存并重启服务</button>
+      <button id="openOut">打开输出目录</button>
+      <button id="close">关闭</button>
+    </div>
   </footer>
 
 <script>
@@ -155,14 +183,62 @@
     );
   }
 
+  let ttsFields = [];
+
+  function renderTtsFields(c) {
+    const box = $("ttsFields");
+    if (!ttsFields.length) {
+      box.innerHTML = '<div class="hint">未发现需要配置的 TTS 引擎字段。</div>';
+      return;
+    }
+    const groups = [];
+    const byEngine = new Map();
+    for (const f of ttsFields) {
+      const key = f.engine || "";
+      if (!byEngine.has(key)) {
+        const g = { name: f.engineName || "通用", fields: [] };
+        byEngine.set(key, g);
+        groups.push(g);
+      }
+      byEngine.get(key).fields.push(f);
+    }
+    box.innerHTML = groups
+      .map((g) => {
+        const rows = g.fields
+          .map((f) => {
+            const id = "tts_" + f.name;
+            const type = f.secret ? "password" : "text";
+            const ph = f.placeholder ? ' placeholder="' + f.placeholder + '"' : "";
+            return (
+              '<label for="' + id + '">' + f.label + (f.required === false ? "" : " *") + "</label>" +
+              '<input id="' + id + '" type="' + type + '"' + ph + ' autocomplete="off" />'
+            );
+          })
+          .join("");
+        return '<div class="tts-engine"><div class="tts-engine-title"><span class="dot"></span>' + g.name + '<span class="tag">填了才启用</span></div>' + rows + "</div>";
+      })
+      .join("");
+    for (const f of ttsFields) {
+      $("tts_" + f.name).value = (window.__ttsCfg && window.__ttsCfg[f.name]) || "";
+    }
+  }
+
   async function refresh() {
-    const [runtime, cfgWrap] = await Promise.all([api.getRuntime(), api.getConfig()]);
+    const [runtime, cfgWrap, ttsWrap] = await Promise.all([
+      api.getRuntime(),
+      api.getConfig(),
+      api.getTtsFields().catch(() => ({ fields: [] })),
+    ]);
     const c = cfgWrap.config || {};
     $("key").value = c.LLM_API_KEY || "";
     $("url").value = c.LLM_API_URL || (cfgWrap.llm && cfgWrap.llm.baseUrl) || "";
     $("model").value = c.LLM_MODEL || (cfgWrap.llm && cfgWrap.llm.model) || "";
     $("chrome").value = c.CHROME_PATH || "";
     $("conc").value = c.RENDER_CONCURRENCY || "";
+
+    ttsFields = ttsWrap.fields || [];
+    window.__ttsCfg = c;
+    renderTtsFields();
 
     $("deps").innerHTML =
       depRow("Chromium（渲染）", runtime.deps.chrome) +
@@ -180,12 +256,18 @@
     btn.disabled = true;
     setStatus("正在重启本地服务…");
     try {
+      const ttsValues = {};
+      for (const f of ttsFields) {
+        const el = $("tts_" + f.name);
+        if (el) ttsValues[f.name] = el.value.trim();
+      }
       const res = await api.saveConfig({
         LLM_API_KEY: $("key").value.trim(),
         LLM_API_URL: $("url").value.trim(),
         LLM_MODEL: $("model").value.trim(),
         CHROME_PATH: $("chrome").value.trim(),
         RENDER_CONCURRENCY: $("conc").value.trim(),
+        ...ttsValues,
       });
       if (!res.ok) throw new Error(res.error || "保存失败");
       await refresh();

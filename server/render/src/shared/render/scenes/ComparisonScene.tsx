@@ -45,7 +45,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
     32
   );
   const lineH = 1.45;
-  const itemBlockH = ICON_BOX + 16; // icon box + margin
+  const itemBlockH = ICON_BOX + 16;
   const listH = maxCount > 0 ? maxCount * itemBlockH + (maxCount - 1) * ITEM_GAP : 0;
   const cardH = CARD_PAD_TOP + HEAD_H + 28 + listH + CARD_PAD_BOTTOM;
 

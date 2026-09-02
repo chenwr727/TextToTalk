@@ -1,11 +1,10 @@
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { writeRenderEntry } from "./entry.js";
 import type { Storyboard } from "../types.js";
 import type { TtsSentence } from "./ttsService.js";
 import { outDir, renderDir } from "./runtime.js";
-import { spawnRemotion } from "./remotionRun.js";
+import { spawnRunner } from "./remotionRun.js";
 
 const RENDER_DIR = renderDir;
 
@@ -51,25 +50,39 @@ export async function renderPageFrames(
   const captures = previewCaptureFrames(pages, fps);
   const written: string[] = [];
 
-  const entryName = `pv_${taskId}`;
-  const entryPath = writeRenderEntry(taskId, storyboard, pages, fps, false, null, entryName, opts);
+  const serveUrl = path.join(RENDER_DIR, "out", "bundle");
+  const configPath = path.join(outDir, `${taskId}.still.json`);
+  const inputProps: Record<string, unknown> = {
+    projectTitle: storyboard.projectTitle,
+    pages,
+    fps,
+    subtitles: false,
+    bgm: null,
+    theme: opts?.theme || "tech",
+    width: opts?.width || 1920,
+    height: opts?.height || 1080,
+  };
   const video = path.join(outDir, `${taskId}.mp4`);
   const canFfmpeg = existsSync(video);
 
-  for (let i = 0; i < storyboard.pages.length; i++) {
-    const frame = captures[i];
-    const outPng = path.join(framesDir, `p${i}.png`);
-    try {
-      if (canFfmpeg && await ffmpegExtract(video, frame, fps || 30, outPng)) {
-        written.push(outPng);
-      } else {
-        await renderStill(RENDER_DIR, entryPath, frame, outPng);
-        written.push(outPng);
+  try {
+    for (let i = 0; i < storyboard.pages.length; i++) {
+      const frame = captures[i];
+      const outPng = path.join(framesDir, `p${i}.png`);
+      try {
+        if (canFfmpeg && await ffmpegExtract(video, frame, fps || 30, outPng)) {
+          written.push(outPng);
+        } else {
+          await renderStill(RENDER_DIR, configPath, serveUrl, inputProps, frame, outPng);
+          written.push(outPng);
+        }
+      } catch (e) {
+        console.warn(`[frame] 第 ${i} 页预览帧渲染失败，跳过:`, e);
       }
-    } catch (e) {
-      console.warn(`[frame] 第 ${i} 页预览帧渲染失败，跳过:`, e);
+      onProgress?.(0.98 + ((i + 1) / storyboard.pages.length) * 0.02);
     }
-    onProgress?.(0.98 + ((i + 1) / storyboard.pages.length) * 0.02);
+  } finally {
+    try { rmSync(configPath, { force: true }); } catch {}
   }
   return written;
 }
@@ -96,23 +109,26 @@ function ffmpegExtract(video: string, frame: number, fps: number, outPng: string
 
 function renderStill(
   renderDir: string,
-  entryPath: string,
+  configPath: string,
+  serveUrl: string,
+  inputProps: Record<string, unknown>,
   frame: number,
   outPng: string
 ): Promise<void> {
+  writeFileSync(
+    configPath,
+    JSON.stringify({
+      mode: "still",
+      serveUrl,
+      compositionId: "DynamicVideo",
+      output: outPng,
+      inputProps,
+      frame,
+      options: { gl: process.env.RENDER_GL || "swiftshader" },
+    }),
+  );
   return new Promise((resolve, reject) => {
-    const args = [
-      "still",
-      entryPath,
-      "DynamicVideo",
-      outPng,
-      "--frame", String(frame),
-      "--gl=swiftshader",
-    ];
-    const systemBrowser = process.env.CHROME_PATH || null;
-    if (systemBrowser) args.push("--browser-executable", systemBrowser);
-
-    const child = spawnRemotion(args, { cwd: renderDir });
+    const child = spawnRunner([configPath], { cwd: renderDir });
     let err = "";
     child.stderr?.on("data", (c: Buffer) => { err += c.toString(); });
     child.on("error", reject);

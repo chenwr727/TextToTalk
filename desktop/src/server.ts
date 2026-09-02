@@ -46,6 +46,41 @@ export function findFreePort(): Promise<number> {
   });
 }
 
+function ensureUserTtsConfig(): string {
+  const builtin = path.join(serverDir(), "tts.config.json");
+  const userFile = path.join(userDataDir(), "tts.config.json");
+  try {
+    if (!fs.existsSync(userFile) && fs.existsSync(builtin)) {
+      fs.mkdirSync(userDataDir(), { recursive: true });
+      fs.copyFileSync(builtin, userFile);
+      console.log(`[desktop] 已初始化用户 TTS 配置：${userFile}`);
+    }
+  } catch (e) {
+    console.warn("[desktop] 初始化用户 TTS 配置失败，回退到内置配置：", e);
+    return builtin;
+  }
+  return userFile;
+}
+
+function ttsEnvKeys(): string[] {
+  try {
+    const file = ensureUserTtsConfig();
+    if (!fs.existsSync(file)) return [];
+    const config = JSON.parse(fs.readFileSync(file, "utf-8")) as {
+      engines?: { enabled?: boolean; requiresEnv?: { name: string }[] }[];
+    };
+    const keys = new Set<string>();
+    for (const eng of config.engines ?? []) {
+      if (eng.enabled === false) continue;
+      for (const f of eng.requiresEnv ?? []) if (f.name) keys.add(f.name);
+    }
+    return [...keys];
+  } catch (e) {
+    console.warn("[desktop] 读取 tts.config.json 失败：", e);
+    return [];
+  }
+}
+
 function buildEnv(port: number, cfg: AppConfig, packaged: boolean): NodeJS.ProcessEnv {
   const base = runtimeDataDir();
   const env: NodeJS.ProcessEnv = {
@@ -59,10 +94,16 @@ function buildEnv(port: number, cfg: AppConfig, packaged: boolean): NodeJS.Proce
 
   if (packaged) env.TTT_ENV_FILE = path.join(userDataDir(), ".env");
 
+  env.TTT_TTS_CONFIG = ensureUserTtsConfig();
+
   const web = webDistDir();
   if (fs.existsSync(path.join(web, "index.html"))) env.TTT_WEB_DIR = web;
 
-  for (const key of ["LLM_API_KEY", "LLM_API_URL", "LLM_MODEL", "CHROME_PATH", "RENDER_CONCURRENCY"]) {
+  const keys = new Set([
+    "LLM_API_KEY", "LLM_API_URL", "LLM_MODEL", "CHROME_PATH", "RENDER_CONCURRENCY",
+    ...ttsEnvKeys(),
+  ]);
+  for (const key of keys) {
     const v = cfg[key];
     if (v && String(v).trim()) env[key] = String(v).trim();
   }

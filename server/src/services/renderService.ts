@@ -1,15 +1,14 @@
 import { cpus } from "node:os";
-import { mkdirSync, rmSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { patchTask, getTask } from "./taskStore.js";
 import { outDir, renderDir } from "./runtime.js";
 import { checkRenderDeps, describeMissingDeps } from "./deps.js";
 import { generateTts, type TtsSentence } from "./ttsService.js";
 import { generateBgm } from "./bgmService.js";
-import { writeRenderEntry } from "./entry.js";
 import { enqueueRender } from "./renderQueue.js";
 import { renderPageFrames } from "./frameExtract.js";
-import { spawnRemotion } from "./remotionRun.js";
+import { spawnRunner } from "./remotionRun.js";
 import type { Storyboard } from "../types.js";
 
 export const OUT_DIR = outDir;
@@ -25,12 +24,15 @@ export async function renderTaskSync(
   useBgm: boolean,
   onProgress?: (p: number) => void,
   onWarning?: (w: string) => void,
-  opts?: { theme?: string; width?: number; height?: number; voice?: string }
+  opts?: { theme?: string; width?: number; height?: number; voice?: string; engine?: string; ttsSpeed?: number; ttsVolume?: number }
 ): Promise<string> {
   const setStage = (p: number) => onProgress?.(Math.min(0.98, p));
 
   setStage(0.02);
-  const tts = await generateTts(taskId, storyboard, opts?.voice);
+  const tts = await generateTts(taskId, storyboard, opts?.voice, opts?.engine, {
+    speed: opts?.ttsSpeed,
+    volume: opts?.ttsVolume,
+  });
   if (tts.failedCount > 0) {
     onWarning?.(`有 ${tts.failedCount}/${storyboard.pages.reduce((a, p) => a + p.captions.length, 0)} 句配音合成失败，成片中对应字幕将无旁白，可尝试重新渲染或微调字幕后再试。`);
   }
@@ -55,52 +57,64 @@ export async function renderTaskSync(
         }
       }
     }
-    return { ...p, sentences };
+    return { ...p, sentences, sentenceGap: tts.sentenceGap };
   });
 
-  const entryName = `gen_${taskId}`;
-  writeRenderEntry(taskId, storyboard, pages, fps, subtitles, bgm, entryName, opts);
   setStage(0.12);
   const output = path.join(OUT_DIR, `${taskId}.mp4`);
+  const configPath = path.join(OUT_DIR, `${taskId}.render.json`);
+  const serveUrl = path.join(RENDER_DIR, "out", "bundle");
 
-  const userDataDir = path.join(OUT_DIR, "..", "render-profile", taskId);
-  mkdirSync(userDataDir, { recursive: true });
-  const gl = process.env.RENDER_GL || "swiftshader";
-  const args = [
-    "render",
-    `src/gen/${entryName}.tsx`, "DynamicVideo", output,
-    "--log=warn",
-    `--gl=${gl}`,
-    "--force-ipv4",
-  ];
   const conc = Number(process.env.RENDER_CONCURRENCY || Math.max(1, Math.round(cpus().length / 2)));
-  if (Number.isFinite(conc) && conc > 0) args.push(`--concurrency=${conc}`);
   const scale = Number(process.env.RENDER_SCALE);
-  if (Number.isFinite(scale) && scale > 0 && scale <= 1) args.push(`--scale=${scale}`);
+  const videoOptions: Record<string, unknown> = {
+    codec: "h264",
+    gl: process.env.RENDER_GL || "swiftshader",
+    forceIPv4: true,
+    concurrency: Number.isFinite(conc) && conc > 0 ? conc : undefined,
+    scale: Number.isFinite(scale) && scale > 0 && scale <= 1 ? scale : undefined,
+  };
   if (process.env.RENDER_HW_ACCEL === "1") {
-    args.push("--hardware-acceleration=if-possible");
+    videoOptions.hardwareAcceleration = "if-possible";
   } else {
-    args.push(`--x264-preset=${process.env.RENDER_X264_PRESET || "veryfast"}`);
+    videoOptions.x264Preset = process.env.RENDER_X264_PRESET || "veryfast";
   }
   const systemBrowser = process.env.CHROME_PATH || null;
   if (systemBrowser) {
     console.log("[render] 使用 CHROME_PATH 指定的浏览器:", systemBrowser);
-    args.push("--browser-executable", systemBrowser);
   } else {
     console.log("[render] 未设置 CHROME_PATH，将使用 Remotion 自带的 Headless Shell");
   }
-  args.push("--user-data-dir", userDataDir);
-  console.log("[render] browser:", systemBrowser || "(none, will download Headless Shell)");
-  console.log("[render] user-data-dir:", userDataDir);
-  console.log("[render] spawn remotion for task", taskId, "args:", args.join(" "));
+
+  writeFileSync(
+    configPath,
+    JSON.stringify({
+      mode: "video",
+      serveUrl,
+      compositionId: "DynamicVideo",
+      output,
+      inputProps: {
+        projectTitle: storyboard.projectTitle,
+        pages,
+        fps,
+        subtitles,
+        bgm,
+        theme: opts?.theme || "tech",
+        width: opts?.width || 1920,
+        height: opts?.height || 1080,
+      },
+      options: videoOptions,
+    }),
+  );
+  console.log("[render] spawn render runner for task", taskId, "bundle:", serveUrl);
 
   const renderLogFile = path.join(path.dirname(output), `${taskId}.render.log`);
   try { mkdirSync(path.dirname(renderLogFile), { recursive: true }); } catch {}
 
   await new Promise<string>((resolve, reject) => {
-    const child = spawnRemotion(args, { cwd: RENDER_DIR });
+    const child = spawnRunner([configPath], { cwd: RENDER_DIR });
     const progressRe =
-      /(?:Rendering|Rendered|Stitching|Encoding)\s+(?:still|stills|frames?)?\s*[^\d]*?(\d+)\s*\/\s*(\d+)/gi;
+      /(?:Rendering|Rendered|Stitching|Encod(?:ed|ing))\s+(?:still|stills|frames?)?\s*[^\d]*?(\d+)\s*\/\s*(\d+)/gi;
     const logChunks: string[] = [];
     const MAX_LOG = 200;
     const appendLog = (line: string) => {
@@ -140,9 +154,16 @@ export async function renderTaskSync(
       reject(e2);
     });
     child.on("close", (code) => {
-      try { rmSync(userDataDir, { recursive: true, force: true }); } catch {}
+      try { rmSync(configPath, { force: true }); } catch {}
       if (code === 0) {
-        resolve(output);
+        if (!existsSync(output)) {
+          reject(new Error(
+            `渲染进程正常退出，但输出文件未落盘：${output}。` +
+            `请检查 render/run-render.mjs 的 renderMedia 是否传入 outputLocation（Remotion 4 的参数名，写成 output 会被静默忽略导致不落盘）。完整日志：${renderLogFile}`
+          ));
+        } else {
+          resolve(output);
+        }
       } else {
         const tail = logChunks.slice(-12).join("\n") || "(无输出，请查看 " + renderLogFile + ")";
         reject(new Error(`Remotion 渲染退出码 ${code}。完整日志：${renderLogFile}\n${tail}`));
@@ -165,7 +186,7 @@ export function renderTaskInBackground(taskId: string): void {
     return;
   }
   const storyboard = task.storyboard;
-  const { fps, subtitles, bgm, theme, width, height, voice } = task.params;
+  const { fps, subtitles, bgm, theme, width, height, voice, engine, ttsSpeed, ttsVolume } = task.params;
   enqueueRender(taskId, async () => {
     patchTask(taskId, { warning: null });
 
@@ -178,7 +199,9 @@ export function renderTaskInBackground(taskId: string): void {
     }
     if (deps.chrome === null) {
       patchTask(taskId, {
-        warning: "未指定 Chromium 内核，Remotion 将尝试联网下载自带浏览器；若网络不通会渲染失败。可在设置里指定 Edge / Chrome 路径。",
+        warning:
+          "未检测到系统浏览器（Edge / Chrome），Remotion 将尝试联网下载自带浏览器；若网络不通会渲染失败。" +
+          "可设置 CHROME_PATH 环境变量指定浏览器路径，或安装 Edge / Chrome 后重试。",
       });
     }
 
@@ -188,7 +211,7 @@ export function renderTaskInBackground(taskId: string): void {
         bgm === "default",
         (p) => patchTask(taskId, { progress: p }),
         (w) => patchTask(taskId, { warning: w }),
-        { theme, width, height, voice }
+        { theme, width, height, voice, engine, ttsSpeed, ttsVolume }
       );
       patchTask(taskId, { status: "DONE", progress: 1, outputUrl: `/download/${taskId}` });
       console.log("[render] done ->", outPath);

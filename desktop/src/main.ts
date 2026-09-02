@@ -47,9 +47,22 @@ async function ensureBackend(): Promise<Backend> {
   return backend;
 }
 
+async function waitForPortClosed(port: number, timeoutMs = 5000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const ok = await ping(`http://127.0.0.1:${port}/api/health`, 300);
+    if (!ok) return;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
 async function restartBackend(): Promise<Backend> {
-  backend?.stop();
+  const old = backend;
   backend = null;
+  if (old) {
+    old.stop();
+    await waitForPortClosed(old.port);
+  }
   const next = await ensureBackend();
   return next;
 }
@@ -212,6 +225,16 @@ function registerIpc() {
     config: loadConfig(),
     llm: (await health())?.llm ?? null,
   }));
+
+  ipcMain.handle("ttt:get-tts-fields", async () => {
+    if (!backend) return { fields: [] };
+    try {
+      const res = await fetch(`${backend.baseUrl}/api/tts/config-fields`, { signal: AbortSignal.timeout(3000) });
+      return (await res.json()) as { fields: { name: string; label: string; secret?: boolean; required?: boolean; placeholder?: string }[] };
+    } catch {
+      return { fields: [] };
+    }
+  });
 
   ipcMain.handle("ttt:save-config", async (_e, cfg: Partial<AppConfig>) => {
     try {

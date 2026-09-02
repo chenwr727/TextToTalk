@@ -245,7 +245,6 @@ async function regeneratePageRaw(
 
 function msgPair(sys: string, user: string): ChatMessage[] { return [{ role: "system" as const, content: sys }, { role: "user" as const, content: user }]; }
 
-// 重试时把上一轮生成的原文与校验不通过的理由一起回传，让模型在原文基础上做最小化修正
 function retryMessages(base: ChatMessage[], prevRaw: string, problems: string[], keepNote: string): ChatMessage[] {
   return [
     ...base,

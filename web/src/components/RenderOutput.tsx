@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Task } from "../types";
-import { inlineVideoUrl, downloadFileUrl, submitRender } from "../api";
+import { useEffect, useRef, useState } from "react";
+import type { Task, VideoParams } from "../types";
+import { inlineVideoUrl, downloadFileUrl, submitRender, getTtsEngines, type TtsEngineInfo } from "../api";
 
 export function RenderOutput({
   taskId,
@@ -14,48 +14,165 @@ export function RenderOutput({
   onBack: (focusPage?: number) => void;
 }) {
   const [rendering, setRendering] = useState(false);
-  const autoStarted = useRef(false);
+  const [ttsEngines, setTtsEngines] = useState<TtsEngineInfo[]>([]);
+
+  const [engine, setEngine] = useState(task?.params?.engine ?? "edge");
+  const [voice, setVoice] = useState(task?.params?.voice ?? "");
+  const [ttsSpeed, setTtsSpeed] = useState(task?.params?.ttsSpeed ?? 1);
+  const [ttsVolume, setTtsVolume] = useState(task?.params?.ttsVolume ?? 1);
+  const [narration, setNarration] = useState(task?.params?.narration !== false);
+  const [bgm, setBgm] = useState(task?.params?.bgm ?? "default");
+  const [subtitles, setSubtitles] = useState(task?.params?.subtitles !== false);
+
+  const touched = useRef(false);
+  const markTouched = () => { touched.current = true; };
+
+  const syncedTaskId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!task || syncedTaskId.current === task.taskId) return;
+    syncedTaskId.current = task.taskId;
+    if (touched.current) return;
+    const p = task.params;
+    if (p) {
+      if (p.engine) setEngine(p.engine);
+      if (p.voice) setVoice(p.voice);
+      if (p.ttsSpeed != null) setTtsSpeed(p.ttsSpeed);
+      if (p.ttsVolume != null) setTtsVolume(p.ttsVolume);
+      if (p.narration != null) setNarration(p.narration);
+      if (p.bgm) setBgm(p.bgm);
+      if (p.subtitles != null) setSubtitles(p.subtitles);
+    }
+  }, [task]);
+
+  useEffect(() => {
+    let alive = true;
+    getTtsEngines()
+      .then((r) => {
+        if (!alive) return;
+        setTtsEngines(r.engines);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const currentEngine = ttsEngines.find((e) => e.id === engine) ?? ttsEngines[0];
+  const currentVoices = currentEngine?.voices ?? [];
 
   const go = async () => {
     setRendering(true);
     try {
-      const t = await submitRender(taskId);
+      const params: Partial<VideoParams> = {
+        engine,
+        voice,
+        ttsSpeed,
+        ttsVolume,
+        narration,
+        bgm,
+        subtitles,
+      };
+      const t = await submitRender(taskId, params);
       onTaskChange(t);
     } finally {
       setRendering(false);
     }
   };
 
-  useEffect(() => {
-    if (autoStarted.current) return;
-    if (task?.status === "REVIEWING") {
-      autoStarted.current = true;
-      go();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [task?.status]);
-
   const status = task?.status;
   const pct = Math.round((task?.progress ?? 0) * 100);
   const busy = status === "RENDERING" || rendering;
 
-  const sb = task?.storyboard;
-  const sbPages = sb?.pages ?? [];
-  const totalSec = sbPages.reduce((a, p) => a + (p.durationSec || 0), 0);
-  const fmtDur = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}分${Math.round(s % 60)}秒` : `${Math.round(s)}秒`);
-  const toneLabel = { formal: "正式严谨", casual: "轻松易懂", energetic: "活泼有感染力" } as Record<string, string>;
-  const toneTxt = toneLabel[task?.params?.tone ?? "casual"] ?? "轻松易懂";
-  const resTxt = task?.params ? `${task.params.width}×${task.params.height}` : "1920×1080";
-
   return (
     <div className="dsh-render">
       <div className="dsh-card dsh-render-head">
-        <button onClick={() => onBack()} className="dsh-ghost">← 返回分镜</button>
-        <div className="dsh-render-title-row">
-          <span className="dsh-render-icon">🎬</span>
-          <h2 className="dsh-render-title">渲染成片</h2>
+        <div className="dsh-render-top">
+          <div className="dsh-render-title-row">
+            <span className="dsh-render-icon">🎬</span>
+            <h2 className="dsh-render-title">渲染成片</h2>
+          </div>
+          <button onClick={() => onBack()} className="dsh-ghost">← 返回分镜</button>
         </div>
-        <p className="dsh-render-sub">为分镜配上 AI 配音、轻快配乐与底部字幕，合成 MP4 讲解视频。</p>
+        <p className="dsh-render-sub">先配置配音、配乐与字幕，再点击「开始渲染」合成 MP4 讲解视频。</p>
+
+        <div className="dsh-render-settings">
+            <div className="dsh-render-settings-title">🎙️ 配音与字幕设置</div>
+            <div className="dsh-render-settings-body">
+              <div className="dsh-grid-2">
+                <div>
+                  <div className="dsh-param-label">配音引擎</div>
+                  <select
+                    className="dsh-field"
+                    value={engine}
+                    onChange={(e) => {
+                      const eng = ttsEngines.find((x) => x.id === e.target.value) ?? ttsEngines[0];
+                      if (!eng) return;
+                      markTouched();
+                      setEngine(eng.id);
+                      setVoice(eng.voices[0]?.id ?? "");
+                    }}
+                  >
+                    {ttsEngines.length === 0 && <option value="">（无可用引擎）</option>}
+                    {ttsEngines.map((eng) => (
+                      <option key={eng.id} value={eng.id}>{eng.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div className="dsh-param-label">配音音色</div>
+                  <select
+                    className="dsh-field"
+                    value={voice}
+                    onChange={(e) => { markTouched(); setVoice(e.target.value); }}
+                  >
+                    {currentVoices.length === 0 && <option value="">无可用音色</option>}
+                    {currentVoices.map((v) => (
+                      <option key={v.id} value={v.id}>{v.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div className="dsh-param-label">语速（{ttsSpeed}×）</div>
+                  <input
+                    type="range"
+                    className="dsh-range"
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    value={ttsSpeed}
+                    onChange={(e) => { markTouched(); setTtsSpeed(Number(e.target.value)); }}
+                  />
+                </div>
+                <div>
+                  <div className="dsh-param-label">音量（{Math.round(ttsVolume * 100)}%）</div>
+                  <input
+                    type="range"
+                    className="dsh-range"
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    value={ttsVolume}
+                    onChange={(e) => { markTouched(); setTtsVolume(Number(e.target.value)); }}
+                  />
+                </div>
+                <div>
+                  <div className="dsh-param-label">背景配乐</div>
+                  <select className="dsh-field" value={bgm} onChange={(e) => { markTouched(); setBgm(e.target.value as any); }}>
+                    <option value="default">🎵 轻快配乐</option>
+                    <option value="none">静音（无配乐）</option>
+                  </select>
+                </div>
+              </div>
+              <div className="dsh-checks">
+                <label className="dsh-check">
+                  <input type="checkbox" checked={narration} onChange={() => { markTouched(); setNarration((v) => !v); }} />
+                  AI 配音
+                </label>
+                <label className="dsh-check">
+                  <input type="checkbox" checked={subtitles} onChange={() => { markTouched(); setSubtitles((v) => !v); }} />
+                  底部字幕
+                </label>
+              </div>
+            </div>
+          </div>
 
         {status === "DONE" && (
           <div className="dsh-media">
@@ -68,37 +185,6 @@ export function RenderOutput({
                 preload="metadata"
               />
             </div>
-            <aside className="dsh-card dsh-media-side">
-              <div>
-                <div className="dsh-media-side-title">分镜摘要</div>
-                <div className="dsh-media-side-sub">
-                  {sb?.projectTitle || "你的讲解视频"}
-                </div>
-              </div>
-              <div className="dsh-meta-grid">
-                <MetaC label="总时长" value={fmtDur(totalSec)} />
-                <MetaC label="分镜页数" value={`${sbPages.length} 页`} />
-                <MetaC label="画幅" value={resTxt} />
-                <MetaC label="语气" value={toneTxt} />
-              </div>
-              <div className="dsh-chips">
-                {task?.params?.narration !== false && <Chip>🎙 配音</Chip>}
-                {task?.params?.subtitles !== false && <Chip>💬 字幕</Chip>}
-                {task?.params?.bgm === "default" && <Chip>🎵 配乐</Chip>}
-              </div>
-              <div className="dsh-page-list">
-                <div className="dsh-page-list-label">分镜页目</div>
-                {sbPages.map((pg, i) => (
-                  <div key={pg.pageIndex ?? i} className="dsh-page-item">
-                    <span className="dsh-page-item-num">{i + 1}</span>
-                    <div className="dsh-page-item-body">
-                      <div className="dsh-page-item-title">{pg.title}</div>
-                      <div className="dsh-page-item-dur">约 {fmtDur(pg.durationSec || 0)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </aside>
           </div>
         )}
 
@@ -106,7 +192,7 @@ export function RenderOutput({
           <div>
             {task?.warning && <WarnBox text={task.warning} />}
             <div className="dsh-render-progress">
-              <span>正在渲染…（这一步约需几十秒）</span>
+              <span>正在渲染视频，请稍候…</span>
               <b>{pct}%</b>
             </div>
             <div className="dsh-progress dsh-render-progress-bar">
@@ -118,9 +204,12 @@ export function RenderOutput({
             {task?.warning && <WarnBox text={task.warning} />}
             <div className="dsh-done-emoji">🎉</div>
             <p className="dsh-done-title">视频渲染完成</p>
-            <p className="dsh-done-sub">包含配音、配乐与字幕的 MP4 已就绪，可下载或重新返回微调分镜。</p>
+            <p className="dsh-done-sub">包含配音、配乐与字幕的 MP4 已就绪，可下载或修改上方设置后重新生成。</p>
             <div className="dsh-done-actions">
               <a href={downloadFileUrl(taskId)} download className="dsh-btn">⬇ 下载 MP4</a>
+              <button onClick={go} className="dsh-btn dsh-btn-secondary" disabled={rendering}>
+                {rendering ? "重新生成中…" : "🔄 重新生成"}
+              </button>
               <button onClick={() => onBack()} className="dsh-ghost">← 返回分镜</button>
             </div>
           </div>
@@ -135,28 +224,17 @@ export function RenderOutput({
           </div>
         ) : (
           <div className="dsh-ready">
-            <p className="dsh-ready-text">分镜已确认，正在准备渲染…</p>
-            <div className="dsh-progress dsh-ready-bar">
-              <div className="dsh-progress-bar" />
+            <p className="dsh-ready-text">分镜已确认，配置好上方配音与字幕参数后即可开始渲染。</p>
+            <div className="dsh-ready-actions">
+              <button onClick={go} className="dsh-btn" disabled={rendering}>
+                {rendering ? "开始渲染中…" : "🎬 开始渲染"}
+              </button>
             </div>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-function MetaC({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="dsh-meta-cell">
-      <div className="dsh-meta-cell-label">{label}</div>
-      <div className="dsh-meta-cell-value">{value}</div>
-    </div>
-  );
-}
-
-function Chip({ children }: { children: ReactNode }) {
-  return <span className="dsh-chip">{children}</span>;
 }
 
 function WarnBox({ text }: { text: string }) {

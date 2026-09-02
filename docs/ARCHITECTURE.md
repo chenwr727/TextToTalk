@@ -123,4 +123,4 @@
 
 ---
 
-**相关文档**：[部署与开发](DEPLOYMENT.md) · [桌面版](DESKTOP.md) · [配置](CONFIGURATION.md) · [API](API.md)
+**相关文档**：[部署与开发](DEPLOYMENT.md) · [桌面版](DESKTOP.md) · [配置](CONFIGURATION.md) · [TTS 配音](TTS.md) · [API](API.md)

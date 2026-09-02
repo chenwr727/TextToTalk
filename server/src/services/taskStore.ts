@@ -1,4 +1,5 @@
 import type { Task } from "../types";
+import { removeTaskArtifacts } from "./cleanup.js";
 
 const tasks = new Map<string, Task>();
 
@@ -19,11 +20,12 @@ function cleanup(): void {
   for (const [taskId, t] of tasks) {
     if (now - t.createdAt > TASK_TTL_MS) {
       tasks.delete(taskId);
+      removeTaskArtifacts(taskId);
       removed++;
     }
   }
   if (removed > 0) {
-    console.log(`[taskStore] 已清理 ${removed} 个过期任务，剩余 ${tasks.size} 个`);
+    console.log(`[taskStore] 已清理 ${removed} 个过期任务（含磁盘产物），剩余 ${tasks.size} 个`);
   }
 }
 
@@ -50,4 +52,8 @@ export function patchTask(taskId: string, patch: Partial<Task>): Task | undefine
   if (!t) return undefined;
   Object.assign(t, patch, { updatedAt: Date.now() });
   return t;
+}
+
+export function listTaskIds(): Set<string> {
+  return new Set(tasks.keys());
 }

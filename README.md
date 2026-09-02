@@ -52,9 +52,9 @@ cd web && pnpm install && pnpm run dev                              # :3000
 
 ### 桌面版（当普通软件用）
 
-下载 `TextToTalk-0.1.0-win.zip` 解压即用，无需 Node、无需 Docker、ffmpeg 已内置。
+下载 [TextToTalk-0.2.0-win-portable.zip](https://github.com/chenwr727/TextToTalk/releases/tag/v0.2.0) 解压即用，无需 Node、无需 Docker，ffmpeg 已内置。
 
-> 完整说明见 [部署与开发](docs/DEPLOYMENT.md) · [桌面版](docs/DESKTOP.md) · [配置](docs/CONFIGURATION.md)
+> 更多版本见 [Releases](https://github.com/chenwr727/TextToTalk/releases)；完整说明见 [部署与开发](docs/DEPLOYMENT.md) · [桌面版](docs/DESKTOP.md) · [配置](docs/CONFIGURATION.md)
 
 ---
 
@@ -67,7 +67,7 @@ TextToTalk 把中间三步压缩成一次回车：
 |---|---|
 | 手写脚本、手动分页 | LLM 按「叙事弧线」自动切 2~10 页，每页带角色定位 |
 | 找图、画图表、调版式 | 26 条场景规则自动分发版式，图表 / 地图 / SmartArt 直接生成 |
-| 自己录音或买配音 | Edge-TTS 逐句合成，字幕随语音节奏出现 |
+| 自己录音或买配音 | 多引擎 TTS 逐句合成（Edge / CosyVoice / Qwen-Audio / Seed-TTS），字幕随语音节奏出现 |
 | 剪辑软件拼轨道 | Remotion 无头渲染，一次出带声 MP4 |
 
 **你只需要保留两件事的判断权：大纲对不对、这一页要不要重做。**
@@ -107,7 +107,7 @@ TextToTalk 把中间三步压缩成一次回车：
 └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
 ```
 
-1. **文案脚本** —— 粘贴文案 / 一键示例 / 直接贴链接抓正文；选语气、拆稿粒度、主题风格、配音音色、配乐与字幕，还可补充「目标受众 / 核心信息 / 观众收获」让 AI 更贴题。
+1. **文案脚本** —— 粘贴文案 / 一键示例 / 直接贴链接抓正文；选语气、拆稿粒度、主题风格、配音引擎与音色、配乐与字幕，还可补充「目标受众 / 核心信息 / 观众收获」让 AI 更贴题。
 2. **大纲生成** —— AI 先规划全局叙事弧线，逐页给出核心信息与版式建议，SSE 流式流出；可重新生成，或增删改页后再确认。
 3. **分镜预览** —— 基于确认的大纲逐页展开标题 / 要点 / 解说 / 字幕 / 转场 / 动效，实时看真实版式缩略图，每页可单独重做。
 4. **渲染成片** —— 合成配音 + 配乐 + 字幕，输出 MP4，支持在线流式播放（HTTP Range）与下载；失败可定位到具体出错页。
@@ -139,7 +139,8 @@ TextToTalk 把中间三步压缩成一次回车：
 | 语气 `tone` | `formal` 正式严谨 · `casual` 轻松易懂（默认）· `energetic` 活泼有感染力 |
 | 拆稿粒度 `granularity` | `coarse` 2~4 页 · `medium` 4~6 页（默认）· `fine` 6~10 页 |
 | 主题风格 `theme` | `tech` 科技蓝（默认）· `business` 商务蓝 · `fresh` 清新绿 · `warm` 暖橙 · `dark` 深空 |
-| 配音音色 `voice` | `zh-CN-XiaoxiaoNeural` 晓晓·女（默认）· `YunxiNeural` 云希·男 · `YunyangNeural` 云扬·新闻 · `XiaoyiNeural` 晓伊·活泼 · `liaoning-XiaobeiNeural` 晓北·东北 |
+| 配音引擎 `engine` | `edge` Edge 在线（默认，免密钥）· `cosyvoice` 阿里云 CosyVoice · `qwen-audio` 阿里云 Qwen-Audio-TTS · `seed-tts` 火山引擎 Seed-TTS |
+| 配音音色 `voice` | 随引擎而定：Edge 默认 `zh-CN-XiaoxiaoNeural` 晓晓·女，其余引擎见 [TTS 文档](docs/TTS.md) |
 | 背景配乐 `bgm` | `default` 轻快配乐 · `none` 静音 |
 | 画幅 / 帧率 | `1920×1080` @ `30fps`（当前仅横屏 16:9） |
 | 沟通目标（可选） | 目标受众 `audience` · 核心信息 `coreMessage` · 观众收获 `audienceOutcome` |
@@ -155,6 +156,7 @@ TextToTalk 把中间三步压缩成一次回车：
 | [配置](docs/CONFIGURATION.md) | LLM / 渲染环境变量、桌面版配置、渲染加速 |
 | [API](docs/API.md) | 接口列表、鉴权、SSE 事件 |
 | [架构](docs/ARCHITECTURE.md) | 整体结构、项目结构、技术栈、生成与渲染流水线 |
+| [TTS 配音](docs/TTS.md) | 多引擎配置、音色列表、语速音量、如何扩展新引擎 |
 
 ---
 
@@ -162,7 +164,7 @@ TextToTalk 把中间三步压缩成一次回车：
 
 - 目前**仅支持 1920×1080 横屏**（9:16 竖屏已预埋但尚未开放）。
 - 任务状态存于内存，TTL 24 小时，重启进程会丢失；适合单机 / 小团队自用，非多实例生产架构。
-- TTS 走 Edge 在线服务，需要外网；音色以中文为主。
+- 默认 Edge 引擎走在线服务，需要外网；其余引擎需配置对应云厂商密钥（见 [TTS 文档](docs/TTS.md)）。
 - 渲染是逐帧 CPU 密集任务，成片时长越长等待越久（见[渲染加速](docs/CONFIGURATION.md#渲染加速)）。
 - 桌面版打包时跳过了 Playwright 浏览器下载，**抓取 JS 动态页的兜底能力不可用**，静态页抓取不受影响。
 
@@ -172,7 +174,7 @@ TextToTalk 把中间三步压缩成一次回车：
 
 - [ ] 9:16 / 1:1 竖屏与方形画幅
 - [ ] 任务持久化（SQLite）与多实例渲染 worker
-- [ ] 更多 TTS 引擎与多语种音色
+- [ ] 更多 TTS 引擎与多语种音色（已支持 Edge / CosyVoice / Qwen-Audio / Seed-TTS）
 - [ ] 分镜模板市场与自定义主题配色
 - [ ] 成片导出字幕文件（SRT）
 

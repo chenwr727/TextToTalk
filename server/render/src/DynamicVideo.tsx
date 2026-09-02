@@ -27,7 +27,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
   const { durationInFrames } = useVideoConfig();
   const pageDurs = pages.map((p) =>
     p.sentences && p.sentences.length
-      ? p.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * (fps || 30))), 0)
+      ? p.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * (fps || 30))), 0) + Math.round((p.sentenceGap || 0) * (fps || 30)) * Math.max(0, p.sentences.length - 1)
       : Math.round((p.durationSec || 4) * (fps || 30))
   );
 

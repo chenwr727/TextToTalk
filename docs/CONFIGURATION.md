@@ -42,7 +42,7 @@
 | `RENDER_HW_ACCEL` | `0` | 硬件编解码开关 |
 | `RENDER_MAX_TASKS` | `1` | 渲染队列并发上限 |
 | `RENDER_X264_PRESET` | `veryfast` | x264 编码预设 |
-| `CHROME_PATH` | 自动探测 | 指定 Chromium 可执行文件（Docker 内已指向 `/usr/bin/chromium`） |
+| `CHROME_PATH` | 自动探测 | 指定 Chromium 可执行文件；未设置时服务端自动探测系统 Edge / Chrome（Docker 内已指向 `/usr/bin/chromium`） |
 
 ---
 
@@ -85,4 +85,4 @@
 
 ---
 
-**相关文档**：[部署与开发](DEPLOYMENT.md) · [桌面版](DESKTOP.md) · [架构](ARCHITECTURE.md)
+**相关文档**：[部署与开发](DEPLOYMENT.md) · [桌面版](DESKTOP.md) · [TTS 配音](TTS.md) · [架构](ARCHITECTURE.md)

@@ -21,6 +21,11 @@ async function request<T>(path: string, init?: RequestInit, errMsg = "请求失�
   return res.json();
 }
 
+export interface TtsEngineInfo { id: string; name: string; voices: { id: string; label: string }[] }
+export function getTtsEngines(): Promise<{ defaultEngine: string; engines: TtsEngineInfo[] }> {
+  return request("/tts/engines", undefined, "获取 TTS 引擎列表失败");
+}
+
 export function createGeneration(prompt: string, params: VideoParams): Promise<{ taskId: string; token: string }> {
   return request("/generate", {
     method: "POST",
@@ -135,8 +140,12 @@ export function subscribeStoryboard(
   return () => es.close();
 }
 
-export function submitRender(taskId: string): Promise<Task> {
-  return request(`/tasks/${taskId}/render`, { method: "POST" }, "提交渲染失败");
+export function submitRender(taskId: string, params?: Partial<VideoParams>): Promise<Task> {
+  return request(`/tasks/${taskId}/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ params }),
+  }, "提交渲染失败");
 }
 
 export const inlineVideoUrl = (taskId: string) => withToken(`${BASE}/tasks/${taskId}/download`);
