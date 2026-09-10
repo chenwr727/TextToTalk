@@ -3,6 +3,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { evolvePath } from "@remotion/paths";
 import { C, FONT, springIn, accentOf } from "../theme";
 import { PageHeading } from "../PageHeading";
+import { useResponsive } from "../responsive";
 import type { SceneProps } from "./types";
 import type { MapSpec, MapRoute, MapRegion } from "../props";
 
@@ -34,18 +35,18 @@ function computeMapBounds(spec: MapSpec, regionPolys: [number, number][][]): { m
   return { minX, minY, maxX, maxY };
 }
 
-function computeFitTransform(spec: MapSpec, regionPolys: [number, number][][]): { scale: number; tx: number; ty: number } {
+function computeFitTransform(spec: MapSpec, regionPolys: [number, number][][], safe: { x: number; y: number; w: number; h: number }): { scale: number; tx: number; ty: number } {
   const b = computeMapBounds(spec, regionPolys);
   const contentW = Math.max(b.maxX - b.minX, 100);
   const contentH = Math.max(b.maxY - b.minY, 100);
-  const scaleX = SAFE.w / contentW;
-  const scaleY = SAFE.h / contentH;
+  const scaleX = safe.w / contentW;
+  const scaleY = safe.h / contentH;
   const scale = Math.min(scaleX, scaleY, 1.35);
 
   const fitW = contentW * scale;
   const fitH = contentH * scale;
-  const tx = SAFE.x + (SAFE.w - fitW) / 2 - b.minX * scale;
-  const ty = SAFE.y + (SAFE.h - fitH) / 2 - b.minY * scale;
+  const tx = safe.x + (safe.w - fitW) / 2 - b.minX * scale;
+  const ty = safe.y + (safe.h - fitH) / 2 - b.minY * scale;
   return { scale, tx, ty };
 }
 
@@ -131,7 +132,7 @@ const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; inde
   );
 };
 
-const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion: "spring" | "linear" | "float" }> = ({ routes, frame, fps, motion }) => {
+const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion: "spring" | "linear" | "float"; safe: { x: number; y: number; w: number; h: number } }> = ({ routes, frame, fps, motion, safe }) => {
   const o = springIn(frame, fps, 40, motion);
   const types = Array.from(new Set(routes.map((r) => r.type ?? "rail")));
   const items = types.map((t) => ({
@@ -142,7 +143,7 @@ const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion:
   }));
   if (!items.length) return null;
   return (
-    <g opacity={o} transform={`translate(${SAFE.x + SAFE.w - 220}, ${SAFE.y + SAFE.h - 70})`}>
+    <g opacity={o} transform={`translate(${safe.x + safe.w - 220}, ${safe.y + safe.h - 70})`}>
       <rect x={-12} y={-14} width={232} height={items.length * 30 + 20} rx={12}
         fill="rgba(255,255,255,0.85)" stroke="rgba(28,37,54,0.10)" strokeWidth={1} />
       {items.map((it, i) => (
@@ -159,12 +160,15 @@ const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion:
 
 export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
   const f = useCurrentFrame();
+  const { isPortrait, contentWidth, contentHeight } = useResponsive();
   const spec = page.map;
   const markers = spec?.markers ?? [];
   const routes = spec?.routes ?? [];
   const regions = spec?.regions ?? [];
   const regionPolys = useMemo(() => regions.map((r) => parsePolygon(r.points)), [regions]);
-  const fit = useMemo(() => (spec ? computeFitTransform(spec, regionPolys) : null), [spec, regionPolys]);
+  const canvas = isPortrait ? { w: contentWidth, h: contentHeight } : CANVAS;
+  const safe = isPortrait ? { x: 0, y: 0, w: contentWidth, h: contentHeight } : SAFE;
+  const fit = useMemo(() => (spec ? computeFitTransform(spec, regionPolys, safe) : null), [spec, regionPolys, safe]);
   if (!spec || !fit) return null;
   const motion = page.motion ?? "spring";
   const { scale, tx, ty } = fit;
@@ -173,16 +177,16 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={page.title} />
       <div style={{ flex: 1, position: "relative" }}>
-        <svg width={CANVAS.w} height={CANVAS.h} style={{ position: "absolute", inset: 0 }}>
+        <svg width={canvas.w} height={canvas.h} style={{ position: "absolute", inset: 0 }}>
           <defs>
             <mask id="map-safe-mask">
-              <rect x={0} y={0} width={CANVAS.w} height={CANVAS.h} fill="black" />
-              <rect x={SAFE.x} y={SAFE.y} width={SAFE.w} height={SAFE.h} rx={24} fill="white" />
+              <rect x={0} y={0} width={canvas.w} height={canvas.h} fill="black" />
+              <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24} fill="white" />
             </mask>
           </defs>
-          <rect x={SAFE.x} y={SAFE.y} width={SAFE.w} height={SAFE.h} rx={24}
+          <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24}
             fill="rgba(255,255,255,0.55)" stroke="rgba(28,37,54,0.10)" strokeWidth={1.5} />
-          <rect x={SAFE.x + 10} y={SAFE.y + 10} width={SAFE.w - 20} height={SAFE.h - 20} rx={18}
+          <rect x={safe.x + 10} y={safe.y + 10} width={safe.w - 20} height={safe.h - 20} rx={18}
             fill="none" stroke="rgba(28,37,54,0.08)" strokeWidth={1.5} strokeDasharray="8 8" />
           <g mask="url(#map-safe-mask)">
             <g transform={`translate(${tx}, ${ty}) scale(${scale})`}>
@@ -194,12 +198,12 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
               ))}
               {markers.map((mk, i) => {
                 const fitY = mk.y * scale + ty;
-                const labelBelow = fitY < SAFE.y + 80;
+                const labelBelow = fitY < safe.y + 80;
                 return <MarkerEl key={i} marker={mk} index={i} frame={f} fps={fps} motion={motion} labelBelow={labelBelow} />;
               })}
             </g>
           </g>
-          <Legend routes={routes} frame={f} fps={fps} motion={motion} />
+          <Legend routes={routes} frame={f} fps={fps} motion={motion} safe={safe} />
         </svg>
       </div>
     </AbsoluteFill>

@@ -20,6 +20,8 @@ export function StoryboardPreview({
   focusPage,
   onFocusPageHandled,
   theme,
+  width = 1920,
+  height = 1080,
 }: {
   taskId: string;
   pages: StoryPage[];
@@ -27,6 +29,8 @@ export function StoryboardPreview({
   tokens: string;
   stage: string;
   theme?: string;
+  width?: number;
+  height?: number;
   onPagesChange: (p: StoryPage[] | ((prev: StoryPage[]) => StoryPage[])) => void;
   onDoneChange: (d: boolean) => void;
   onTokensChange: (t: string | ((prev: string) => string)) => void;
@@ -360,7 +364,7 @@ export function StoryboardPreview({
                   <span style={{ fontSize: 13, fontWeight: 700, color: "#2f6df6" }}>本页重新生成中…</span>
                 </div>
               )}
-              <RenderThumb p={p} isFirst={i === 0} theme={theme} />
+              <RenderThumb p={p} isFirst={i === 0} theme={theme} width={width} height={height} />
               <div className="dsh-sb-caption">
                 <div className="dsh-sb-caption-label">字幕 CAPTION</div>
                 <div className="dsh-sb-caption-text">{p.captions.join("｜")}</div>

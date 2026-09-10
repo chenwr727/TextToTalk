@@ -5,18 +5,20 @@ import { C, FONT, FS, RADIUS, CARD_SHADOW, springIn, accentOf, BORDER, measureTe
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon } from "../point";
 import { Icon } from "../Icon";
+import { useResponsive } from "../responsive";
 import type { SceneProps } from "./types";
 import type { SvgElement } from "../props";
 
 const CANVAS = { w: 1920, h: 1080 };
-const SAFE = { x: 80, y: 240, w: 1760, h: 540 };
+const SAFE = { x: 24, y: 240, w: 1760, h: 540 };
 
 const BottomPoints: React.FC<{ page: SceneProps["page"]; fps: number }> = ({ page, fps }) => {
   const f = useCurrentFrame();
+  const { isPortrait, sp } = useResponsive();
   const items = page.points ?? [];
   if (!items.length) return null;
   return (
-    <div style={{ position: "absolute", bottom: 180, left: 0, right: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16, rowGap: 12, padding: "0 120px" }}>
+    <div style={{ position: "absolute", bottom: isPortrait ? sp(180) : 180, left: 0, right: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: isPortrait ? sp(16) : 16, rowGap: isPortrait ? sp(12) : 12, padding: isPortrait ? `0 ${sp(120)}px` : "0 120px" }}>
       {items.map((it, i) => {
         const o = springIn(f, fps, 30 + i * 20, page.motion);
         return (
@@ -83,7 +85,7 @@ function elementBounds(el: SvgElement): { minX: number; minY: number; maxX: numb
   }
 }
 
-function computeFitTransform(els: SvgElement[]): { scale: number; tx: number; ty: number } {
+function computeFitTransform(els: SvgElement[], safe: { x: number; y: number; w: number; h: number }): { scale: number; tx: number; ty: number } {
   if (!els.length) return { scale: 1, tx: 0, ty: 0 };
   const bounds = els.map(elementBounds);
   const minX = Math.min(...bounds.map((b) => b.minX));
@@ -93,14 +95,14 @@ function computeFitTransform(els: SvgElement[]): { scale: number; tx: number; ty
 
   const contentW = Math.max(maxX - minX, 100);
   const contentH = Math.max(maxY - minY, 100);
-  const scaleX = SAFE.w / contentW;
-  const scaleY = SAFE.h / contentH;
+  const scaleX = safe.w / contentW;
+  const scaleY = safe.h / contentH;
   const scale = Math.min(scaleX, scaleY, 1.35);
 
   const fitW = contentW * scale;
   const fitH = contentH * scale;
-  const tx = SAFE.x + (SAFE.w - fitW) / 2 - minX * scale;
-  const ty = SAFE.y + (SAFE.h - fitH) / 2 - minY * scale;
+  const tx = safe.x + (safe.w - fitW) / 2 - minX * scale;
+  const ty = safe.y + (safe.h - fitH) / 2 - minY * scale;
   return { scale, tx, ty };
 }
 
@@ -158,20 +160,23 @@ const SvgEl: React.FC<{ el: SvgElement; frame: number; fps: number; motion: "spr
 
 export const CustomSvgScene: React.FC<SceneProps> = ({ page, fps }) => {
   const f = useCurrentFrame();
+  const { isPortrait, contentWidth, contentHeight } = useResponsive();
   const spec = page.customSvg;
   if (!spec || !spec.length) return null;
   const motion = page.motion ?? "spring";
-  const { scale, tx, ty } = useMemo(() => computeFitTransform(spec), [spec]);
+  const canvas = isPortrait ? { w: contentWidth, h: contentHeight } : CANVAS;
+  const safe = isPortrait ? { x: 0, y: 0, w: contentWidth, h: contentHeight } : SAFE;
+  const { scale, tx, ty } = useMemo(() => computeFitTransform(spec, safe), [spec, safe]);
 
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={page.title} />
       <div style={{ flex: 1, position: "relative" }}>
-        <svg width={CANVAS.w} height={CANVAS.h} style={{ position: "absolute", inset: 0 }}>
+        <svg width={canvas.w} height={canvas.h} style={{ position: "absolute", inset: 0 }}>
           <defs>
             <mask id="safe-mask">
-              <rect x={0} y={0} width={CANVAS.w} height={CANVAS.h} fill="black" />
-              <rect x={SAFE.x} y={SAFE.y} width={SAFE.w} height={SAFE.h} rx={24} fill="white" />
+              <rect x={0} y={0} width={canvas.w} height={canvas.h} fill="black" />
+              <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24} fill="white" />
             </mask>
           </defs>
           <g mask="url(#safe-mask)">

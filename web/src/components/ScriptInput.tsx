@@ -141,6 +141,7 @@ export function ScriptInput({
                     onParamsChange({ ...params, width: w, height: h });
                   }}>
                     <option value="1920x1080">16:9 横屏 1920×1080</option>
+                    <option value="1080x1920">9:16 竖屏 1080×1920</option>
                   </select>
                 </div>
                 <div>

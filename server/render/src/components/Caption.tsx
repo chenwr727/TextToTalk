@@ -1,6 +1,7 @@
 import { Audio, Sequence, interpolate, useCurrentFrame } from "remotion";
 import type { TtsSentence } from "../shared/render/props";
 import { C, FONT } from "../shared/render/theme";
+import { useResponsive } from "../shared/render/responsive";
 
 const Aud = Audio as any;
 
@@ -27,13 +28,14 @@ const renderHighlight = (text: string) => {
 
 export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({ text, durFrames }) => {
   const f = useCurrentFrame();
+  const { isPortrait, fs, sp } = useResponsive();
   const o = interpolate(f, [0, 8, durFrames - 8, durFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
-    <div style={{ position: "absolute", bottom: 60, width: "100%", display: "flex", justifyContent: "center", opacity: o }}>
-      <div style={{ display: "flex", alignItems: "stretch", maxWidth: "78%" }}>
+    <div style={{ position: "absolute", bottom: sp(60), width: "100%", display: "flex", justifyContent: "center", opacity: o }}>
+      <div style={{ display: "flex", alignItems: "stretch", maxWidth: isPortrait ? "88%" : "78%" }}>
         <div style={{ width: 10, background: C.accent, borderRadius: "999px 0 0 999px" }} />
         <div style={{
-          background: "rgba(20,30,45,0.88)", color: "#fff", padding: "16px 42px", fontSize: 42, fontFamily: FONT, fontWeight: 600,
+          background: "rgba(20,30,45,0.88)", color: "#fff", padding: `${sp(16)}px ${sp(42)}px`, fontSize: fs(42), fontFamily: FONT, fontWeight: 600,
           textAlign: "center", borderRadius: "0 999px 999px 0", boxShadow: "0 8px 24px rgba(20,30,45,0.4)", letterSpacing: 1,
           textShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.6)",
         }}>

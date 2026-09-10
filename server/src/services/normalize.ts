@@ -193,23 +193,23 @@ function normalizeChart(c: any): ChartSpec {
   if (!t) return null;
   const title = String(c.title ?? "对比");
   const cap = 6;
-  const labels = (c.labels ?? []).slice(0, cap).map(String).filter(Boolean);
-  const values = (c.values ?? []).slice(0, cap).map(Number).filter((n: number) => !Number.isNaN(n));
+  const labels = (Array.isArray(c.labels) ? c.labels : []).slice(0, cap).map(String).filter(Boolean);
+  const values = (Array.isArray(c.values) ? c.values : []).slice(0, cap).map(Number).filter((n: number) => !Number.isNaN(n));
   if (!labels.length || values.length !== labels.length) return null;
   if (t === "pie") return { type: "pie", labels, values, title };
   if (t === "donut") return { type: "donut", labels, values, title };
   if (t === "pyramid") return { type: "pyramid", labels, values, title };
   if (t === "area") return { type: "area", labels, values, title };
   if (t === "stacked-bar") {
-    const series = (c.series ?? []).slice(0, 4).map((s: any) => ({
+    const series = (Array.isArray(c.series) ? c.series : []).slice(0, 4).map((s: any) => ({
       name: String(s?.name ?? "").slice(0, 10),
-      values: (s?.values ?? []).slice(0, cap).map(Number).filter((n: number) => !Number.isNaN(n)),
+      values: (Array.isArray(s?.values) ? s.values : []).slice(0, cap).map(Number).filter((n: number) => !Number.isNaN(n)),
     })).filter((s: any) => s.name && s.values.length === labels.length);
     if (!series.length) return null;
     return { type: "stacked-bar", labels, series, title };
   }
   if (t === "scatter") {
-    const points = (c.points ?? []).slice(0, 12).map((p: any) => ({
+    const points = (Array.isArray(c.points) ? c.points : []).slice(0, 12).map((p: any) => ({
       x: Number(p?.x), y: Number(p?.y), label: p?.label ? String(p.label).slice(0, 8) : undefined,
     })).filter((p: any) => Number.isFinite(p.x) && Number.isFinite(p.y));
     if (points.length < 2) return null;
@@ -380,16 +380,17 @@ export function normalizePage(p: any, i: number, layout?: Layout, art?: Art | nu
   const hasSvg = !!customSvg;
   const finalArt = hasSvg ? null : artVal;
   const finalLayout = hasSvg && STRUCTURAL_LAYOUTS.has(layoutVal) ? "points" : layoutVal;
-  const rawCaptions = (p.captions ?? []).map((x: any) => String(x)).filter(Boolean);
+  const rawCaptions = (Array.isArray(p.captions) ? p.captions : []).map((x: any) => String(x)).filter(Boolean);
   const rawNarration = String(p.narration ?? "").trim();
-  const pointsText = (p.points ?? []).map((x: any) => (typeof x === "string" ? x : String(x?.text ?? ""))).filter(Boolean).join("，");
+  const pointsArr = Array.isArray(p.points) ? p.points : [];
+  const pointsText = pointsArr.map((x: any) => (typeof x === "string" ? x : String(x?.text ?? ""))).filter(Boolean).join("，");
   const narration = rawNarration || rawCaptions.join("") || pointsText;
   const captions = rawCaptions.length ? rawCaptions : splitCaptions(narration);
-  const durationSec = estimateSecs(narration ? [narration] : captions.length ? captions : (p.points ?? []));
+  const durationSec = estimateSecs(narration ? [narration] : captions.length ? captions : pointsArr);
   return {
     pageIndex: i,
     title: String(p.title ?? `第${i + 1}页`).slice(0, 24),
-    points: (p.points ?? []).slice(0, 10).map(normalizePoint).filter((x: { text: string; icon: IconId | null }) => x.text),
+    points: pointsArr.slice(0, 10).map(normalizePoint).filter((x: { text: string; icon: IconId | null }) => x.text),
     narration,
     captions,
     chart,
@@ -412,7 +413,7 @@ export function normalizePage(p: any, i: number, layout?: Layout, art?: Art | nu
 export function normalizeDirect(pages: any): Storyboard {
   return {
     projectTitle: String(pages.projectTitle ?? "我的讲解").slice(0, 22),
-    pages: (pages.pages ?? []).map((p: any, i: number) => normalizePage(p, i)).slice(0, 10),
+    pages: (Array.isArray(pages.pages) ? pages.pages : []).map((p: any, i: number) => normalizePage(p, i)).slice(0, 10),
   };
 }
 

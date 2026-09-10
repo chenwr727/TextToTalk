@@ -2,6 +2,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import { evolvePath } from "@remotion/paths";
 import { C, FONT, FS, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
+import { useResponsive } from "../responsive";
 import type { SceneProps } from "./types";
 
 export const SectionScene: React.FC<SceneProps> = ({ page }) => {
@@ -9,11 +10,12 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
   const sub = firstPointText(page.points || []);
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const o = springIn(f, fps, 5, page.motion);
   const g = interpolate(f, [0, 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <svg width="1920" height="1080" viewBox="0 0 1920 1080" style={{ position: "absolute", inset: 0, opacity: 0.5 * g }}>
+      <svg width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio={isPortrait ? "xMidYMid slice" : "xMidYMid meet"} style={{ position: "absolute", inset: 0, opacity: 0.5 * g }}>
         <circle cx={960} cy={540} r={300} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.5} />
         <circle cx={960} cy={540} r={420} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.3} />
         <circle cx={960} cy={540} r={540} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.18} />
@@ -23,9 +25,9 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
           <circle cx={960} cy={540} r={150} fill={`${C.accent}0d`} stroke={C.accent} strokeWidth={2} opacity={0.4} />
         )}
       </svg>
-      <div style={{ fontSize: FS.caption, letterSpacing: 12, color: C.muted, fontWeight: 700, marginBottom: 34, opacity: o }}>SEGMENT</div>
-      <div style={{ fontSize: 86, fontWeight: 800, color: C.ink, textAlign: "center", maxWidth: "80%", fontFamily: FONT, opacity: o, textShadow: TEXT_SHADOW }}>{title}</div>
-      {sub && <div style={{ marginTop: 30, fontSize: FS.heading, color: C.sub, fontFamily: FONT, opacity: o }}>{sub}</div>}
+      <div style={{ fontSize: isPortrait ? fs(FS.caption) : FS.caption, letterSpacing: isPortrait ? sp(12) : 12, color: C.muted, fontWeight: 700, marginBottom: sp(34), opacity: o }}>SEGMENT</div>
+      <div style={{ fontSize: isPortrait ? fs(86) : 86, fontWeight: 800, color: C.ink, textAlign: "center", maxWidth: isPortrait ? contentWidth : "80%", fontFamily: FONT, opacity: o, textShadow: TEXT_SHADOW }}>{title}</div>
+      {sub && <div style={{ marginTop: sp(30), fontSize: isPortrait ? fs(FS.heading) : FS.heading, color: C.sub, fontFamily: FONT, opacity: o }}>{sub}</div>}
     </AbsoluteFill>
   );
 };

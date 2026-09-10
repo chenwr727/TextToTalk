@@ -2,6 +2,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import { evolvePath } from "@remotion/paths";
 import { C, FONT, FS, RADIUS, BORDER, PILL_SHADOW, TEXT_SHADOW, GLASS, springIn } from "../theme";
 import { pointsText } from "../point";
+import { useResponsive } from "../responsive";
 import type { SceneProps } from "./types";
 
 export const TitleScene: React.FC<SceneProps> = ({ page }) => {
@@ -9,17 +10,22 @@ export const TitleScene: React.FC<SceneProps> = ({ page }) => {
   const subtitle = pointsText(page.points || []);
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const o = springIn(f, fps, 0, page.motion);
   const s = interpolate(f, [0, 26], [0.86, 1], { extrapolateRight: "clamp", output: "perceptual-scale" });
   const so = springIn(f, fps, 22, page.motion);
   const bar = interpolate(f, [10, 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   const titleChars = Array.from(title).length;
-  const titleVisualWidth = Math.min(1680, Math.max(360, titleChars * 88));
+  const titleVisualWidth = isPortrait
+    ? Math.min(contentWidth, Math.max(300, titleChars * fs(88)))
+    : Math.min(1680, Math.max(360, titleChars * 88));
   const accentBarW = Math.max(90, Math.min(180, titleVisualWidth * 0.18));
   const underlineW = Math.min(680, Math.max(220, titleVisualWidth * 0.95));
 
-  const titleFontSize = titleChars > 18 ? 64 : titleChars > 14 ? 72 : 88;
+  const titleFontSize = isPortrait
+    ? (titleChars > 18 ? 40 : titleChars > 14 ? 46 : 56)
+    : (titleChars > 18 ? 64 : titleChars > 14 ? 72 : 88);
   const titleLineHeight = 1.15;
 
   const typedChars = Math.floor(interpolate(f, [0, 40], [0, titleChars], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
@@ -28,7 +34,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <div style={{ opacity: o, transform: `scale(${s})`, display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-        <div style={{ width: accentBarW * bar, height: 6, borderRadius: RADIUS.pill, background: `linear-gradient(90deg, ${C.accent}, ${C.accent}88)`, marginBottom: 30 }} />
+        <div style={{ width: accentBarW * bar, height: 6, borderRadius: RADIUS.pill, background: `linear-gradient(90deg, ${C.accent}, ${C.accent}88)`, marginBottom: sp(30) }} />
         {page.effects?.threeD ? (
           <div style={{ perspective: 1000, width: "100%", display: "flex", justifyContent: "center" }}>
             <div style={{
@@ -78,18 +84,18 @@ export const TitleScene: React.FC<SceneProps> = ({ page }) => {
         </svg>
       </div>
       {subtitle && (
-        <div style={{ position: "relative", marginTop: 40, opacity: so }}>
+        <div style={{ position: "relative", marginTop: sp(40), opacity: so }}>
           <div style={{
-            padding: "14px 38px",
+            padding: `${sp(14)}px ${sp(38)}px`,
             background: GLASS.pill,
             border: `${BORDER.card}px solid ${C.accent}`,
             borderRadius: RADIUS.pill,
-            fontSize: FS.heading,
+            fontSize: isPortrait ? fs(FS.heading) : FS.heading,
             color: C.sub,
             fontFamily: FONT,
             fontWeight: 600,
             boxShadow: PILL_SHADOW,
-            maxWidth: 1500,
+            maxWidth: isPortrait ? contentWidth : 1500,
           }}>
             {subtitle}
           </div>

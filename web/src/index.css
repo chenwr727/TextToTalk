@@ -337,7 +337,7 @@ textarea.dsh-field { resize: vertical; }
 .dsh-sb-stage-past { background: #dce9fb; color: #4a5e80; }
 .dsh-sb-stage-future { background: #eef2fa; color: #9aa9c3; }
 .dsh-sb-canvas {
-  position: relative; aspect-ratio: 16/9; background: #f6f9ff; border-radius: 12px;
+  position: relative; background: #f6f9ff; border-radius: 12px;
   border: 1px solid #e7eefb; padding: 16px 22px; display: flex; flex-direction: column;
 }
 .dsh-sb-overlay {

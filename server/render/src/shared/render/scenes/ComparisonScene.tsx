@@ -3,6 +3,7 @@ import { C, FONT, RADIUS, HEADER_OFFSET, accentOf, springIn, BORDER, GLASS, CARD
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon } from "../point";
+import { useResponsive } from "../responsive";
 import type { SceneProps } from "./types";
 
 const CARD_W = 580;
@@ -18,6 +19,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const { isPortrait, fs, sp, contentWidth } = useResponsive();
 
   const sides = page.comparisonSides;
   const half = Math.ceil(items.length / 2);
@@ -45,9 +47,9 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
     32
   );
   const lineH = 1.45;
-  const itemBlockH = ICON_BOX + 16;
-  const listH = maxCount > 0 ? maxCount * itemBlockH + (maxCount - 1) * ITEM_GAP : 0;
-  const cardH = CARD_PAD_TOP + HEAD_H + 28 + listH + CARD_PAD_BOTTOM;
+  const itemBlockH = (isPortrait ? sp(ICON_BOX) : ICON_BOX) + (isPortrait ? sp(16) : 16);
+  const listH = maxCount > 0 ? maxCount * itemBlockH + (maxCount - 1) * (isPortrait ? sp(ITEM_GAP) : ITEM_GAP) : 0;
+  const cardH = (isPortrait ? sp(CARD_PAD_TOP) : CARD_PAD_TOP) + (isPortrait ? sp(HEAD_H) : HEAD_H) + (isPortrait ? sp(28) : 28) + listH + (isPortrait ? sp(CARD_PAD_BOTTOM) : CARD_PAD_BOTTOM);
 
   const enterA = springIn(f, fps, 8, page.motion);
   const enterB = springIn(f, fps, 22, page.motion);
@@ -85,7 +87,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
       <div
         style={{
           position: "relative",
-          width: CARD_W,
+          width: isPortrait ? contentWidth : CARD_W,
           height: cardH,
           background: GLASS.card,
           border: `${BORDER.card}px solid ${accent}`,
@@ -169,7 +171,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
-      <div style={{ position: "relative", display: "flex", gap: 36, marginTop: HEADER_OFFSET, alignItems: "center" }}>
+      <div style={{ position: "relative", display: "flex", flexDirection: isPortrait ? "column" : "row", gap: isPortrait ? sp(24) : 36, marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET, alignItems: "center" }}>
         <div style={{ position: "absolute", top: -36, left: -80, right: -80, bottom: -36, borderRadius: RADIUS.card + 24, background: "linear-gradient(180deg, rgba(59,111,245,0.08) 0%, rgba(59,111,245,0) 100%)", opacity: Math.max(enterA, enterB), pointerEvents: "none" }} />
 
         {panel(enterA, left, accentLeft, leftItems[0] ? pointIcon(leftItems[0], 0) : "check", leftItems, "✓", 20, badgeLeft)}
@@ -177,8 +179,8 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
         <div
           style={{
             position: "relative",
-            width: 96,
-            height: 96,
+            width: isPortrait ? sp(96) : 96,
+            height: isPortrait ? sp(96) : 96,
             borderRadius: "50%",
             background: `radial-gradient(circle at 50% 50%, #ffffff 0%, #ffffff 60%, ${C.accent}1a 100%)`,
             border: `3px solid ${C.accent}`,
@@ -191,7 +193,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
             zIndex: 2,
           }}
         >
-          <div style={{ fontSize: 36, fontWeight: 900, color: C.accent, fontFamily: FONT, letterSpacing: 2 }}>VS</div>
+          <div style={{ fontSize: isPortrait ? fs(36) : 36, fontWeight: 900, color: C.accent, fontFamily: FONT, letterSpacing: 2 }}>VS</div>
         </div>
 
         {panel(enterB, right, accentRight, rightItems[0] ? pointIcon(rightItems[0], half) : "alert", rightItems, "!", 32, badgeRight)}

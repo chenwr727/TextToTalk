@@ -176,7 +176,14 @@ export function RenderOutput({
 
         {status === "DONE" && (
           <div className="dsh-media">
-            <div className="dsh-media-main">
+            <div
+              className="dsh-media-main"
+              style={{
+                aspectRatio: task?.params?.width && task?.params?.height
+                  ? `${task.params.width} / ${task.params.height}`
+                  : "16 / 9",
+              }}
+            >
               <video
                 src={inlineVideoUrl(taskId)}
                 controls

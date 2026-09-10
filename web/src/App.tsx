@@ -197,6 +197,8 @@ export function App() {
             focusPage={focusPage}
             onFocusPageHandled={() => setFocusPage(null)}
             theme={params.theme}
+            width={params.width}
+            height={params.height}
             onConfirm={() => {
               setTask(null);
               setFocusPage(null);

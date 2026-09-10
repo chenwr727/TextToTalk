@@ -172,7 +172,11 @@ export async function renderTaskSync(
   });
 
   try {
-    await renderPageFrames(taskId, storyboard, pages, fps || 30, onProgress);
+    await renderPageFrames(taskId, storyboard, pages, fps || 30, onProgress, {
+      theme: opts?.theme,
+      width: opts?.width,
+      height: opts?.height,
+    });
   } catch (e) {
     console.warn("[render] 抽帧缩略图失败（不影响成片）:", e);
   }

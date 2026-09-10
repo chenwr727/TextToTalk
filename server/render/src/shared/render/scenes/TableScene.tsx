@@ -1,13 +1,14 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, FONT, FS, RADIUS, CARD_SHADOW, ACCENT_GRAD, springIn } from "../theme";
+import { useResponsive } from "../responsive";
 import type { SceneProps } from "./types";
 
-function estimateColWidths(headers: string[], rows: string[][], canvasWidth: number): number[] {
+function estimateColWidths(headers: string[], rows: string[][], canvasWidth: number, isPortrait: boolean): number[] {
   const charW = FS.body;
-  const padX = 48;
-  const minW = 180;
-  const maxW = 520;
-  const avail = canvasWidth - 160;
+  const padX = isPortrait ? 40 : 48;
+  const minW = isPortrait ? 220 : 180;
+  const maxW = isPortrait ? 600 : 520;
+  const avail = canvasWidth - (isPortrait ? 40 : 160);
   const calc = (coef: number) =>
     headers.map((_, ci) => {
       const texts = [headers[ci], ...rows.map((r) => r[ci] ?? "")];
@@ -34,25 +35,27 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   const headers = page.table!.headers;
   const rows = page.table!.rows;
   const f = useCurrentFrame();
-  const { fps, width } = useVideoConfig();
+  const { fps } = useVideoConfig();
+  const { isPortrait, fs, sp, contentWidth, height } = useResponsive();
   const o = springIn(f, fps, 0, page.motion);
-  const minCellH = 66;
-  const colWidths = estimateColWidths(headers, rows, width);
+  const minCellH = isPortrait ? sp(80) : 66;
+  const DESIGN_WIDTH = isPortrait ? contentWidth : 1920;
+  const colWidths = estimateColWidths(headers, rows, DESIGN_WIDTH, isPortrait);
   const totalW = colWidths.reduce((a, b) => a + b, 0);
-  const startX = (width - totalW) / 2;
-  const startY = 250;
+  const startX = (DESIGN_WIDTH - totalW) / 2;
+  const startY = isPortrait ? (height - (1 + rows.length) * minCellH) / 2 : 250;
   const headerCellStyle = (i: number): React.CSSProperties => ({
     flex: `0 0 ${colWidths[i]}px`,
     minHeight: minCellH,
     background: i === 0 ? "rgba(255,255,255,0.18)" : "transparent",
     color: "#fff",
-    fontSize: i === 0 ? FS.caption : FS.body,
+    fontSize: isPortrait ? fs(i === 0 ? FS.caption : FS.body) : (i === 0 ? FS.caption : FS.body),
     fontWeight: 800,
     fontFamily: FONT,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    padding: "8px 12px",
+    padding: `${isPortrait ? sp(8) : 8}px ${isPortrait ? sp(12) : 12}px`,
     boxSizing: "border-box",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
@@ -64,14 +67,14 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     minHeight: minCellH,
     background: ci === 0 ? "rgba(59,111,245,0.08)" : zebra ? "#f7f9fd" : "#ffffff",
     color: ci === 0 ? C.accent : C.ink,
-    fontSize: ci === 0 ? FS.caption : FS.body,
+    fontSize: isPortrait ? fs(ci === 0 ? FS.caption : FS.body) : (ci === 0 ? FS.caption : FS.body),
     fontWeight: ci === 0 ? 800 : 600,
     fontFamily: FONT,
     display: "flex",
     alignItems: "center",
     justifyContent: ci === 0 ? "center" : "flex-start",
     textAlign: ci === 0 ? "center" : "left",
-    padding: "10px 14px",
+    padding: `${isPortrait ? sp(10) : 10}px ${isPortrait ? sp(14) : 14}px`,
     boxSizing: "border-box",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
@@ -81,7 +84,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   });
   return (
     <AbsoluteFill style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", flexDirection: "column" }}>
-      <div style={{ position: "absolute", top: 120, fontSize: FS.title, fontWeight: 800, color: C.ink, fontFamily: FONT }}>{title}</div>
+      <div style={{ position: "absolute", top: isPortrait ? sp(120) : 120, fontSize: isPortrait ? fs(FS.title) : FS.title, fontWeight: 800, color: C.ink, fontFamily: FONT }}>{title}</div>
       <div style={{
         position: "absolute",
         top: startY,
