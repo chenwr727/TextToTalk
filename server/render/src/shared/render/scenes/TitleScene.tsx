@@ -3,6 +3,7 @@ import { evolvePath } from "@remotion/paths";
 import { C, FONT, FS, RADIUS, BORDER, PILL_SHADOW, TEXT_SHADOW, GLASS, springIn } from "../theme";
 import { pointsText } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const TitleScene: React.FC<SceneProps> = ({ page }) => {
@@ -11,10 +12,12 @@ export const TitleScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const o = springIn(f, fps, 0, page.motion);
-  const s = interpolate(f, [0, 26], [0.86, 1], { extrapolateRight: "clamp", output: "perceptual-scale" });
-  const so = springIn(f, fps, 22, page.motion);
-  const bar = interpolate(f, [10, 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const timing = useSceneTiming();
+  const t0 = timing.frameAt(0);
+  const o = springIn(f, fps, t0, page.motion);
+  const s = interpolate(f, [t0, t0 + 26], [0.86, 1], { extrapolateRight: "clamp", output: "perceptual-scale" });
+  const so = springIn(f, fps, t0 + 22, page.motion);
+  const bar = interpolate(f, [t0 + 10, t0 + 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   const titleChars = Array.from(title).length;
   const titleVisualWidth = isPortrait
@@ -28,7 +31,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page }) => {
     : (titleChars > 18 ? 64 : titleChars > 14 ? 72 : 88);
   const titleLineHeight = 1.15;
 
-  const typedChars = Math.floor(interpolate(f, [0, 40], [0, titleChars], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
+  const typedChars = Math.floor(interpolate(f, [t0, t0 + 40], [0, titleChars], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }));
   const caretOpacity = interpolate(f % 16, [0, 8, 16], [1, 0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
@@ -77,7 +80,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page }) => {
           style={{ marginTop: 6, opacity: o }}
         >
           {page.effects?.pathDraw ? (
-            <UnderlinePath w={underlineW} progress={springIn(f, fps, 10, page.motion)} color={C.accent} />
+            <UnderlinePath w={underlineW} progress={springIn(f, fps, t0 + 10, page.motion)} color={C.accent} />
           ) : (
             <path d={`M 6 14 C ${underlineW * 0.22} 4, ${underlineW * 0.6} 22, ${underlineW - 8} 10`} fill="none" stroke={C.accent} strokeWidth={6} strokeLinecap="round" opacity={0.85} />
           )}

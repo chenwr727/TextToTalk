@@ -3,6 +3,17 @@ import type { StoryPage, Layout } from "../types";
 import { updatePage, regeneratePage, type PagePatch } from "../api";
 import { LAYOUT_LABEL } from "./labels";
 
+function mergePoints(orig: StoryPage["points"], texts: string[]): StoryPage["points"] {
+  const sameCount = texts.length === orig.length;
+  return texts.map((text, i) => {
+    const o = sameCount ? orig[i] : undefined;
+    if (o && typeof o === "object" && (o.icon || o.anchor !== undefined)) {
+      return { text, ...(o.icon ? { icon: o.icon } : {}), ...(o.anchor !== undefined ? { anchor: o.anchor } : {}) };
+    }
+    return text;
+  });
+}
+
 export function PageEditor({
   taskId,
   page,
@@ -49,7 +60,7 @@ export function PageEditor({
       const patch: PagePatch = {
         title: title.trim(),
         captions: captions.split(/[，,]/).map((s) => s.trim()).filter(Boolean),
-        points: points.split("\n").map((s) => s.trim()).filter(Boolean),
+        points: mergePoints(page.points, points.split("\n").map((s) => s.trim()).filter(Boolean)),
         durationSec: dur,
         layout,
       };

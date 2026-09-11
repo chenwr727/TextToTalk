@@ -163,10 +163,15 @@ export function normalizeArt(a: any): Art | null {
   return ["flow", "loop", "pyramid", "timeline", "quadrant", "quote"].includes(a) ? (a as Art) : null;
 }
 
-function normalizePoint(x: any): { text: string; icon: IconId | null } {
+function normalizeAnchor(x: any): number | undefined {
+  const n = Number(x);
+  return Number.isInteger(n) && n >= 0 && n <= 20 ? n : undefined;
+}
+
+function normalizePoint(x: any): { text: string; icon: IconId | null; anchor?: number } {
   if (typeof x === "string") return { text: x, icon: null };
   if (x && typeof x === "object") {
-    return { text: String(x.text ?? "").trim(), icon: normalizeIcon(x.icon ?? null) };
+    return { text: String(x.text ?? "").trim(), icon: normalizeIcon(x.icon ?? null), anchor: normalizeAnchor(x.anchor) };
   }
   return { text: String(x ?? "").trim(), icon: null };
 }
@@ -285,6 +290,8 @@ function normalizeCustomSvg(c: any): CustomSvgSpec {
     }
     const delay = num(e.delay, 0, 300);
     if (delay !== undefined) el.delay = delay;
+    const anchor = normalizeAnchor(e.anchor);
+    if (anchor !== undefined) el.anchor = anchor;
     if (e.draw === true) el.draw = true;
     return el;
   }).filter(Boolean);
@@ -311,6 +318,8 @@ function normalizeMap(m: any): MapSpec | null {
       if (c) el.color = c;
       const s = num(mk.size, 4, 40);
       if (s !== undefined) el.size = s;
+      const anchor = normalizeAnchor(mk.anchor);
+      if (anchor !== undefined) el.anchor = anchor;
       return el;
     })
     .filter(Boolean);
@@ -329,6 +338,8 @@ function normalizeMap(m: any): MapSpec | null {
       if (rt.animated === false) el.animated = false;
       if (rt.flow === false) el.flow = false;
       if (rt.type === "rail" || rt.type === "flight" || rt.type === "road") el.type = rt.type;
+      const anchor = normalizeAnchor(rt.anchor);
+      if (anchor !== undefined) el.anchor = anchor;
       return el;
     })
     .filter(Boolean);
@@ -346,6 +357,8 @@ function normalizeMap(m: any): MapSpec | null {
       if (label) el.label = label;
       const c = color(rg.color);
       if (c) el.color = c;
+      const anchor = normalizeAnchor(rg.anchor);
+      if (anchor !== undefined) el.anchor = anchor;
       return el;
     })
     .filter(Boolean);

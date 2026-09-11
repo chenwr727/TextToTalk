@@ -70,6 +70,7 @@ export interface SvgElement {
   textAnchor?: "start" | "middle" | "end";
   delay?: number;
   draw?: boolean;
+  anchor?: number;
 }
 
 export type CustomSvgSpec = SvgElement[] | null;
@@ -80,6 +81,7 @@ export interface MapMarker {
   y: number;
   color?: string;
   size?: number;
+  anchor?: number;
 }
 
 export type MapRouteType = "rail" | "flight" | "road";
@@ -92,6 +94,7 @@ export interface MapRoute {
   dashed?: boolean;
   animated?: boolean;
   flow?: boolean;
+  anchor?: number;
 }
 
 export interface MapRegion {
@@ -99,6 +102,7 @@ export interface MapRegion {
   points: string;
   color?: string;
   label?: string;
+  anchor?: number;
 }
 
 export interface MapSpec {
@@ -118,6 +122,7 @@ export type IconId =
 export interface PointItem {
   text: string;
   icon?: IconId | null;
+  anchor?: number;
 }
 export type Point = string | PointItem;
 

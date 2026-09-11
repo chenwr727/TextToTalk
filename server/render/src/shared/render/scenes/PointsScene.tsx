@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, CONTENT_WIDTH, SPACE, RADIUS, BORDER, CARD_SHADOW, DOT_SHADOW, ANIM, accentOf, FS, GLASS, springIn } from "../theme";
+import { C, FONT, CONTENT_WIDTH, SPACE, RADIUS, BORDER, CARD_SHADOW, DOT_SHADOW, accentOf, FS, GLASS, springIn } from "../theme";
 import { Icon } from "../Icon";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandHighlight } from "../rough";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const PointsScene: React.FC<SceneProps> = ({ page }) => {
@@ -11,6 +12,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
 
   type Scale = {
     leadFs: number; subFs: number;
@@ -36,7 +38,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page }) => {
         display: "flex", flexDirection: "column", gap: isPortrait ? sp(scale.gap) : scale.gap,
       }}>
         {points.map((p, i) => {
-          const s = springIn(f, fps, i * ANIM.stagger, page.motion);
+          const s = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
           const a = accentOf(i);
           const isLead = i === 0 && points.length > 1;
           const fsz = isLead ? scale.leadFs : scale.subFs;
@@ -67,7 +69,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page }) => {
                 </div>
                 <div style={{ fontSize: isPortrait ? fs(fsz) : fsz, fontWeight: isLead ? 800 : 600, color: C.ink, lineHeight: scale.lineHeight }}>
                   {isLead && page.effects?.annotation === "highlight" ? (
-                    <HandHighlight color={a} progress={springIn(f, fps, ANIM.stagger + 6, page.motion)}>
+                    <HandHighlight color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 6, page.motion)}>
                       {pointText(p, i)}
                     </HandHighlight>
                   ) : (

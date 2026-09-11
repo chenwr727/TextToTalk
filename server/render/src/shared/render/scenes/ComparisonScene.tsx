@@ -2,8 +2,9 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } fr
 import { C, FONT, RADIUS, HEADER_OFFSET, accentOf, springIn, BORDER, GLASS, CARD_SHADOW, SOLID_SHADOW } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 const CARD_W = 580;
@@ -20,6 +21,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
 
   const sides = page.comparisonSides;
   const half = Math.ceil(items.length / 2);
@@ -51,9 +53,11 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
   const listH = maxCount > 0 ? maxCount * itemBlockH + (maxCount - 1) * (isPortrait ? sp(ITEM_GAP) : ITEM_GAP) : 0;
   const cardH = (isPortrait ? sp(CARD_PAD_TOP) : CARD_PAD_TOP) + (isPortrait ? sp(HEAD_H) : HEAD_H) + (isPortrait ? sp(28) : 28) + listH + (isPortrait ? sp(CARD_PAD_BOTTOM) : CARD_PAD_BOTTOM);
 
-  const enterA = springIn(f, fps, 8, page.motion);
-  const enterB = springIn(f, fps, 22, page.motion);
-  const enterVs = spring({ frame: f - 38, fps, config: { damping: 9, stiffness: 110, mass: 0.8 } });
+  const tA = resolveAnchor(timing, leftItems[0] ? pointAnchor(leftItems[0]) : undefined, 0, 8);
+  const tB = resolveAnchor(timing, rightItems[0] ? pointAnchor(rightItems[0]) : undefined, 1, 22);
+  const enterA = springIn(f, fps, tA, page.motion);
+  const enterB = springIn(f, fps, tB, page.motion);
+  const enterVs = spring({ frame: f - (tB - 16), fps, config: { damping: 9, stiffness: 110, mass: 0.8 } });
   const enterBadge = (delay: number) => spring({ frame: f - delay, fps, config: { damping: 10, stiffness: 130, mass: 0.7 } });
 
   const panel = (
@@ -174,7 +178,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
       <div style={{ position: "relative", display: "flex", flexDirection: isPortrait ? "column" : "row", gap: isPortrait ? sp(24) : 36, marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET, alignItems: "center" }}>
         <div style={{ position: "absolute", top: -36, left: -80, right: -80, bottom: -36, borderRadius: RADIUS.card + 24, background: "linear-gradient(180deg, rgba(59,111,245,0.08) 0%, rgba(59,111,245,0) 100%)", opacity: Math.max(enterA, enterB), pointerEvents: "none" }} />
 
-        {panel(enterA, left, accentLeft, leftItems[0] ? pointIcon(leftItems[0], 0) : "check", leftItems, "✓", 20, badgeLeft)}
+        {panel(enterA, left, accentLeft, leftItems[0] ? pointIcon(leftItems[0], 0) : "check", leftItems, "✓", tA + 12, badgeLeft)}
 
         <div
           style={{
@@ -196,7 +200,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
           <div style={{ fontSize: isPortrait ? fs(36) : 36, fontWeight: 900, color: C.accent, fontFamily: FONT, letterSpacing: 2 }}>VS</div>
         </div>
 
-        {panel(enterB, right, accentRight, rightItems[0] ? pointIcon(rightItems[0], half) : "alert", rightItems, "!", 32, badgeRight)}
+        {panel(enterB, right, accentRight, rightItems[0] ? pointIcon(rightItems[0], half) : "alert", rightItems, "!", tB + 10, badgeRight)}
       </div>
     </AbsoluteFill>
   );

@@ -2,6 +2,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import { C, FONT, FS, RADIUS, BORDER, PILL_SHADOW, TEXT_SHADOW, GLASS, springIn } from "../theme";
 import { pointText } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const QuoteScene: React.FC<SceneProps> = ({ page }) => {
@@ -10,7 +11,8 @@ export const QuoteScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const o = springIn(f, fps, 0, page.motion);
+  const timing = useSceneTiming();
+  const o = springIn(f, fps, timing.frameAt(0), page.motion);
   const quote = items[0] ? pointText(items[0], 0) : title;
   const author = items[1] ? pointText(items[1], 1) : "";
   return (

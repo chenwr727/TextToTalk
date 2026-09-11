@@ -1,6 +1,7 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, FONT, FS, RADIUS, CARD_SHADOW, ACCENT_GRAD, springIn } from "../theme";
 import { useResponsive } from "../responsive";
+import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 function estimateColWidths(headers: string[], rows: string[][], canvasWidth: number, isPortrait: boolean): number[] {
@@ -37,7 +38,8 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, height } = useResponsive();
-  const o = springIn(f, fps, 0, page.motion);
+  const timing = useSceneTiming();
+  const o = springIn(f, fps, timing.frameAt(0), page.motion);
   const minCellH = isPortrait ? sp(80) : 66;
   const DESIGN_WIDTH = isPortrait ? contentWidth : 1920;
   const colWidths = estimateColWidths(headers, rows, DESIGN_WIDTH, isPortrait);
@@ -102,7 +104,8 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
           ))}
         </div>
         {rows.map((r, ri) => {
-          const ry = interpolate(f, [4 + ri * 8, 20 + ri * 8], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+          const rowStart = timing.frameAt(ri, 4, 8);
+          const ry = interpolate(f, [rowStart, rowStart + 16], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
           const zebra = ri % 2 === 1;
           return (
             <div key={`r${ri}`} style={{ display: "flex", flexDirection: "row", alignItems: "stretch" }}>

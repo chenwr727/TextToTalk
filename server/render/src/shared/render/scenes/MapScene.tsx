@@ -4,6 +4,7 @@ import { evolvePath } from "@remotion/paths";
 import { C, FONT, springIn, accentOf } from "../theme";
 import { PageHeading } from "../PageHeading";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor, type SceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 import type { MapSpec, MapRoute, MapRegion } from "../props";
 
@@ -50,8 +51,8 @@ function computeFitTransform(spec: MapSpec, regionPolys: [number, number][][], s
   return { scale, tx, ty };
 }
 
-const RegionEl: React.FC<{ region: MapRegion; pts: [number, number][]; markers: NonNullable<MapSpec["markers"]>; frame: number; fps: number; motion: "spring" | "linear" | "float" }> = ({ region, pts, markers, frame, fps, motion }) => {
-  const o = springIn(frame, fps, 0, motion);
+const RegionEl: React.FC<{ region: MapRegion; pts: [number, number][]; markers: NonNullable<MapSpec["markers"]>; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ region, pts, markers, frame, fps, motion, timing }) => {
+  const o = springIn(frame, fps, resolveAnchor(timing, region.anchor, 0), motion);
   const fill = region.color ?? accentOf(0);
   if (!pts.length) return null;
   const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length;
@@ -78,24 +79,24 @@ function routeStyle(type: MapRoute["type"], dashed?: boolean): { width: number; 
   return { width: 4, dash: undefined };
 }
 
-const RouteEl: React.FC<{ route: MapRoute; markers: NonNullable<MapSpec["markers"]>; frame: number; fps: number; motion: "spring" | "linear" | "float" }> = ({ route, markers, frame, fps, motion }) => {
+const RouteEl: React.FC<{ route: MapRoute; markers: NonNullable<MapSpec["markers"]>; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ route, markers, frame, fps, motion, timing }) => {
   const a = markers[route.from];
   const b = markers[route.to];
   if (!a || !b) return null;
   const color = route.color ?? accentOf(0);
   const d = `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
   const animated = route.animated !== false;
-  const o = springIn(frame, fps, 0, motion);
+  const o = springIn(frame, fps, resolveAnchor(timing, route.anchor, 0), motion);
   const len = Math.max(Math.hypot(b.x - a.x, b.y - a.y), 1);
   const drawFrames = Math.max(20, Math.round(len / 100 * 8));
   const progress = animated
-    ? interpolate(frame, [0, drawFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    ? interpolate(frame, [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
     : 1;
   const { strokeDasharray, strokeDashoffset } = evolvePath(progress, d);
-  const drawOpacity = animated && frame < drawFrames ? 1 : o;
-  const flowX = interpolate(frame, [0, drawFrames], [a.x, b.x], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const flowY = interpolate(frame, [0, drawFrames], [a.y, b.y], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const flowOpacity = frame < drawFrames ? 1 : 0;
+  const drawOpacity = animated && frame < resolveAnchor(timing, route.anchor, 0) + drawFrames ? 1 : o;
+  const flowX = interpolate(frame, [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames], [a.x, b.x], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const flowY = interpolate(frame, [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames], [a.y, b.y], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const flowOpacity = frame < resolveAnchor(timing, route.anchor, 0) + drawFrames ? 1 : 0;
   const { width, dash } = routeStyle(route.type, route.dashed);
   const finalDash = dash ?? strokeDasharray;
 
@@ -113,8 +114,8 @@ const RouteEl: React.FC<{ route: MapRoute; markers: NonNullable<MapSpec["markers
   );
 };
 
-const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; index: number; frame: number; fps: number; motion: "spring" | "linear" | "float"; labelBelow: boolean }> = ({ marker, index, frame, fps, motion, labelBelow }) => {
-  const o = springIn(frame, fps, 10 + index * 12, motion);
+const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; index: number; frame: number; fps: number; motion: "spring" | "linear" | "float"; labelBelow: boolean; timing: SceneTiming }> = ({ marker, index, frame, fps, motion, labelBelow, timing }) => {
+  const o = springIn(frame, fps, resolveAnchor(timing, marker.anchor, 0) + 10 + index * 12, motion);
   const color = marker.color ?? accentOf(index);
   const r = marker.size ?? 10;
   const labelY = labelBelow ? marker.y + r + 20 : marker.y - r - 12;
@@ -132,8 +133,8 @@ const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; inde
   );
 };
 
-const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion: "spring" | "linear" | "float"; safe: { x: number; y: number; w: number; h: number } }> = ({ routes, frame, fps, motion, safe }) => {
-  const o = springIn(frame, fps, 40, motion);
+const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion: "spring" | "linear" | "float"; safe: { x: number; y: number; w: number; h: number }; timing: SceneTiming }> = ({ routes, frame, fps, motion, safe, timing }) => {
+  const o = springIn(frame, fps, resolveAnchor(timing, undefined, 0) + 40, motion);
   const types = Array.from(new Set(routes.map((r) => r.type ?? "rail")));
   const items = types.map((t) => ({
     t,
@@ -161,6 +162,7 @@ const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion:
 export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
   const f = useCurrentFrame();
   const { isPortrait, contentWidth, contentHeight } = useResponsive();
+  const timing = useSceneTiming();
   const spec = page.map;
   const markers = spec?.markers ?? [];
   const routes = spec?.routes ?? [];
@@ -191,19 +193,19 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
           <g mask="url(#map-safe-mask)">
             <g transform={`translate(${tx}, ${ty}) scale(${scale})`}>
               {regions.map((rg, i) => (
-                <RegionEl key={i} region={rg} pts={regionPolys[i] ?? []} markers={markers} frame={f} fps={fps} motion={motion} />
+                <RegionEl key={i} region={rg} pts={regionPolys[i] ?? []} markers={markers} frame={f} fps={fps} motion={motion} timing={timing} />
               ))}
               {routes.map((rt, i) => (
-                <RouteEl key={i} route={rt} markers={markers} frame={f} fps={fps} motion={motion} />
+                <RouteEl key={i} route={rt} markers={markers} frame={f} fps={fps} motion={motion} timing={timing} />
               ))}
               {markers.map((mk, i) => {
                 const fitY = mk.y * scale + ty;
                 const labelBelow = fitY < safe.y + 80;
-                return <MarkerEl key={i} marker={mk} index={i} frame={f} fps={fps} motion={motion} labelBelow={labelBelow} />;
+                return <MarkerEl key={i} marker={mk} index={i} frame={f} fps={fps} motion={motion} labelBelow={labelBelow} timing={timing} />;
               })}
             </g>
           </g>
-          <Legend routes={routes} frame={f} fps={fps} motion={motion} safe={safe} />
+          <Legend routes={routes} frame={f} fps={fps} motion={motion} safe={safe} timing={timing} />
         </svg>
       </div>
     </AbsoluteFill>

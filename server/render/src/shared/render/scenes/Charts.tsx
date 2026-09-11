@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, FONT, FS, accentOf, springIn } from "../theme";
 import { useResponsive } from "../responsive";
+import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 import type { ChartSpec } from "../props";
 
@@ -10,6 +11,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const max = Math.max(...values);
   const valueLabel = (v: number) => `${Math.round(v)}`;
   const n = values.length;
@@ -25,7 +27,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
       <div style={{ position: "relative", display: "flex", alignItems: "flex-end", gap: barGap, height: chartH, paddingBottom: 8 }}>
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 8, height: 4, borderRadius: 2, background: "linear-gradient(90deg, rgba(28,37,54,0.10), rgba(28,37,54,0.04))" }} />
         {values.map((v, i) => {
-          const g = springIn(f, fps, i * 18, "spring");
+          const g = springIn(f, fps, timing.frameAt(i, 0, 18), "spring");
           const h = (v / max) * barMaxH;
           const a = accentOf(i);
           return (
@@ -61,12 +63,13 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1180, H = isPortrait ? 700 : 470, PAD = isPortrait ? sp(110) : 110, BOTTOM = isPortrait ? sp(70) : 70;
   const max = Math.max(...values) * 1.18 || 1;
   const n = values.length;
   const xs = values.map((_, i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1));
   const ys = values.map((v) => (H - BOTTOM) - (v / max) * (H - PAD - BOTTOM));
-  const grow = springIn(f, fps, 0, "spring");
+  const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const last = Math.max(1, Math.round(grow * (n - 1)));
   const line = Array.from({ length: last + 1 }, (_, i) => `${xs[i]},${ys[i]}`).join(" ");
   return (
@@ -116,9 +119,10 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const pal = [C.accent, "#6d91ff", "#34c79f", "#f2b03f", "#e868a4", C.muted];
   const total = values.reduce((a, b) => a + b, 0) || 1;
-  const grow = springIn(f, fps, 0, "spring");
+  const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const cx = isPortrait ? contentWidth / 2 : 470, cy = isPortrait ? 360 : 300, r = isPortrait ? 260 : 200;
   const fitLabel = (s: string) => (Array.from(s).length > 5 ? Array.from(s).slice(0, 5).join("") + "…" : s);
   let cumulative = 0;
@@ -169,12 +173,13 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1180, H = isPortrait ? 700 : 470, PAD = isPortrait ? sp(110) : 110, BOTTOM = isPortrait ? sp(70) : 70;
   const max = Math.max(...values) * 1.18 || 1;
   const n = values.length;
   const xs = values.map((_, i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1));
   const ys = values.map((v) => (H - BOTTOM) - (v / max) * (H - PAD - BOTTOM));
-  const grow = springIn(f, fps, 0, "spring");
+  const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const last = Math.max(1, Math.round(grow * (n - 1)));
   const line = Array.from({ length: last + 1 }, (_, i) => `${xs[i]},${ys[i]}`).join(" ");
   return (
@@ -214,9 +219,10 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const pal = [C.accent, "#6d91ff", "#34c79f", "#f2b03f", "#e868a4", C.muted];
   const sum = values.reduce((a, b) => a + b, 0) || 1;
-  const grow = springIn(f, fps, 0, "spring");
+  const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const cx = isPortrait ? contentWidth / 2 : 470, cy = isPortrait ? 360 : 300, r = isPortrait ? 260 : 200, hole = 0.55;
   const fitLabel = (s: string) => (Array.from(s).length > 5 ? Array.from(s).slice(0, 5).join("") + "…" : s);
   let cumulative = 0;
@@ -267,6 +273,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const pal = [C.accent, "#6d91ff", "#34c79f", "#f2b03f"];
   const maxTotal = Math.max(...labels.map((_, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0))) || 1;
   const n = labels.length;
@@ -282,7 +289,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
       <div style={{ position: "relative", display: "flex", alignItems: "flex-end", gap: barGap, height: chartH, paddingBottom: 8 }}>
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 8, height: 4, borderRadius: 2, background: "linear-gradient(90deg, rgba(28,37,54,0.10), rgba(28,37,54,0.04))" }} />
         {labels.map((label, i) => {
-          const grow = springIn(f, fps, i * 18, "spring");
+          const grow = springIn(f, fps, timing.frameAt(i, 0, 18), "spring");
           const totalH = (series.reduce((a, s) => a + (s.values[i] || 0), 0) / maxTotal) * barMaxH;
           return (
             <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -317,6 +324,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1180, H = isPortrait ? 700 : 520, PAD = isPortrait ? sp(110) : 110, BOTTOM = isPortrait ? sp(70) : 70;
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -335,7 +343,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
         <line x1={PAD} y1={H - BOTTOM} x2={W - PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
         <line x1={PAD} y1={PAD} x2={PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
         {points.map((p, i) => {
-          const o = springIn(f, fps, 20 + i * 12, "spring");
+          const o = springIn(f, fps, timing.frameAt(i, 20, 12), "spring");
           return (
             <g key={i} opacity={o}>
               <circle cx={px(p.x)} cy={py(p.y)} r={isPortrait ? sp(16) : 16} fill={C.accent} fillOpacity={0.85} stroke="#fff" strokeWidth={isPortrait ? sp(4) : 4} />

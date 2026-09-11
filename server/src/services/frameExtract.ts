@@ -32,7 +32,7 @@ export function previewCaptureFrames(pages: FramePage[], fps: number): number[] 
   const offsets = pageStartFrames(pages, fps);
   return offsets.map((start, i) => {
     const dur = pageDuration(pages[i], fps);
-    const settle = Math.min(Math.max(24, Math.round(dur * 0.3)), Math.max(1, dur - TRANSITION_FRAMES - 2));
+    const settle = Math.min(Math.max(24, Math.round(dur * 0.75)), Math.max(1, dur - TRANSITION_FRAMES - 2));
     return start + Math.min(TRANSITION_FRAMES + settle, Math.max(1, dur - 1));
   });
 }

@@ -132,8 +132,13 @@ export function registerTaskRoutes(app: FastifyInstance) {
       if (!Array.isArray(body.points)) return reply.code(400).send({ error: "points 必须是数组" });
       next.points = body.points.map((p) => {
         if (typeof p === "string") return p;
-        if (p && typeof p === "object" && typeof (p as any).text === "string") return { text: (p as any).text, icon: (p as any).icon ?? null };
-        throw new Error("points 元素必须是字符串或 {text,icon} 对象");
+        if (p && typeof p === "object" && typeof (p as any).text === "string") {
+          const item: any = { text: (p as any).text, icon: (p as any).icon ?? null };
+          const a = Number((p as any).anchor);
+          if (Number.isInteger(a) && a >= 0) item.anchor = a;
+          return item;
+        }
+        throw new Error("points 元素必须是字符串或 {text,icon,anchor} 对象");
       });
     }
     if (body.durationSec !== undefined) {

@@ -30,6 +30,7 @@ export interface SvgElement {
   textAnchor?: "start" | "middle" | "end";
   delay?: number;
   draw?: boolean;
+  anchor?: number;
 }
 export type CustomSvgSpec = SvgElement[] | null;
 
@@ -39,6 +40,7 @@ export interface MapMarker {
   y: number;
   color?: string;
   size?: number;
+  anchor?: number;
 }
 export type MapRouteType = "rail" | "flight" | "road";
 export interface MapRoute {
@@ -49,12 +51,14 @@ export interface MapRoute {
   dashed?: boolean;
   animated?: boolean;
   flow?: boolean;
+  anchor?: number;
 }
 export interface MapRegion {
   name?: string;
   points: string;
   color?: string;
   label?: string;
+  anchor?: number;
 }
 export interface MapSpec {
   markers?: MapMarker[];
@@ -94,6 +98,7 @@ export interface StorySentence {
 export interface PointItem {
   text: string;
   icon?: IconId | null;
+  anchor?: number;
 }
 export type Point = string | PointItem;
 
@@ -135,11 +140,6 @@ export interface TtsSentence {
   audioUrl: string;
 }
 
-/**
- * 注意：此处必须使用 type 别名而非 interface。
- * Remotion 的 Composition 泛型约束为 `Props extends Record<string, unknown>`，
- * 而 TS 只会为对象类型别名生成隐式索引签名，interface 不会，改用 interface 会报 TS2344。
- */
 export type RenderProps = {
   projectTitle: string;
   pages: StoryPage[];

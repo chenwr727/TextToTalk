@@ -66,16 +66,16 @@ const CUSTOM_SVG_DESC = `customSvg：本页是否用「自定义图形」来可�
 - path：{"type":"path","d":"M 200 400 C 400 200 600 600 800 400","stroke":"#3B6FF5","strokeWidth":4,"fill":"none","draw":true}（draw:true 表示描边动画"画"出来）
 - polygon：{"type":"polygon","points":"960,200 1100,500 820,500","fill":"#3B6FF5"}
 - text：{"type":"text","x":960,"y":400,"text":"输入层","fontSize":28,"fontWeight":700,"fill":"#1F2937","textAnchor":"middle"}
-通用样式：fill（填充色）、stroke（描边色）、strokeWidth（描边宽）、opacity（透明度 0~1）；动画：delay（入场延迟帧，默认 0）、draw（仅 path 用，描边动画）。
+通用样式：fill（填充色）、stroke（描边色）、strokeWidth（描边宽）、opacity（透明度 0~1）；动画：delay（入场延迟帧，默认 0）、draw（仅 path 用，描边动画）、anchor（可选，该元素应在第几句字幕出现时入场，从 0 开始；缺省时用 delay 作为相对延迟）。
 **示例：神经网络**（输入3→隐藏4→输出2，节点+连线）：
 {"customSvg":[{"type":"line","x1":700,"y1":300,"x2":960,"y2":300,"stroke":"rgba(59,111,245,0.3)","strokeWidth":2},{"type":"line","x1":700,"y1":500,"x2":960,"y2":500,"stroke":"rgba(59,111,245,0.3)","strokeWidth":2},{"type":"circle","cx":700,"cy":300,"r":40,"fill":"#3B6FF5"},{"type":"circle","cx":700,"cy":500,"r":40,"fill":"#3B6FF5"},{"type":"circle","cx":960,"cy":300,"r":40,"fill":"#7C3AED"},{"type":"circle","cx":960,"cy":500,"r":40,"fill":"#7C3AED"},{"type":"text","x":700,"y":620,"text":"输入层","fontSize":26,"fontWeight":700,"fill":"#1F2937","textAnchor":"middle"},{"type":"text","x":960,"y":620,"text":"输出层","fontSize":26,"fontWeight":700,"fill":"#1F2937","textAnchor":"middle"}]}
 **要点**：元素数量 2~40 个；先画连线/底层再画节点/文字（后画的盖在上面）；文字要清晰可读（fontSize≥20）；用 2~4 种主题色（蓝 #3B6FF5、紫 #7C3AED、青 #06B6D4、橙 #F59E0B、绿 #10B981、红 #EF4444）区分不同部分；图形会被渲染端自动缩放到安全区域（避开顶部标题和底部字幕），但**请主动把主要内容放在画面中间（y:260~700，x:200~1720），不要把节点/文字放在 y<220 的顶部或 y>780 的底部，避免与标题、字幕、要点条重叠**；**若图形元素较多（如 4 层的漏斗），请纵向压缩排列，保证最底部的元素 y ≤ 760、文字 y ≤ 780，严禁任何元素 y > 780 溢出到字幕区**；若本页不适合画示意图则 "customSvg":null。customSvg 与 art/chart/table 通常互斥：用了 customSvg 就不再给 art/chart/table。**customSvg 与 layout 版式也互斥（硬性）**：一旦本页给了 customSvg，layout 就只能是 "points"（或封面 "title"、结尾 "end"），**严禁再给 steps/three_card/two_column/stats/comparison/map/qa/section 等版式**——渲染端 customSvg 优先，这些版式会被忽略、纯属冗余。判断标准：本页要么用 layout 版式（steps/three_card 等），要么用 customSvg 画图，二选一，绝不叠加。**封面 "title" 与结尾 "end" 页也不要给 customSvg**——渲染端封面/收尾场景优先级最高，这两类页上的 customSvg 不会被画（实测封面整张结构图被静默丢弃），总结图请放到内容页。`;
 
 const MAP_DESC = `map：本页是否用「地图」来可视化（可选，默认 null）。仅当本页内容适合用"地理/空间关系"表达时用，例如：城市/国家分布、路线/航线、区域划分、地理位置对比。**map 是结构化地图数据，渲染端用纯 SVG 离线绘制，不依赖任何在线地图服务**。坐标基于 1920×1080 画布（x 0~1920，y 0~1080），颜色用 CSS 色值（如 "#3B6FF5"）。结构：
 {"markers":[{"name":"城市名","x":960,"y":400,"color":"#3B6FF5","size":10}],"routes":[{"from":0,"to":1,"color":"#3B6FF5","dashed":false,"animated":true}],"regions":[{"name":"区域名","points":"0,0 100,0 50,100","color":"#3B6FF5"}]}
-- markers：城市/地点标记点，name 是地点名（渲染在点旁），x/y 是画布坐标，color 可选（默认主题色），size 可选（点半径，默认 10）。至少 2 个。
-- routes：路线，from/to 是 markers 的下标（连接两个城市），color 可选，type 可选（"rail"高铁/铁路实线、"flight"航线虚线、"road"公路细实线，默认 rail），dashed 可选（true 表示虚线，如航线/示意），animated 可选（默认 true 描边动画"画"出来），flow 可选（默认 true 沿路线流动的小圆点，false 则关闭）。
-- regions：区域多边形，points 是顶点字符串（如 "0,0 100,0 50,100"），name 可选（显示在区域中心），color 可选（半透明填充）。
+- markers：城市/地点标记点，name 是地点名（渲染在点旁），x/y 是画布坐标，color 可选（默认主题色），size 可选（点半径，默认 10），anchor 可选（该标记应在第几句字幕出现时入场，从 0 开始）。至少 2 个。
+- routes：路线，from/to 是 markers 的下标（连接两个城市），color 可选，type 可选（"rail"高铁/铁路实线、"flight"航线虚线、"road"公路细实线，默认 rail），dashed 可选（true 表示虚线，如航线/示意），animated 可选（默认 true 描边动画"画"出来），flow 可选（默认 true 沿路线流动的小圆点，false 则关闭），anchor 可选（该路线应在第几句字幕出现时入场，从 0 开始）。
+- regions：区域多边形，points 是顶点字符串（如 "0,0 100,0 50,100"），name 可选（显示在区域中心），color 可选（半透明填充），anchor 可选（该区域应在第几句字幕出现时入场，从 0 开始）。
 **示例：三条航线连接三个城市**：
 {"map":{"markers":[{"name":"北京","x":500,"y":300},{"name":"上海","x":900,"y":500},{"name":"广州","x":700,"y":800}],"routes":[{"from":0,"to":1},{"from":1,"to":2},{"from":0,"to":2,"dashed":true}]}}
 **要点**：markers 2~8 个、routes 0~8 条、regions 0~4 个；城市/地点名要短（≤6 字）；坐标要分散开（不要都挤在一起），让地图有空间感；用 2~4 种主题色（蓝 #3B6FF5、紫 #7C3AED、青 #06B6D4、橙 #F59E0B、绿 #10B981、红 #EF4444）区分不同路线/区域；地图会被渲染端自动缩放到安全区域（避开顶部标题和底部字幕），但**请主动把主要内容放在画面中间（y:260~700，x:200~1720），不要把城市点放在 y<220 的顶部或 y>780 的底部，避免与标题、字幕、要点条重叠**；若本页不适合画地图则 "map":null。map 与 art/chart/table/customSvg 通常互斥：用了 map 就不再给这些。`;
@@ -210,7 +210,7 @@ function pageOutputTemplate(block: PlanBlock | undefined): string {
   const layout = block?.layout ?? "points";
   return `{
   "title":"页标题(<=20字)",
-  "points":[{"text":"要点1","icon":"trend"},{"text":"要点2","icon":"chart"}],
+  "points":[{"text":"要点1","icon":"trend","anchor":0},{"text":"要点2","icon":"chart","anchor":1}],
   "captions":["字幕句1","字幕句2"],
   "chart":${layout === "chart" ? `{"type":"bar","labels":["A","B"],"values":[100,50],"title":"对比标题"}` : "null"},
   "art":${block?.art ? `"${block.art}"` : "null"},
@@ -249,6 +249,7 @@ function pageRules(block: PlanBlock | undefined, params: VideoParams, retryHint?
 - captions：画面底部配音语音句，每条语义完整（主谓宾完整、以逗号/句号断），2~4 条；严禁把词/短语硬切两半。每条 8~15 字为宜、最长不超过 20 字。captions 连起来就是本页完整口语解说，配音与字幕都以此为准。
 - 【字幕与画面适配（硬性）】captions 必须覆盖本页 points 的关键信息（关键数字、结论、要点），画面讲什么字幕就讲什么；画面里出现的每个关键数字/结论（如"0.1 元/公里""省 1 万"）字幕里都要讲到。字幕条数与画面要点数量大致匹配（要点 3~4 条则字幕 3~4 条）。**严禁"画面有数字、字幕没讲"或"画面 4 条要点、字幕只讲 2 条"的图音脱节**。
 - 语气铁律（像"对一个人讲"，不是"念文字"）：(1) 面向观众说话，多用"你 / 我们"，避免全片单向第三人称；(2) 反问/设问/口语惊叹：科普、观点、说服类内容至少一处；但步骤/流程/教程类内容不要硬塞反问，用自然陈述与"你/我们"引导即可；(3) 第 1 页/开场页前一两句字幕必须是"让人停下来看"的钩子（悬念/后果/戳痛点），严禁平铺模板开场（"在当今/如今…"）；(4) 结尾页（end/action）字幕末尾要落一句"能被记住/能立刻行动"的话。检查：若字幕全是陈述句、没有任何"你/我们"或（适合时）反问，就改写成更有"人味"的写法。
+- 【动画锚点 anchor（可选）】每个要点可加 "anchor":N（N 从 0 开始），表示该要点应在第 N 句字幕出现时入场，让画面与解说同步。要点顺序通常与字幕顺序一致，此时可省略 anchor；仅当某要点要提前/延后到特定字幕句出现时才显式指定。示例：{"text":"要点1","icon":"trend","anchor":0}。
 - points 2~4 个要点，每个是对象 {"text":"要点内容","icon":"图标枚举"}。icon 必须且只能从下面枚举选一个最能代表该要点语义的（严禁造枚举之外的值，如 flame/warning/moon 都不在枚举中）：${ICON_ENUM}。要点之间 icon 尽量不重复。要点要"具体而有记忆点"，不要泛泛的功能句（"会发热""带来流量"）；尽量带具体数字/参照物/可感知的对比，或观众能代入的痛点/共感。【句式多样化（硬性）】相邻两条要点严禁同构：不得连续两条都是"名词：解释"式，不得连续两条以同一个词开头；在「短语：解释」「完整因果句」「数字/对比句」「场景/动作句」之间切换着写（如"读懂意图：AI 先看邮件"后面接"你只需点头确认，就能发送"，而不是再来一条"自动草拟：按语气生成"）。
 - 【跨页去重 + 数字唯一性（硬性）】本页只讲 idea 独有的信息，有且仅有一个"独家信息点"，把它讲透。不得重复上一页已讲内容、不得提前讲后续页内容、不得与上一页 captions 雷同。每个关键数字/结论整片只能在一页作为"核心信息点"出现：若上一页已讲"150°C 触发热失控"，本页就讲"能量量级"或"连锁反应各环节"，不要再写一遍"150°C"；本页引入的新数字/结论也要避免与后续页重复。相邻页应构成"递进"，而非"同一件事换个说法重讲"。自查：若本页任何 captions/要点与上一页在主题/数字/结论上有重叠，就换新角度（案例/数据/对比/后果切入）或删掉。
 - 节奏：${rhythmHint}

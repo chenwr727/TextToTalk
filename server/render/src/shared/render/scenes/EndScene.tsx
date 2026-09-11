@@ -2,6 +2,7 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import { C, FONT, FS, RADIUS, CARD_SHADOW, DOT_SHADOW, TEXT_SHADOW, springIn } from "../theme";
 import { pointText } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const EndScene: React.FC<SceneProps> = ({ page }) => {
@@ -10,8 +11,10 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const o = springIn(f, fps, 8, page.motion);
-  const check = springIn(f, fps, 0, page.motion);
+  const timing = useSceneTiming();
+  const t0 = timing.frameAt(0);
+  const o = springIn(f, fps, t0 + 8, page.motion);
+  const check = springIn(f, fps, t0, page.motion);
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <div style={{ marginBottom: sp(34), width: sp(90), height: sp(90), borderRadius: "50%", background: C.accent, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: CARD_SHADOW, transform: `scale(${interpolate(check, [0, 1], [0.4, 1], { output: "perceptual-scale" })})`, opacity: check }}>

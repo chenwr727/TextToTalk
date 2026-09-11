@@ -3,9 +3,10 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { evolvePath, getBoundingBox } from "@remotion/paths";
 import { C, FONT, FS, RADIUS, CARD_SHADOW, springIn, accentOf, BORDER, measureTextWidth } from "../theme";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { Icon } from "../Icon";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor, type SceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 import type { SvgElement } from "../props";
 
@@ -15,12 +16,13 @@ const SAFE = { x: 24, y: 240, w: 1760, h: 540 };
 const BottomPoints: React.FC<{ page: SceneProps["page"]; fps: number }> = ({ page, fps }) => {
   const f = useCurrentFrame();
   const { isPortrait, sp } = useResponsive();
+  const timing = useSceneTiming();
   const items = page.points ?? [];
   if (!items.length) return null;
   return (
     <div style={{ position: "absolute", bottom: isPortrait ? sp(180) : 180, left: 0, right: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: isPortrait ? sp(16) : 16, rowGap: isPortrait ? sp(12) : 12, padding: isPortrait ? `0 ${sp(120)}px` : "0 120px" }}>
       {items.map((it, i) => {
-        const o = springIn(f, fps, 30 + i * 20, page.motion);
+        const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i, 30, 20), page.motion);
         return (
           <div key={i} style={{
             opacity: o, transform: `translateY(${interpolate(o, [0, 1], [40, 0])}px)`,
@@ -106,8 +108,8 @@ function computeFitTransform(els: SvgElement[], safe: { x: number; y: number; w:
   return { scale, tx, ty };
 }
 
-const SvgEl: React.FC<{ el: SvgElement; frame: number; fps: number; motion: "spring" | "linear" | "float" }> = ({ el, frame, fps, motion }) => {
-  const delay = el.delay ?? 0;
+const SvgEl: React.FC<{ el: SvgElement; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ el, frame, fps, motion, timing }) => {
+  const delay = resolveAnchor(timing, el.anchor, 0) + (el.delay ?? 0);
   const o = springIn(frame, fps, delay, motion);
   const common = {
     opacity: o * (el.opacity ?? 1),
@@ -161,6 +163,7 @@ const SvgEl: React.FC<{ el: SvgElement; frame: number; fps: number; motion: "spr
 export const CustomSvgScene: React.FC<SceneProps> = ({ page, fps }) => {
   const f = useCurrentFrame();
   const { isPortrait, contentWidth, contentHeight } = useResponsive();
+  const timing = useSceneTiming();
   const spec = page.customSvg;
   if (!spec || !spec.length) return null;
   const motion = page.motion ?? "spring";
@@ -182,7 +185,7 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, fps }) => {
           <g mask="url(#safe-mask)">
             <g transform={`translate(${tx}, ${ty}) scale(${scale})`}>
               {spec.map((el, i) => (
-                <SvgEl key={i} el={el} frame={f} fps={fps} motion={motion} />
+                <SvgEl key={i} el={el} frame={f} fps={fps} motion={motion} timing={timing} />
               ))}
             </g>
           </g>

@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, RADIUS, HEADER_OFFSET, ANIM, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import { C, FONT, FS, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const StepsScene: React.FC<SceneProps> = ({ page }) => {
@@ -12,6 +13,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const n = points.length;
   const perRow = isPortrait ? 1 : Math.min(4, n);
 
@@ -20,7 +22,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page }) => {
       <PageHeading text={title} />
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`, columnGap: isPortrait ? sp(60) : 60, rowGap: isPortrait ? sp(20) : 20, marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET, width: isPortrait ? contentWidth : 1560 }}>
         {points.map((p, i) => {
-          const t = springIn(f, fps, i * ANIM.stagger, page.motion);
+          const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
           const a = accentOf(i);
           const isLast = i === n - 1;
           const isRowEnd = (i + 1) % perRow === 0;

@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, HEADER_OFFSET, ANIM, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import { C, FONT, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const TwoColumnScene: React.FC<SceneProps> = ({ page }) => {
@@ -12,10 +13,11 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const a = accentOf(0);
 
-  const leftO = springIn(f, fps, 0, page.motion);
-  const rightO = springIn(f, fps, ANIM.stagger, page.motion);
+  const leftO = springIn(f, fps, resolveAnchor(timing, points[0] ? pointAnchor(points[0]) : undefined, 0), page.motion);
+  const rightO = springIn(f, fps, resolveAnchor(timing, points[1] ? pointAnchor(points[1]) : undefined, 1), page.motion);
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
@@ -23,7 +25,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page }) => {
       <div style={{ display: "flex", flexDirection: isPortrait ? "column" : "row", gap: isPortrait ? sp(64) : 64, marginTop: isPortrait ? 0 : HEADER_OFFSET, width: isPortrait ? contentWidth : 1560, alignItems: "stretch" }}>
         <div style={{ flex: 1.2, display: "flex", flexDirection: "column", gap: isPortrait ? sp(24) : 24, height: isPortrait ? sp(900) : 640, justifyContent: "center", overflow: "hidden", opacity: leftO, transform: `translateX(${interpolate(leftO, [0, 1], [-40, 0])}px)` }}>
           {points.map((p, i) => {
-            const t = springIn(f, fps, i * ANIM.stagger, page.motion);
+            const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
             const ac = accentOf(i);
             return (
               <div key={i} style={{

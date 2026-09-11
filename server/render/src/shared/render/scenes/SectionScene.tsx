@@ -3,6 +3,7 @@ import { evolvePath } from "@remotion/paths";
 import { C, FONT, FS, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const SectionScene: React.FC<SceneProps> = ({ page }) => {
@@ -11,8 +12,10 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const o = springIn(f, fps, 5, page.motion);
-  const g = interpolate(f, [0, 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const timing = useSceneTiming();
+  const t0 = timing.frameAt(0, 5);
+  const o = springIn(f, fps, t0, page.motion);
+  const g = interpolate(f, [t0, t0 + 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <svg width="100%" height="100%" viewBox="0 0 1920 1080" preserveAspectRatio={isPortrait ? "xMidYMid slice" : "xMidYMid meet"} style={{ position: "absolute", inset: 0, opacity: 0.5 * g }}>
@@ -20,7 +23,7 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
         <circle cx={960} cy={540} r={420} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.3} />
         <circle cx={960} cy={540} r={540} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.18} />
         {page.effects?.pathDraw ? (
-          <CirclePath progress={springIn(f, fps, 8, page.motion)} color={C.accent} />
+          <CirclePath progress={springIn(f, fps, t0 + 8, page.motion)} color={C.accent} />
         ) : (
           <circle cx={960} cy={540} r={150} fill={`${C.accent}0d`} stroke={C.accent} strokeWidth={2} opacity={0.4} />
         )}

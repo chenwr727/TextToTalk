@@ -67,7 +67,7 @@ TextToTalk 把中间三步压缩成一次回车：
 |---|---|
 | 手写脚本、手动分页 | LLM 按「叙事弧线」自动切 2~10 页，每页带角色定位 |
 | 找图、画图表、调版式 | 26 条场景规则自动分发版式，图表 / 地图 / SmartArt 直接生成 |
-| 自己录音或买配音 | 多引擎 TTS 逐句合成（Edge / CosyVoice / Qwen-Audio / Seed-TTS），字幕随语音节奏出现 |
+| 自己录音或买配音 | 多引擎 TTS 逐句合成（Edge / CosyVoice / Qwen-Audio / Seed-TTS），字幕与画面动画随语音节奏出现 |
 | 剪辑软件拼轨道 | Remotion 无头渲染，一次出带声 MP4 |
 
 **你只需要保留两件事的判断权：大纲对不对、这一页要不要重做。**
@@ -123,8 +123,8 @@ TextToTalk 把中间三步压缩成一次回车：
 | **layout** 版式（13） | `title` 封面 · `section` 章节 · `points` 要点 · `three_card` 三卡片 · `comparison` 对比 · `chart` 图表 · `table` 表格 · `two_column` 左右图文 · `steps` 步骤流程 · `stats` 数据大屏 · `qa` 问答 · `map` 地图 · `end` 总结 |
 | **chart** 图表（8） | `bar` 柱状 · `line` 折线 · `pie` 饼图 · `donut` 环形 · `area` 面积 · `stacked-bar` 堆叠 · `scatter` 散点 · `pyramid` 金字塔 |
 | **art** SmartArt（5） | `flow` 流程 · `loop` 循环 · `timeline` 时间线 · `quadrant` 象限 · `quote` 金句 |
-| **customSvg** 自由图示 | LLM 直接输出 SVG 元素数组（`circle/rect/path/polygon/text...`，2~40 个，支持逐元素 `delay` 与 `draw` 描边动画），可画神经网络、分层架构、决策树等任意示意图；**优先级高于所有 layout** |
-| **map** 离线圈地图 | `markers` 标记点（2~8）· `routes` 路线（`rail/flight/road`，可虚线 / 动画 / 流光）· `regions` 区域多边形；纯 SVG，不依赖在线地图服务 |
+| **customSvg** 自由图示 | LLM 直接输出 SVG 元素数组（`circle/rect/path/polygon/text...`，2~40 个，支持逐元素 `delay` / `draw` 描边动画 / `anchor` 字幕对齐），可画神经网络、分层架构、决策树等任意示意图；**优先级高于所有 layout** |
+| **map** 离线圈地图 | `markers` 标记点（2~8）· `routes` 路线（`rail/flight/road`，可虚线 / 动画 / 流光）· `regions` 区域多边形；元素均支持 `anchor` 字幕对齐；纯 SVG，不依赖在线地图服务 |
 | **transition** 转场（5） | `fade` · `slide-left` · `slide-right` · `zoom` · `none` |
 | **motion** 动画（3） | `spring` 弹簧 · `linear` 线性 · `float` 浮动 |
 | **effects** 特效（3） | `annotation` 手绘标注（高亮 / 下划线 / 圆圈）· `pathDraw` 路径描边 · `threeD` 3D 翻转入场 |

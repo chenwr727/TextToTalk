@@ -1,11 +1,12 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { makeSpark } from "@remotion/shapes";
-import { C, FONT, RADIUS, HEADER_OFFSET, ANIM, CARD_SHADOW, GLASS, BORDER, accentOf, springIn } from "../theme";
+import { C, FONT, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandUnderline } from "../rough";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const StatsScene: React.FC<SceneProps> = ({ page }) => {
@@ -14,6 +15,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
 
   const extractNum = (s: string): { num: string; rest: string } => {
     const m = s.match(/[-+]?\d+(?:\.\d+)?\s*[%％倍xX]?/);
@@ -30,7 +32,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
       <PageHeading text={title} />
       <div style={{ display: "flex", flexWrap: isPortrait ? "wrap" : "nowrap", gap: isPortrait ? sp(24) : 24, marginTop: isPortrait ? 0 : HEADER_OFFSET, width: isPortrait ? contentWidth : 1560, justifyContent: "center", alignItems: "stretch" }}>
         {points.map((p, i) => {
-          const t = springIn(f, fps, i * ANIM.stagger, page.motion);
+          const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
           const a = accentOf(i);
           const { num, rest } = extractNum(pointText(p, i));
           return (
@@ -46,13 +48,13 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
               <div style={{ position: "relative", fontSize: isPortrait ? fs(88) : 88, fontWeight: 800, color: a, lineHeight: 1.1, fontFamily: FONT, marginBottom: isPortrait ? sp(12) : 12, minHeight: isPortrait ? sp(96) : 96, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {num ? (
                   page.effects?.annotation === "underline" ? (
-                    <HandUnderline color={a} progress={springIn(f, fps, i * ANIM.stagger + 6, page.motion)} strokeWidth={10} iterations={2}>
+                    <HandUnderline color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 6, page.motion)} strokeWidth={10} iterations={2}>
                       {num}
                     </HandUnderline>
                   ) : num
                 ) : "—"}
                 {num && (
-                  <SparkBadge color={a} progress={springIn(f, fps, i * ANIM.stagger + 10, page.motion)} />
+                  <SparkBadge color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 10, page.motion)} />
                 )}
               </div>
               <div style={{ fontSize: isPortrait ? fs(30) : 30, fontWeight: 600, color: C.ink, lineHeight: 1.4, fontFamily: FONT, width: "100%" }}>{rest}</div>

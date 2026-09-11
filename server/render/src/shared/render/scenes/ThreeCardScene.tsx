@@ -1,10 +1,11 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, RADIUS, ANIM, accentOf, springIn, fitFontSizeBox } from "../theme";
+import { C, FONT, FS, RADIUS, accentOf, springIn, fitFontSizeBox } from "../theme";
 import { Card } from "../Card";
 import { ICON_KEYS } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 const CARD_W = 420;
@@ -17,7 +18,8 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const base = springIn(f, fps, 4, page.motion);
+  const timing = useSceneTiming();
+  const base = springIn(f, fps, timing.frameAt(0, 4), page.motion);
 
   const pickFs = (s: string) => {
     const fsz = fitFontSizeBox(s, isPortrait ? contentWidth - 80 : 338, isPortrait ? sp(198) : 198, 28, 56, 700, 1.55);
@@ -37,7 +39,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
           opacity: base, pointerEvents: "none",
         }} />
         {[0, 1, 2].map((i) => {
-          const o = springIn(f, fps, i * ANIM.stagger, page.motion);
+          const o = springIn(f, fps, resolveAnchor(timing, items[i] ? pointAnchor(items[i]) : undefined, i), page.motion);
           const t = items[i] ? pointText(items[i], i) : "…";
           const a = accentOf(i);
           return (
@@ -59,7 +61,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
                 <div style={{ position: "absolute", left: 32, right: 32, bottom: 0, height: 5, borderRadius: "0 0 8px 8px", background: `linear-gradient(90deg, transparent 4%, ${a}99 50%, transparent 96%)`, opacity: 0.8 }} />
               </Card>
               {i < 2 && (
-                <div style={{ position: "absolute", top: isPortrait ? "100%" : "50%", right: isPortrait ? "50%" : -40, width: 28, height: 28, transform: isPortrait ? "translate(50%, -50%)" : "translateY(-50%)", display: "flex", alignItems: "center", justifyContent: "center", opacity: springIn(f, fps, i * ANIM.stagger + 6, page.motion) }}>
+                <div style={{ position: "absolute", top: isPortrait ? "100%" : "50%", right: isPortrait ? "50%" : -40, width: 28, height: 28, transform: isPortrait ? "translate(50%, -50%)" : "translateY(-50%)", display: "flex", alignItems: "center", justifyContent: "center", opacity: springIn(f, fps, resolveAnchor(timing, items[i] ? pointAnchor(items[i]) : undefined, i) + 6, page.motion) }}>
                   <div style={{ width: 11, height: 11, borderTop: `3px solid ${a}aa`, borderRight: `3px solid ${a}aa`, transform: isPortrait ? "rotate(135deg)" : "rotate(45deg)", borderRadius: 2 }} />
                 </div>
               )}

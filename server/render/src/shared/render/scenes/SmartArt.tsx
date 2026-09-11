@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, RADIUS, BORDER, CARD_SHADOW, SOLID_SHADOW, SPACE, ANIM, GLASS, accentOf, springIn } from "../theme";
+import { C, FONT, FS, RADIUS, BORDER, CARD_SHADOW, SOLID_SHADOW, SPACE, GLASS, accentOf, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const FlowScene: React.FC<SceneProps> = ({ page }) => {
@@ -12,6 +13,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const list = items;
 
   const n = Math.max(1, list.length);
@@ -61,7 +63,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page }) => {
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: `0 ${SIDE_PAD}px` }}>
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${perRow}, ${nodeW}px)`, columnGap: ARROW_W, rowGap: ROW_GAP, justifyContent: "center" }}>
           {list.map((it, i) => {
-            const o = springIn(f, fps, i * ANIM.stagger, page.motion);
+            const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
             const a = accentOf(i);
             const showArrow = i < n - 1 && (i + 1) % perRow !== 0;
             return (
@@ -96,6 +98,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const timing = useSceneTiming();
   const list = items;
 
   const titleChars = Array.from(title).length;
@@ -152,7 +155,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
         const a = (i / Math.max(1, list.length)) * Math.PI * 2 - Math.PI / 2;
         const x = CX + Math.cos(a) * RX;
         const y = CY + Math.sin(a) * RY;
-        const o = springIn(f, fps, i * ANIM.stagger, page.motion);
+        const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
         const ac = accentOf(i);
         return (
           <div key={i} style={{ position: "absolute", left: x - nodeW / 2, top: y, width: nodeW, height: nodeH, transform: "translateY(-50%)", opacity: o }}>
@@ -172,6 +175,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const timing = useSceneTiming();
   const chart = page.chart;
   const labels = chart?.type === "pyramid" ? chart.labels : [];
   const chartVals = chart?.type === "pyramid" ? chart.values : [];
@@ -223,7 +227,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
       <PageHeading text={title} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: `${isPortrait ? sp(30) : 30}px 0` }}>
         {tiers.map((t, i) => {
-          const o = springIn(f, fps, 30 + i * ANIM.stagger, page.motion);
+          const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(t), i, 30), page.motion);
           const isTop = i === 0;
           const label = typeof t === "string" ? t : pointText(t, i);
           const icon = typeof t === "string" ? "layers" : pointIcon(t, i);
@@ -245,6 +249,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const timing = useSceneTiming();
   const list = items;
 
   const NODE_W = isPortrait ? contentWidth : 300;
@@ -271,7 +276,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
         {isPortrait ? (
           <div style={{ position: "absolute", top: PORTRAIT_TOP, bottom: PORTRAIT_BOTTOM, left: 0, right: 0 }}>
             {list.map((it, i) => {
-              const o = springIn(f, fps, i * ANIM.stagger, page.motion);
+              const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
               const a = accentOf(i);
               const left = i % 2 === 0;
               const y = PORTRAIT_TOP + i * PORTRAIT_ROW_H + PORTRAIT_ROW_H / 2;
@@ -288,7 +293,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
         ) : (
           <div style={{ position: "absolute", top: "50%", left: 0, right: 0, transform: "translateY(-50%)", display: "flex", flexWrap: "wrap", justifyContent: "space-between", padding: "0 340px", rowGap: 20 }}>
             {list.map((it, i) => {
-              const o = springIn(f, fps, i * ANIM.stagger, page.motion);
+              const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
               const a = accentOf(i);
               const below = i % 2 === 1;
               return (
@@ -318,6 +323,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const list = items.slice(0, 4);
   const cells = [
     { r: "flex-start", c: "flex-start", a: C.accent },
@@ -341,7 +347,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
         <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 4, background: `${C.accent}66`, borderRadius: 2, transform: "translateX(-50%)" }} />
         <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: isPortrait ? sp(SPACE.md) : SPACE.md, border: `${BORDER.accent}px solid ${C.accent}`, borderRadius: RADIUS.card, padding: isPortrait ? sp(SPACE.md) : SPACE.md }}>
           {list.map((it, i) => {
-            const o = springIn(f, fps, i * ANIM.stagger, page.motion);
+            const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
             return (
               <div key={i} style={{ opacity: o, height: "100%", background: GLASS.card, borderRadius: RADIUS.box, border: `${BORDER.card}px solid ${cells[i].a}`, display: "flex", alignItems: cells[i].r, justifyContent: cells[i].c, padding: isPortrait ? sp(24) : 24, boxShadow: CARD_SHADOW }}>
                 <div style={{ display: "flex", alignItems: "center", gap: isPortrait ? sp(14) : 14, background: cells[i].a, color: "#fff", borderRadius: RADIUS.chip, padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(22) : 22}px`, fontSize: nodeFs, fontWeight: 700, fontFamily: FONT, textAlign: "center", lineHeight: 1.4, boxShadow: SOLID_SHADOW, width: TEXT_W, whiteSpace: "normal", overflow: "hidden", boxSizing: "border-box" }}>

@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, RADIUS, HEADER_OFFSET, ANIM, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import { C, FONT, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
-import { pointText, pointIcon } from "../point";
+import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
+import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 export const QaScene: React.FC<SceneProps> = ({ page }) => {
@@ -12,10 +13,11 @@ export const QaScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const timing = useSceneTiming();
   const question = points[0] ? pointText(points[0], 0) : "";
   const answers = points.slice(1);
 
-  const qO = springIn(f, fps, 0, page.motion);
+  const qO = springIn(f, fps, resolveAnchor(timing, points[0] ? pointAnchor(points[0]) : undefined, 0), page.motion);
   const a = accentOf(0);
 
   return (
@@ -32,7 +34,7 @@ export const QaScene: React.FC<SceneProps> = ({ page }) => {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: isPortrait ? sp(20) : 20, marginTop: isPortrait ? sp(28) : 28 }}>
           {answers.map((p, i) => {
-            const t = springIn(f, fps, (i + 1) * ANIM.stagger, page.motion);
+            const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i + 1), page.motion);
             const ac = accentOf(i + 1);
             return (
               <div key={i} style={{
