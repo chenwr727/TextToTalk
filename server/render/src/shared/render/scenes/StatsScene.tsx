@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { makeSpark } from "@remotion/shapes";
-import { C, FONT, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, springIn } from "../theme";
+import { C, FONT, FS, LH, FW, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -45,7 +45,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
               <div style={{ width: isPortrait ? sp(64) : 64, height: isPortrait ? sp(64) : 64, borderRadius: 16, background: `${a}1a`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", flexShrink: 0 }}>
                 <Icon name={pointIcon(p, i)} size={isPortrait ? sp(34) : 34} color={a} />
               </div>
-              <div style={{ position: "relative", fontSize: isPortrait ? fs(88) : 88, fontWeight: 800, color: a, lineHeight: 1.1, fontFamily: FONT, marginBottom: isPortrait ? sp(12) : 12, minHeight: isPortrait ? sp(96) : 96, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div style={{ position: "relative", fontSize: isPortrait ? fs(FS.hero) : FS.hero, fontWeight: FW.heavy, color: a, lineHeight: LH.tight, fontFamily: FONT, marginBottom: isPortrait ? sp(12) : 12, minHeight: isPortrait ? sp(96) : 96, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 {num ? (
                   page.effects?.annotation === "underline" ? (
                     <HandUnderline color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 6, page.motion)} strokeWidth={10} iterations={2}>
@@ -57,7 +57,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
                   <SparkBadge color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 10, page.motion)} />
                 )}
               </div>
-              <div style={{ fontSize: isPortrait ? fs(30) : 30, fontWeight: 600, color: C.ink, lineHeight: 1.4, fontFamily: FONT, width: "100%" }}>{rest}</div>
+              <div style={{ fontSize: isPortrait ? fs(FS.caption) : FS.caption, fontWeight: FW.regular, color: C.ink, lineHeight: LH.body, fontFamily: FONT, width: "100%" }}>{rest}</div>
             </div>
           );
         })}

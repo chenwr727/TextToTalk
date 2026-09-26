@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, RADIUS, CARD_SHADOW, ACCENT_GRAD, springIn } from "../theme";
+import { C, FONT, FS, FW, LH, RADIUS, CARD_SHADOW, ACCENT_GRAD, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
@@ -52,7 +52,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     background: i === 0 ? "rgba(255,255,255,0.18)" : "transparent",
     color: "#fff",
     fontSize: isPortrait ? fs(i === 0 ? FS.caption : FS.body) : (i === 0 ? FS.caption : FS.body),
-    fontWeight: 800,
+    fontWeight: FW.heavy,
     fontFamily: FONT,
     display: "flex",
     alignItems: "center",
@@ -61,7 +61,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     boxSizing: "border-box",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
-    lineHeight: 1.3,
+    lineHeight: LH.tight,
     opacity: o,
   });
   const dataCellStyle = (ci: number, ry: number, zebra: boolean): React.CSSProperties => ({
@@ -70,7 +70,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     background: ci === 0 ? "rgba(59,111,245,0.08)" : zebra ? "#f7f9fd" : "#ffffff",
     color: ci === 0 ? C.accent : C.ink,
     fontSize: isPortrait ? fs(ci === 0 ? FS.caption : FS.body) : (ci === 0 ? FS.caption : FS.body),
-    fontWeight: ci === 0 ? 800 : 600,
+    fontWeight: ci === 0 ? FW.heavy : FW.regular,
     fontFamily: FONT,
     display: "flex",
     alignItems: "center",
@@ -80,13 +80,13 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     boxSizing: "border-box",
     whiteSpace: "pre-wrap",
     wordBreak: "break-word",
-    lineHeight: 1.35,
+    lineHeight: LH.body,
     opacity: ry,
     transform: `translateY(${(1 - ry) * 18}px)`,
   });
   return (
     <AbsoluteFill style={{ display: "flex", justifyContent: "flex-start", alignItems: "center", flexDirection: "column" }}>
-      <div style={{ position: "absolute", top: isPortrait ? sp(120) : 120, fontSize: isPortrait ? fs(FS.title) : FS.title, fontWeight: 800, color: C.ink, fontFamily: FONT }}>{title}</div>
+      <div style={{ position: "absolute", top: isPortrait ? sp(120) : 120, fontSize: isPortrait ? fs(FS.title) : FS.title, fontWeight: FW.heavy, color: C.ink, fontFamily: FONT }}>{title}</div>
       <div style={{
         position: "absolute",
         top: startY,

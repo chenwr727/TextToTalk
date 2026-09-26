@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { evolvePath, getBoundingBox } from "@remotion/paths";
-import { C, FONT, FS, RADIUS, CARD_SHADOW, springIn, accentOf, BORDER, measureTextWidth } from "../theme";
+import { C, FONT, FS, FW, RADIUS, CARD_SHADOW, springIn, accentOf, BORDER, measureTextWidth } from "../theme";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { Icon } from "../Icon";
@@ -27,7 +27,7 @@ const BottomPoints: React.FC<{ page: SceneProps["page"]; fps: number }> = ({ pag
           <div key={i} style={{
             opacity: o, transform: `translateY(${interpolate(o, [0, 1], [40, 0])}px)`,
             background: "rgba(255,255,255,0.92)", border: `${BORDER.card}px solid ${accentOf(i)}`,
-            borderRadius: RADIUS.box, padding: "16px 24px", fontSize: FS.body, fontWeight: 700,
+            borderRadius: RADIUS.box, padding: "16px 24px", fontSize: FS.body, fontWeight: FW.bold,
             color: C.ink, fontFamily: FONT, textAlign: "center", flex: "0 1 auto", minWidth: 200, boxShadow: CARD_SHADOW,
             display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
           }}>
@@ -108,8 +108,8 @@ function computeFitTransform(els: SvgElement[], safe: { x: number; y: number; w:
   return { scale, tx, ty };
 }
 
-const SvgEl: React.FC<{ el: SvgElement; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ el, frame, fps, motion, timing }) => {
-  const delay = resolveAnchor(timing, el.anchor, 0) + (el.delay ?? 0);
+const SvgEl: React.FC<{ el: SvgElement; index: number; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ el, index, frame, fps, motion, timing }) => {
+  const delay = resolveAnchor(timing, el.anchor, index, 0, 8) + (el.delay ?? 0);
   const o = springIn(frame, fps, delay, motion);
   const common = {
     opacity: o * (el.opacity ?? 1),
@@ -185,7 +185,7 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, fps }) => {
           <g mask="url(#safe-mask)">
             <g transform={`translate(${tx}, ${ty}) scale(${scale})`}>
               {spec.map((el, i) => (
-                <SvgEl key={i} el={el} frame={f} fps={fps} motion={motion} timing={timing} />
+                <SvgEl key={i} el={el} index={i} frame={f} fps={fps} motion={motion} timing={timing} />
               ))}
             </g>
           </g>

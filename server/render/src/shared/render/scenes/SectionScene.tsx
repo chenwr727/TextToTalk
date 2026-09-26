@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { evolvePath } from "@remotion/paths";
-import { C, FONT, FS, TEXT_SHADOW, springIn } from "../theme";
+import { C, FONT, FS, FW, LH, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
@@ -28,8 +28,8 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
           <circle cx={960} cy={540} r={150} fill={`${C.accent}0d`} stroke={C.accent} strokeWidth={2} opacity={0.4} />
         )}
       </svg>
-      <div style={{ fontSize: isPortrait ? fs(FS.caption) : FS.caption, letterSpacing: isPortrait ? sp(12) : 12, color: C.muted, fontWeight: 700, marginBottom: sp(34), opacity: o }}>SEGMENT</div>
-      <div style={{ fontSize: isPortrait ? fs(86) : 86, fontWeight: 800, color: C.ink, textAlign: "center", maxWidth: isPortrait ? contentWidth : "80%", fontFamily: FONT, opacity: o, textShadow: TEXT_SHADOW }}>{title}</div>
+      <div style={{ fontSize: isPortrait ? fs(FS.caption) : FS.caption, letterSpacing: isPortrait ? sp(12) : 12, color: C.muted, fontWeight: FW.bold, marginBottom: sp(34), opacity: o }}>SEGMENT</div>
+      <div style={{ fontSize: isPortrait ? fs(FS.display) : FS.display, fontWeight: FW.heavy, color: C.ink, textAlign: "center", maxWidth: isPortrait ? contentWidth : "80%", fontFamily: FONT, opacity: o, textShadow: TEXT_SHADOW }}>{title}</div>
       {sub && <div style={{ marginTop: sp(30), fontSize: isPortrait ? fs(FS.heading) : FS.heading, color: C.sub, fontFamily: FONT, opacity: o }}>{sub}</div>}
     </AbsoluteFill>
   );

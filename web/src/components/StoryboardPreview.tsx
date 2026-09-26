@@ -373,6 +373,7 @@ export function StoryboardPreview({
 
             {editing === p.pageIndex && (
               <PageEditor
+                key={p.pageIndex}
                 taskId={taskId}
                 page={p}
                 onSave={onPageSaved}

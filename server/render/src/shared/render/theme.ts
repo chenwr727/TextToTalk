@@ -67,9 +67,58 @@ export const HEADER_OFFSET = 250;
 
 export const SPACE = { xs: 8, sm: 16, md: 24, lg: 32, xl: 48 };
 export const RADIUS = { card: 24, box: 18, chip: 14, pill: 999 };
-export const FS = { hero: 96, title: 48, heading: 40, body: 36, caption: 30, label: 24, small: 20 };
+export const FS = {
+  display: 86,
+  hero: 96,
+  title: 48,
+  heading: 40,
+  body: 36,
+  caption: 30,
+  label: 24,
+  small: 20,
+};
 export const BORDER = { card: 2, accent: 3, dashed: 1 };
 export const ANIM = { stagger: 20, fade: 22, rise: 40 };
+
+export const LH = {
+  tight: 1.2,
+  body: 1.5,
+  loose: 1.6,
+};
+
+export const FW = {
+  regular: 600,
+  bold: 700,
+  heavy: 800,
+  black: 900,
+};
+
+export const LH_TIGHT = 1;
+
+export const CARD_TYPE = {
+  fsCandidates: [34, 31, 28, 25, 22] as const,
+  fsMin: 22,
+  lineHeight: LH.body,
+  maxLines: 4,
+  padY: 28,
+  padX: 26,
+  radius: RADIUS.box,
+  iconBox: 48,
+  iconSize: 26,
+  gapX: 64,
+  gapY: 28,
+};
+
+export const pickCardFont = (maxChars: number, textW: number, textH?: number): number => {
+  const chosen = CARD_TYPE.fsCandidates.find((fSize) => {
+    const perLine = Math.max(1, Math.floor((textW * 0.95) / fSize));
+    const lines = Math.ceil(maxChars / perLine);
+    if (lines > CARD_TYPE.maxLines) return false;
+    if (textH !== undefined && lines * fSize * CARD_TYPE.lineHeight > textH) return false;
+    return true;
+  });
+  return chosen ?? CARD_TYPE.fsMin;
+};
 
 export const springIn = (frame: number, fps: number, delay = 0, style: "spring" | "linear" | "float" = "spring") => {
   const cfg =

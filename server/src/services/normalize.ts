@@ -520,6 +520,19 @@ export function validatePageContent(page: StoryPage): string[] {
   if (icons.length >= 3 && new Set(icons).size === 1) {
     problems.push(`本页 ${icons.length} 个要点全部使用图标 "${icons[0]}"，请按各要点语义分别选择更贴切的图标，尽量互不重复。`);
   }
+
+  const capCount = (page.captions ?? []).length;
+  const anchors = (page.points ?? []).map((x) => (typeof x === "string" ? undefined : x.anchor));
+  const usedAnchors = anchors.filter((a): a is number => a !== undefined);
+  if (usedAnchors.length && capCount) {
+    if (usedAnchors.some((a) => a >= capCount)) {
+      problems.push(`本页要点 anchor 越界：本页共 ${capCount} 条字幕（合法 anchor 为 0~${capCount - 1}），但出现了 anchor=${Math.max(...usedAnchors)}。请把 anchor 重新映射到字幕范围内，否则多个要点会挤在同一瞬间弹出、与解说错位。`);
+    }
+    const sorted = [...usedAnchors].sort((a, b) => a - b);
+    if (sorted.some((a, i) => i > 0 && a < sorted[i - 1])) {
+      problems.push(`本页要点 anchor 顺序错乱（出现后面的要点 anchor 小于前面的）：${usedAnchors.join(",")}。请改成单调不减，让要点按解说顺序依次入场。`);
+    }
+  }
   return problems;
 }
 

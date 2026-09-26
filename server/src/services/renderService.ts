@@ -46,16 +46,20 @@ export async function renderTaskSync(
     const t = tts.pages.find((x) => x.index === p.pageIndex);
     let sentences: TtsSentence[] | undefined;
     if (t) {
-      sentences = [];
-      let si = 0;
-      for (const c of p.captions) {
-        if (si < t.sentences.length && t.sentences[si].text === c) {
-          sentences.push(t.sentences[si]);
-          si++;
-        } else {
-          sentences.push({ text: c, seconds: Math.max(2, Math.ceil(c.length / 5 + 1)), audioUrl: "" });
+      const used = new Set<number>();
+      const take = (idx: number) => {
+        used.add(idx);
+        return t.sentences[idx];
+      };
+      sentences = p.captions.map((c) => {
+        const exact = t.sentences.findIndex((s, i) => !used.has(i) && s.text === c);
+        if (exact >= 0) return take(exact);
+        const next = t.sentences.findIndex((_, i) => !used.has(i));
+        if (next >= 0) {
+          return { ...take(next), text: c };
         }
-      }
+        return { text: c, seconds: Math.max(2, Math.ceil(c.length / 5 + 1)), audioUrl: "" };
+      });
     }
     return { ...p, sentences, sentenceGap: tts.sentenceGap };
   });

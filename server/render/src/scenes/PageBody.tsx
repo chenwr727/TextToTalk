@@ -4,6 +4,19 @@ import { CaptionSentence, AudioSentence } from "../components/Caption";
 import { SceneTimingContext, type SceneTiming, type CaptionTiming } from "../shared/render/captionTiming";
 import type { PageBodyProps } from "../shared/render/scenes/types";
 
+/**
+ * 构造「序号 -> 入场帧」映射。当元素数多于字幕句数时，超出部分从最后一句字幕
+ * 起按 stagger 依次错开，避免所有元素在同一帧同时弹出（画面看起来是一次性糊上来）。
+ */
+const buildFrameAt =
+  (captions: CaptionTiming[]) =>
+  (index: number, baseDelay = 0, stagger = 20): number => {
+    const n = captions.length;
+    if (!n) return baseDelay + index * stagger;
+    if (index < n) return captions[index].startFrame;
+    return captions[n - 1].startFrame + (index - n + 1) * stagger;
+  };
+
 export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirst, Scene }) => {
   const gapFrames = Math.round((page.sentenceGap || 0) * fps);
   const pageFrames = page.sentences && page.sentences.length
@@ -22,11 +35,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
     timing = {
       captions,
       pageFrames,
-      frameAt: (index, baseDelay = 0, stagger = 20) => {
-        if (index < captions.length) return captions[index].startFrame;
-        if (captions.length) return captions[captions.length - 1].startFrame;
-        return baseDelay + index * stagger;
-      },
+      frameAt: buildFrameAt(captions),
     };
   } else if (page.captions.length) {
     const step = Math.round(pageFrames / page.captions.length);
@@ -38,11 +47,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
     timing = {
       captions,
       pageFrames,
-      frameAt: (index, baseDelay = 0, stagger = 20) => {
-        if (index < captions.length) return captions[index].startFrame;
-        if (captions.length) return captions[captions.length - 1].startFrame;
-        return baseDelay + index * stagger;
-      },
+      frameAt: buildFrameAt(captions),
     };
   } else {
     timing = {

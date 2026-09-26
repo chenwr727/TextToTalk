@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { evolvePath } from "@remotion/paths";
-import { C, FONT, springIn, accentOf } from "../theme";
+import { C, FONT, FW, springIn, accentOf } from "../theme";
 import { PageHeading } from "../PageHeading";
 import { useResponsive } from "../responsive";
 import { useSceneTiming, resolveAnchor, type SceneTiming } from "../captionTiming";
@@ -64,7 +64,7 @@ const RegionEl: React.FC<{ region: MapRegion; pts: [number, number][]; markers: 
     <g opacity={o}>
       <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill} fillOpacity={0.18} stroke={fill} strokeWidth={2} strokeLinejoin="round" />
       {label ? (
-        <text x={cx} y={labelY} textAnchor="middle" dominantBaseline="central" fill={fill} fontSize={26} fontWeight={700} fontFamily={FONT}
+        <text x={cx} y={labelY} textAnchor="middle" dominantBaseline="central" fill={fill} fontSize={26} fontWeight={FW.bold} fontFamily={FONT}
           style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 5 }}>
           {label}
         </text>
@@ -125,7 +125,7 @@ const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; inde
       <circle cx={marker.x} cy={marker.y} r={r * 1.5} fill="none" stroke={color} strokeWidth={2} strokeOpacity={0.5} />
       <circle cx={marker.x} cy={marker.y} r={r} fill={color} stroke="#fff" strokeWidth={2} />
       <text x={marker.x} y={labelY} textAnchor="middle" dominantBaseline="central"
-        fill={C.ink} fontSize={24} fontWeight={700} fontFamily={FONT}
+        fill={C.ink} fontSize={24} fontWeight={FW.bold} fontFamily={FONT}
         style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 4 }}>
         {marker.name}
       </text>
@@ -150,7 +150,7 @@ const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion:
       {items.map((it, i) => (
         <g key={it.t} transform={`translate(0, ${i * 30})`}>
           <line x1={0} y1={0} x2={34} y2={0} stroke={C.ink} strokeWidth={it.width} strokeLinecap="round" strokeDasharray={it.dash} />
-          <text x={44} y={0} dominantBaseline="central" fill={C.ink} fontSize={18} fontWeight={600} fontFamily={FONT}>
+          <text x={44} y={0} dominantBaseline="central" fill={C.ink} fontSize={18} fontWeight={FW.regular} fontFamily={FONT}>
             {it.label}
           </text>
         </g>

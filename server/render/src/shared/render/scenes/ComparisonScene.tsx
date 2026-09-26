@@ -1,9 +1,9 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
-import { C, FONT, RADIUS, HEADER_OFFSET, accentOf, springIn, BORDER, GLASS, CARD_SHADOW, SOLID_SHADOW } from "../theme";
+import { C, FONT, FS, FW, LH, RADIUS, HEADER_OFFSET, accentOf, springIn, BORDER, GLASS, CARD_SHADOW, SOLID_SHADOW, pickCardFont } from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
-import { useResponsive } from "../responsive";
+import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -15,12 +15,16 @@ const HEAD_H = 64;
 const ITEM_GAP = 22;
 const ICON_BOX = 44;
 
-export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
+export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const captionTexts = page.sentences && page.sentences.length
+    ? page.sentences.map((s) => s.text)
+    : page.captions ?? [];
+  const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const timing = useSceneTiming();
 
   const sides = page.comparisonSides;
@@ -35,20 +39,12 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
   const rightCount = rightItems.length - skipFirst;
   const maxCount = Math.max(leftCount, rightCount);
 
-  const fitItemFs = (text: string) => {
-    const len = [...text].length;
-    if (len <= 14) return 32;
-    if (len <= 20) return 28;
-    if (len <= 28) return 26;
-    return 24;
-  };
-
-  const itemFs = Math.min(
-    ...((sides ? [...leftItems.slice(skipFirst), ...rightItems.slice(skipFirst)] : items.slice(skipFirst))
-      .map((p) => fitItemFs(pointText(p, 0)))),
-    32
-  );
-  const lineH = 1.45;
+  const compareItems = sides
+    ? [...leftItems.slice(skipFirst), ...rightItems.slice(skipFirst)]
+    : items.slice(skipFirst);
+  const maxItemLen = Math.max(1, ...compareItems.map((p) => [...pointText(p, 0)].length));
+  const itemFs = pickCardFont(maxItemLen, isPortrait ? contentWidth : CARD_W - CARD_PAD_X * 2);
+  const lineH = LH.body;
   const itemBlockH = (isPortrait ? sp(ICON_BOX) : ICON_BOX) + (isPortrait ? sp(16) : 16);
   const listH = maxCount > 0 ? maxCount * itemBlockH + (maxCount - 1) * (isPortrait ? sp(ITEM_GAP) : ITEM_GAP) : 0;
   const cardH = (isPortrait ? sp(CARD_PAD_TOP) : CARD_PAD_TOP) + (isPortrait ? sp(HEAD_H) : HEAD_H) + (isPortrait ? sp(28) : 28) + listH + (isPortrait ? sp(CARD_PAD_BOTTOM) : CARD_PAD_BOTTOM);
@@ -79,17 +75,6 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
     >
       <div
         style={{
-          position: "absolute",
-          inset: -28,
-          borderRadius: RADIUS.card + 10,
-          background: `radial-gradient(ellipse at 50% 30%, ${accent}26 0%, ${accent}00 70%)`,
-          pointerEvents: "none",
-          opacity: enterBadge(badgeDelay),
-        }}
-      />
-
-      <div
-        style={{
           position: "relative",
           width: isPortrait ? contentWidth : CARD_W,
           height: cardH,
@@ -111,7 +96,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
             <div style={{ width: 56, height: 56, borderRadius: 16, background: `${accent}1a`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 2px 10px ${accent}33`, flexShrink: 0 }}>
               <Icon name={icon} size={32} color={accent} />
             </div>
-            <div style={{ fontSize: 36, fontWeight: 800, color: C.ink, lineHeight: 1.3, fontFamily: FONT, letterSpacing: 1 }}>{heading}</div>
+            <div style={{ fontSize: FS.body, fontWeight: FW.heavy, color: C.ink, lineHeight: LH.tight, fontFamily: FONT, letterSpacing: 1 }}>{heading}</div>
           </div>
 
           <div
@@ -124,8 +109,8 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 28,
-              fontWeight: 900,
+              fontSize: FS.label,
+              fontWeight: FW.heavy,
               fontFamily: FONT,
               boxShadow: `0 6px 18px ${badgeColor}66`,
               transform: `scale(${interpolate(enterBadge(badgeDelay), [0, 1], [0.4, 1])})`,
@@ -148,21 +133,23 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
                   height: ICON_BOX,
                   borderRadius: 12,
                   background: `${accent}14`,
+                  color: accent,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   flexShrink: 0,
                   marginTop: 2,
+                  fontSize: Math.round(ICON_BOX * 0.5),
+                  fontWeight: FW.heavy,
+                  fontFamily: FONT,
                 }}
               >
-                <Icon name={pointIcon(p, i)} size={26} color={accent} />
+                {i + 1}
               </div>
-              <div style={{ fontSize: itemFs, color: C.ink, lineHeight: lineH, fontFamily: FONT, fontWeight: 500 }}>{pointText(p, i)}</div>
+              <div style={{ fontSize: itemFs, color: C.ink, lineHeight: lineH, fontFamily: FONT, fontWeight: FW.regular }}>{pointText(p, i)}</div>
             </div>
           ))}
         </div>
-
-        <div style={{ position: "absolute", left: CARD_PAD_X, right: CARD_PAD_X, bottom: 14, height: 4, borderRadius: "0 0 8px 8px", background: `linear-gradient(90deg, transparent 4%, ${accent}99 50%, transparent 96%)`, opacity: 0.8 }} />
       </div>
     </div>
   );
@@ -175,9 +162,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
-      <div style={{ position: "relative", display: "flex", flexDirection: isPortrait ? "column" : "row", gap: isPortrait ? sp(24) : 36, marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET, alignItems: "center" }}>
-        <div style={{ position: "absolute", top: -36, left: -80, right: -80, bottom: -36, borderRadius: RADIUS.card + 24, background: "linear-gradient(180deg, rgba(59,111,245,0.08) 0%, rgba(59,111,245,0) 100%)", opacity: Math.max(enterA, enterB), pointerEvents: "none" }} />
-
+      <div style={{ position: "relative", display: "flex", flexDirection: isPortrait ? "column" : "row", gap: isPortrait ? sp(24) : 36, marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET, marginBottom: captionReserve, alignItems: "center" }}>
         {panel(enterA, left, accentLeft, leftItems[0] ? pointIcon(leftItems[0], 0) : "check", leftItems, "✓", tA + 12, badgeLeft)}
 
         <div
@@ -186,18 +171,18 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page }) => {
             width: isPortrait ? sp(96) : 96,
             height: isPortrait ? sp(96) : 96,
             borderRadius: "50%",
-            background: `radial-gradient(circle at 50% 50%, #ffffff 0%, #ffffff 60%, ${C.accent}1a 100%)`,
-            border: `3px solid ${C.accent}`,
+            background: `linear-gradient(135deg, ${C.accent}, ${C.accent}cc)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: SOLID_SHADOW,
+            boxShadow: `0 10px 28px ${C.accent}55`,
             opacity: enterVs,
             transform: `scale(${interpolate(enterVs, [0, 1], [0.4, 1])}) rotate(${interpolate(enterVs, [0, 1], [-90, 0])}deg)`,
             zIndex: 2,
+            flexShrink: 0,
           }}
         >
-          <div style={{ fontSize: isPortrait ? fs(36) : 36, fontWeight: 900, color: C.accent, fontFamily: FONT, letterSpacing: 2 }}>VS</div>
+          <div style={{ fontSize: isPortrait ? fs(FS.caption) : FS.caption, fontWeight: FW.heavy, color: "#fff", fontFamily: FONT, letterSpacing: 2 }}>VS</div>
         </div>
 
         {panel(enterB, right, accentRight, rightItems[0] ? pointIcon(rightItems[0], half) : "alert", rightItems, "!", tB + 10, badgeRight)}

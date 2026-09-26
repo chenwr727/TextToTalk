@@ -1,5 +1,5 @@
 import { interpolate, useCurrentFrame } from "remotion";
-import { C, FONT, FS, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD } from "./theme";
+import { C, FONT, FS, FW, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD } from "./theme";
 import { useResponsive } from "./responsive";
 
 export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
@@ -11,7 +11,7 @@ export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
       <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: isPortrait ? sp(16) : 16 }}>
         <div style={{
           padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(46) : 46}px`, background: GLASS.pill, border: `${BORDER.card}px solid ${C.accent}`,
-          borderRadius: RADIUS.pill, fontSize: isPortrait ? fs(FS.title) : FS.title, fontWeight: 800, color: C.accent,
+          borderRadius: RADIUS.pill, fontSize: isPortrait ? fs(FS.title) : FS.title, fontWeight: FW.heavy, color: C.accent,
           fontFamily: FONT, boxShadow: PILL_SHADOW, letterSpacing: 2,
         }}>
           {text}

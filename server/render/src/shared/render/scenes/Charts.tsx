@@ -1,5 +1,5 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, accentOf, springIn } from "../theme";
+import { C, FONT, FS, FW, accentOf, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
@@ -23,7 +23,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const barMaxH = isPortrait ? 520 : 300;
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div style={{ fontSize: isPortrait ? fs(FS.title) : FS.heading, fontWeight: 600, color: C.sub, fontFamily: FONT, opacity: 0.85, marginBottom: isPortrait ? sp(70) : 70 }}>{title}</div>
+      <div style={{ fontSize: isPortrait ? fs(FS.title) : FS.heading, fontWeight: FW.regular, color: C.sub, fontFamily: FONT, opacity: 0.85, marginBottom: isPortrait ? sp(70) : 70 }}>{title}</div>
       <div style={{ position: "relative", display: "flex", alignItems: "flex-end", gap: barGap, height: chartH, paddingBottom: 8 }}>
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 8, height: 4, borderRadius: 2, background: "linear-gradient(90deg, rgba(28,37,54,0.10), rgba(28,37,54,0.04))" }} />
         {values.map((v, i) => {
@@ -34,7 +34,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
             <div key={i} style={{ position: "relative", width: barW, height: chartH }}>
               <div style={{
                 position: "absolute", top: 0, left: 0, right: 0, textAlign: "center",
-                fontSize: isPortrait ? fs(30) : 30, fontWeight: 800, color: i === 0 ? C.sub : a, fontFamily: FONT,
+                fontSize: isPortrait ? fs(30) : 30, fontWeight: FW.heavy, color: i === 0 ? C.sub : a, fontFamily: FONT,
               }}>
                 {valueLabel(v)}
               </div>
@@ -81,7 +81,7 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
         ))}
         <line x1={PAD} y1={H - BOTTOM} x2={W - PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
         {values.map((_, i) => (
-          <text key={`x${i}`} x={xs[i]} y={H + (isPortrait ? sp(32) : 32)} textAnchor="middle" fontSize={isPortrait ? fs(30) : 30} fontWeight={700} fill={C.ink} fontFamily={FONT}>{labels[i]}</text>
+          <text key={`x${i}`} x={xs[i]} y={H + (isPortrait ? sp(32) : 32)} textAnchor="middle" fontSize={isPortrait ? fs(30) : 30} fontWeight={FW.bold} fill={C.ink} fontFamily={FONT}>{labels[i]}</text>
         ))}
         {last > 0 && (
           <polygon
@@ -139,14 +139,14 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
       <svg width={isPortrait ? contentWidth : 1100} height={isPortrait ? 760 : 520}>
         {slices.map((s, i) => (s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null))}
         <circle cx={cx} cy={cy} r={r * 0.42} fill="#fff" />
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={isPortrait ? fs(40) : 40} fontWeight={800} fill={C.ink} fontFamily={FONT}>100%</text>
+        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={isPortrait ? fs(40) : 40} fontWeight={FW.heavy} fill={C.ink} fontFamily={FONT}>100%</text>
         <text x={cx} y={cy + (isPortrait ? sp(34) : 34)} textAnchor="middle" fontSize={isPortrait ? fs(26) : 26} fill={C.sub} fontFamily={FONT}>占比</text>
         {!isPortrait && slices.map((s, i) => {
           const legendTop = Math.max(8, 260 - (values.length * 84) / 2);
           return (
             <g key={`l${i}`}>
               <rect x={880} y={legendTop + i * 84} width={26} height={26} rx={6} fill={s.color} />
-              <text x={918} y={legendTop + 20 + i * 84} fontSize={32} fontWeight={700} fill={C.ink} fontFamily={FONT}>{fitLabel(s.label)}</text>
+              <text x={918} y={legendTop + 20 + i * 84} fontSize={32} fontWeight={FW.bold} fill={C.ink} fontFamily={FONT}>{fitLabel(s.label)}</text>
               <text x={918} y={legendTop + 52 + i * 84} fontSize={30} fill={C.sub} fontFamily={FONT}>{s.pct}%</text>
             </g>
           );
@@ -157,7 +157,7 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
           {slices.map((s, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: sp(8) }}>
               <div style={{ width: sp(18), height: sp(18), borderRadius: 4, background: s.color }} />
-              <span style={{ fontSize: fs(FS.body), fontWeight: 600, color: C.ink }}>{fitLabel(s.label)}</span>
+              <span style={{ fontSize: fs(FS.body), fontWeight: FW.regular, color: C.ink }}>{fitLabel(s.label)}</span>
               <span style={{ fontSize: fs(FS.body), fontWeight: 700, color: C.sub }}>{s.pct}%</span>
             </div>
           ))}
@@ -191,7 +191,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
         ))}
         <line x1={PAD} y1={H - BOTTOM} x2={W - PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
         {values.map((_, i) => (
-          <text key={`x${i}`} x={xs[i]} y={H + (isPortrait ? sp(32) : 32)} textAnchor="middle" fontSize={isPortrait ? fs(30) : 30} fontWeight={700} fill={C.ink} fontFamily={FONT}>{labels[i]}</text>
+          <text key={`x${i}`} x={xs[i]} y={H + (isPortrait ? sp(32) : 32)} textAnchor="middle" fontSize={isPortrait ? fs(30) : 30} fontWeight={FW.bold} fill={C.ink} fontFamily={FONT}>{labels[i]}</text>
         ))}
         {last > 0 && (
           <polygon points={`${xs[0]},${H - BOTTOM} ${line} ${xs[last]},${H - BOTTOM}`} fill="url(#areaGrad)" />
@@ -239,14 +239,14 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
       <svg width={isPortrait ? contentWidth : 1100} height={isPortrait ? 760 : 520}>
         {slices.map((s, i) => (s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null))}
         <circle cx={cx} cy={cy} r={r * hole} fill="#fff" />
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={isPortrait ? fs(44) : 44} fontWeight={800} fill={C.ink} fontFamily={FONT}>{total ?? sum}</text>
+        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={isPortrait ? fs(44) : 44} fontWeight={FW.heavy} fill={C.ink} fontFamily={FONT}>{total ?? sum}</text>
         <text x={cx} y={cy + (isPortrait ? sp(34) : 34)} textAnchor="middle" fontSize={isPortrait ? fs(26) : 26} fill={C.sub} fontFamily={FONT}>总量</text>
         {!isPortrait && slices.map((s, i) => {
           const legendTop = Math.max(8, 260 - (values.length * 84) / 2);
           return (
             <g key={`l${i}`}>
               <rect x={880} y={legendTop + i * 84} width={26} height={26} rx={6} fill={s.color} />
-              <text x={918} y={legendTop + 20 + i * 84} fontSize={32} fontWeight={700} fill={C.ink} fontFamily={FONT}>{fitLabel(s.label)}</text>
+              <text x={918} y={legendTop + 20 + i * 84} fontSize={32} fontWeight={FW.bold} fill={C.ink} fontFamily={FONT}>{fitLabel(s.label)}</text>
               <text x={918} y={legendTop + 52 + i * 84} fontSize={30} fill={C.sub} fontFamily={FONT}>{s.pct}%</text>
             </g>
           );
@@ -257,7 +257,7 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
           {slices.map((s, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: sp(8) }}>
               <div style={{ width: sp(18), height: sp(18), borderRadius: 4, background: s.color }} />
-              <span style={{ fontSize: fs(FS.body), fontWeight: 600, color: C.ink }}>{fitLabel(s.label)}</span>
+              <span style={{ fontSize: fs(FS.body), fontWeight: FW.regular, color: C.ink }}>{fitLabel(s.label)}</span>
               <span style={{ fontSize: fs(FS.body), fontWeight: 700, color: C.sub }}>{s.pct}%</span>
             </div>
           ))}
@@ -310,7 +310,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
         {series.map((s, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: isPortrait ? sp(8) : 8 }}>
             <div style={{ width: isPortrait ? sp(18) : 18, height: isPortrait ? sp(18) : 18, borderRadius: 4, background: pal[i % pal.length] }} />
-            <span style={{ fontSize: isPortrait ? fs(FS.body) : FS.body, fontWeight: 600, color: C.ink }}>{s.name}</span>
+            <span style={{ fontSize: isPortrait ? fs(FS.body) : FS.body, fontWeight: FW.regular, color: C.ink }}>{s.name}</span>
           </div>
         ))}
       </div>
@@ -347,7 +347,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
           return (
             <g key={i} opacity={o}>
               <circle cx={px(p.x)} cy={py(p.y)} r={isPortrait ? sp(16) : 16} fill={C.accent} fillOpacity={0.85} stroke="#fff" strokeWidth={isPortrait ? sp(4) : 4} />
-              {p.label && <text x={px(p.x)} y={py(p.y) - (isPortrait ? sp(24) : 24)} textAnchor="middle" fontSize={isPortrait ? fs(26) : 26} fontWeight={700} fill={C.ink} fontFamily={FONT}>{p.label}</text>}
+              {p.label && <text x={px(p.x)} y={py(p.y) - (isPortrait ? sp(24) : 24)} textAnchor="middle" fontSize={isPortrait ? fs(26) : 26} fontWeight={FW.bold} fill={C.ink} fontFamily={FONT}>{p.label}</text>}
             </g>
           );
         })}

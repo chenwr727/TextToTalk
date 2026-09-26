@@ -1,7 +1,7 @@
 import { Audio, Sequence, interpolate, useCurrentFrame } from "remotion";
 import type { TtsSentence } from "../shared/render/props";
-import { C, FONT } from "../shared/render/theme";
-import { useResponsive } from "../shared/render/responsive";
+import { C, FONT, FW } from "../shared/render/theme";
+import { useResponsive, CAPTION_METRICS } from "../shared/render/responsive";
 
 const Aud = Audio as any;
 
@@ -16,7 +16,7 @@ const renderHighlight = (text: string) => {
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
     parts.push(
-      <span key={k++} style={{ color: HIGHLIGHT, fontWeight: 800 }}>
+      <span key={k++} style={{ color: HIGHLIGHT, fontWeight: FW.heavy }}>
         {m[0]}
       </span>
     );
@@ -29,13 +29,17 @@ const renderHighlight = (text: string) => {
 export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({ text, durFrames }) => {
   const f = useCurrentFrame();
   const { isPortrait, fs, sp } = useResponsive();
-  const o = interpolate(f, [0, 8, durFrames - 8, durFrames], [0, 1, 1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const fade = Math.max(1, Math.min(8, Math.floor(durFrames / 4)));
+  const o = interpolate(f, [0, fade, Math.max(fade + 1, durFrames - fade), Math.max(fade + 2, durFrames)], [0, 1, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
   return (
-    <div style={{ position: "absolute", bottom: sp(60), width: "100%", display: "flex", justifyContent: "center", opacity: o }}>
+    <div style={{ position: "absolute", bottom: sp(CAPTION_METRICS.bottom), width: "100%", display: "flex", justifyContent: "center", opacity: o }}>
       <div style={{ display: "flex", alignItems: "stretch", maxWidth: isPortrait ? "88%" : "78%" }}>
         <div style={{ width: 10, background: C.accent, borderRadius: "999px 0 0 999px" }} />
         <div style={{
-          background: "rgba(20,30,45,0.88)", color: "#fff", padding: `${sp(16)}px ${sp(42)}px`, fontSize: fs(42), fontFamily: FONT, fontWeight: 600,
+          background: "rgba(20,30,45,0.88)", color: "#fff", padding: `${sp(CAPTION_METRICS.padY)}px ${sp(42)}px`, fontSize: fs(CAPTION_METRICS.fontSize), fontFamily: FONT, fontWeight: FW.regular,
           textAlign: "center", borderRadius: "0 999px 999px 0", boxShadow: "0 8px 24px rgba(20,30,45,0.4)", letterSpacing: 1,
           textShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.6)",
         }}>

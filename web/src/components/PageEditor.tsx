@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { StoryPage, Layout } from "../types";
 import { updatePage, regeneratePage, type PagePatch } from "../api";
 import { LAYOUT_LABEL } from "./labels";
@@ -35,6 +35,17 @@ export function PageEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showLayoutDialog, setShowLayoutDialog] = useState(false);
+
+  useEffect(() => {
+    setTitle(page.title);
+    setCaptions(page.captions.join("，"));
+    setPoints(page.points.map((p) => (typeof p === "string" ? p : p.text)).join("\n"));
+    setDurationSec(String(page.durationSec));
+    setLayout(page.layout ?? "points");
+    setError(null);
+    setShowLayoutDialog(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.pageIndex]);
 
   const originalLayout = page.layout ?? "points";
 
