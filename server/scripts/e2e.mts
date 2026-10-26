@@ -80,6 +80,7 @@ const main = async () => {
     };
     console.log("[e2e] 复用上次生成的分镜，跳过模型调用");
     await renderStills(saved.storyboard);
+    await renderMp4(saved.storyboard);
     return;
   }
 
@@ -196,6 +197,37 @@ const main = async () => {
 
   // ---- 3. 真实静帧 ----------------------------------------------------------
   await renderStills(storyboard);
+
+  await renderMp4(storyboard);
+};
+
+// E2E_MP4=1：继续走配音 + BGM + Remotion 成片，验证到最后一道工序
+const renderMp4 = async (storyboard: Storyboard) => {
+  if (process.env.E2E_MP4) {
+    const { renderTaskSync } = await import("../src/services/renderService.js");
+    console.log("\n[e2e] 开始配音与成片渲染（这一步最慢）…");
+    const taskId = `e2e-${Date.now()}`;
+    const t = Date.now();
+    const outMp4 = await renderTaskSync(
+      taskId,
+      storyboard,
+      FPS,
+      true,
+      false,
+      (p) => {
+        if (Math.round(p * 100) % 20 === 0) console.log(`  进度 ${Math.round(p * 100)}%`);
+      },
+      (w) => console.log(`  ⚠ ${w}`),
+      {
+        theme: params.theme,
+        width: params.width,
+        height: params.height,
+        voice: process.env.E2E_VOICE,
+        engine: process.env.E2E_ENGINE,
+      },
+    );
+    console.log(`[e2e] MP4 完成（${((Date.now() - t) / 1000).toFixed(0)}s）-> ${outMp4}`);
+  }
 };
 
 const renderStills = async (storyboard: Storyboard) => {
