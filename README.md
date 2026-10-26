@@ -186,13 +186,13 @@ TextToTalk 把中间三步压缩成一次回车：
 
 仓库根目录有一套统一的工程化脚本（`pnpm install` 一次即可）：
 
-| 命令                 | 说明                                                                     |
-| -------------------- | ------------------------------------------------------------------------ |
-| `pnpm run verify`    | 一把过：typecheck → test → lint                                          |
-| `pnpm run typecheck` | 前后端 TypeScript 类型检查                                               |
-| `pnpm test`          | 单元测试（node:test，覆盖归一化 / prompt 拼装 / 渲染日志 / shim 覆盖率） |
-| `pnpm run lint`      | ESLint（扁平配置，error 级只保留真 bug 规则）                            |
-| `pnpm run format`    | Prettier 格式化（`format:check` 只校验不写）                             |
+| 命令                 | 说明                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| `pnpm run verify`    | 一把过：typecheck → test → lint                                                                          |
+| `pnpm run typecheck` | 前后端 TypeScript 类型检查                                                                               |
+| `pnpm test`          | 全部单元测试（后端 `node:test` + 前端 `vitest`），单跑前端用 `pnpm -C web run test`，看护模式加 `:watch` |
+| `pnpm run lint`      | ESLint（扁平配置，error 级只保留真 bug 规则）                                                            |
+| `pnpm run format`    | Prettier 格式化（`format:check` 只校验不写）                                                             |
 
 ---
 

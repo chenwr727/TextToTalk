@@ -141,21 +141,19 @@ export function StoryboardPreview({
 
   useEffect(() => {
     if (focusPage == null) return;
-    const t = setTimeout(() => {
-      const el = pageRefs.current[focusPage - 1];
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        setHighlight(focusPage);
-        const clear = setTimeout(() => setHighlight(null), 2600);
-        return () => clearTimeout(clear);
-      }
-    }, 120);
-    return () => clearTimeout(t);
-  }, [focusPage, pages.length]);
-
-  useEffect(() => {
-    if (highlight == null && focusPage != null) onFocusPageHandled();
-  }, [highlight, focusPage, onFocusPageHandled]);
+    const el = pageRefs.current[focusPage - 1];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlight(focusPage);
+    // 高亮结束后再通知父组件「已消费」。
+    // 若在 highlight 为空时就立刻回调（原实现），父组件会把 focusPage 置空，
+    // 本 effect 的 cleanup 随即清掉定时器，滚动和高亮都不会发生——定位功能等于失效。
+    const clear = setTimeout(() => {
+      setHighlight(null);
+      onFocusPageHandled();
+    }, 2600);
+    return () => clearTimeout(clear);
+  }, [focusPage, pages.length, onFocusPageHandled]);
 
   useEffect(() => {
     // 首次进入（还没拿到任何页）时补拉一次任务，兼容刷新 / 从渲染页返回的场景。

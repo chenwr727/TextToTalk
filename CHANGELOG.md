@@ -7,7 +7,8 @@
 ### 新增
 
 - **仓库级工程化工具链**：根目录新增 `package.json`（ESLint 扁平配置 + Prettier + `node:test`），提供 `lint` / `format` / `typecheck` / `test` / `verify` 五个统一入口，不必再进子目录跑脚本。
-- **单元测试（88 项）**：覆盖 `normalize` 的归一化与内容校验、`prompts` 模板拼装、渲染日志与进度解析、`web/src/*-shim.ts` 对 Remotion API 的覆盖率。
+- **后端单元测试（88 项）**：覆盖 `normalize` 的归一化与内容校验、`prompts` 模板拼装、渲染日志与进度解析、`web/src/*-shim.ts` 对 Remotion API 的覆盖率。
+- **前端组件测试环境（Vitest + jsdom + Testing Library，11 项）**：`web` 新增 `test` / `test:watch` 脚本，根目录 `pnpm test` 会先后跑后端与前端。用例锁定了 SSE 订阅生命周期（父组件换新回调不得重订阅）、流式回调取最新闭包、大纲同页数重生成时的草稿刷新、编辑内容不被覆盖，以及定位高亮的收尾时序。
 - **shim 覆盖率守护测试**：从 `web/src` 出发遍历真实 import 图，校验每个被前端间接用到的 `remotion` / `@remotion/*` 具名导入都在对应桩文件里有同名导出——升级 Remotion 时漏补桩会直接红灯，而不是静默把缩略图画错。
 - `web` 新增 `typecheck` 脚本，根目录 `pnpm run typecheck` 可同时检查前后端。
 
@@ -22,6 +23,8 @@
 - **堆叠柱状图（stacked-bar）同理**：只给 `series`、不给顶层 `values` 时被判空。
 - **要点 anchor 顺序校验失效**：先排序再比较等同于自比，`anchor 顺序错乱` 这条告警永远不会触发。
 - `normalizeArt` 接受 `"pyramid"`，但 `Art` 类型与 `validatePlan` 都不认可（pyramid 属于 chart 而非 art），prompt 里 art 的举例也一并纠正。
+- **分镜页「定位到指定页」实际从未生效**：`focusPage` 收尾 effect 在 `highlight` 为空时就立即回调父组件，父组件随即清空 `focusPage`，本 effect 的 cleanup 随即清掉定时器，滚动与高亮都不会发生。改为高亮结束后再回调。
+- **重新生成大纲且页数不变时预览不刷新**：大纲同步 effect 只比较页数，且闭包内读到的是旧的 `outline` / `draft`，同页数重生成会沿用旧草稿；而一旦补齐依赖又会在用户编辑时覆盖输入。改为按 `outline` 引用在渲染期同步草稿。
 
 ### 清理
 
