@@ -1,6 +1,6 @@
 import type { FC } from "react";
 import { Composition } from "remotion";
-import { DynamicVideo, TRANSITION_FRAMES } from "./DynamicVideo";
+import { DynamicVideo, transitionFrames } from "./DynamicVideo";
 import type { RenderProps } from "./shared/render/props";
 
 const DEFAULT_FPS = 30;
@@ -29,8 +29,13 @@ export function computeTotalFrames(pages: RenderProps["pages"], fps: number): nu
     }
     return sum + Math.round((p.durationSec || 4) * f);
   }, 1);
-  const transitionFrames = Math.max(0, (pages || []).length - 1) * TRANSITION_FRAMES;
-  return Math.max(30, frames - transitionFrames);
+  // 转场占用帧随类型不同（none=1 / zoom=16 / slide=14 / fade=12），必须逐页按同一口径累加
+  const transitionFramesTotal = (pages || []).reduce(
+    (sum: number, p: RenderProps["pages"][number], i: number) =>
+      i === 0 ? sum : sum + transitionFrames(p?.transition),
+    0,
+  );
+  return Math.max(30, frames - transitionFramesTotal);
 }
 
 export const RemotionRoot: FC = () => (

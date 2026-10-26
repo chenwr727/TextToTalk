@@ -5,6 +5,22 @@ export type PageRhythm = "anchor" | "dense" | "breathing";
 
 export type TransitionType = "fade" | "slide-left" | "slide-right" | "zoom" | "none";
 
+/**
+ * 各类转场占用的帧数。
+ * 渲染端（扣除总时长）、预览抽帧（定位每页起始帧）必须用同一份映射，
+ * 否则会出现"音画总长对不上""预览帧取到上一页结尾"这类错位。
+ */
+export const TRANSITION_FRAME_MAP: Record<TransitionType, number> = {
+  none: 1,
+  fade: 12,
+  "slide-left": 14,
+  "slide-right": 14,
+  zoom: 16,
+};
+
+export const transitionFramesOf = (t?: TransitionType | null): number =>
+  TRANSITION_FRAME_MAP[(t ?? "fade") as TransitionType] ?? TRANSITION_FRAME_MAP.fade;
+
 export type MotionStyle = "spring" | "linear" | "float";
 
 export interface PageEffects {

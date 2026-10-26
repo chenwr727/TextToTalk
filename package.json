@@ -8,7 +8,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -C server run typecheck && pnpm -C web run typecheck",
+    "typecheck": "pnpm -C server run typecheck && pnpm -C web run typecheck && pnpm -C server/render run typecheck",
     "test": "pnpm -C server run test && pnpm -C web run test",
     "verify": "pnpm run typecheck && pnpm run test && pnpm run lint"
   },

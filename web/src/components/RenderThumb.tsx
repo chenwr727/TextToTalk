@@ -51,7 +51,11 @@ export function RenderThumb({
         }}
       >
         <ResponsiveContext.Provider value={isPortrait ? { width, height } : null}>
-          <Bg variant={bg} theme={theme as any} />
+          <Bg
+            variant={bg}
+            theme={theme as any}
+            draw={!!(p as { effects?: { pathDraw?: boolean } }).effects?.pathDraw}
+          />
           <div className="dsh-thumb-layer">
             {!isFirst && rp.icon ? <IconView icon={rp.icon} /> : null}
             <SceneView Scene={Scene} page={rp} isFirst={isFirst} />

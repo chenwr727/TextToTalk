@@ -95,6 +95,20 @@ if (!serveUrl || !output) {
 
 const chromiumOptions = { gl: process.env.RENDER_GL || options.gl || "swiftshader" };
 
+/**
+ * 可选：固定 Remotion 内部 HTTP 服务的端口。
+ * Remotion 默认只在 3000-3100 之间扫描空闲端口，如果这段被别的进程占满就会直接报
+ * "No available ports found"。可用 options.port 或环境变量 REMOTION_PORT 指定。
+ */
+const desiredPort = (() => {
+  const fromOptions = Number(options.port);
+  if (Number.isFinite(fromOptions) && fromOptions > 0) return fromOptions;
+  const fromEnv = Number(process.env.REMOTION_PORT);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) return fromEnv;
+  return undefined;
+})();
+const portOption = desiredPort ? { port: desiredPort } : {};
+
 async function main() {
   const browserExecutable = await resolveBrowser();
   console.log(
@@ -102,11 +116,13 @@ async function main() {
       ? `[render] 使用浏览器: ${browserExecutable}`
       : "[render] 未找到系统浏览器，将使用 Remotion 内置 Headless Shell",
   );
+  if (desiredPort) console.log(`[render] 固定端口: ${desiredPort}`);
   const compositions = await getCompositions({
     serveUrl,
     inputProps,
     browserExecutable,
     chromiumOptions,
+    ...portOption,
   });
   const composition = compositions.find((c) => c.id === compositionId);
   if (!composition) {
@@ -122,6 +138,7 @@ async function main() {
       output,
       browserExecutable,
       chromiumOptions,
+      ...portOption,
     });
     console.log("Rendered still 1/1");
     return;
@@ -144,6 +161,7 @@ async function main() {
     chromiumOptions,
     logLevel: "warn",
     forceIPv4: options.forceIPv4 !== false,
+    ...portOption,
     concurrency: Number.isFinite(conc) && conc > 0 ? conc : undefined,
     scale: Number.isFinite(scale) && scale > 0 ? scale : undefined,
     x264Preset: options.x264Preset || undefined,

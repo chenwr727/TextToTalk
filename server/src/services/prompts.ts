@@ -55,13 +55,13 @@ function pageDurationHint(params?: VideoParams, totalPages = 0): string {
   return `目标成片 ${sec} 秒、共 ${totalPages} 页，本页平均约 ${perPage} 秒。请据此控制篇幅：本页 captions 最多 ${maxCaptions} 条、要点尽量精简，宁可少讲也不要让本页超时。`;
 }
 
-const RHYTHM_DESC = `rhythm：本页节奏，**必须且只能从这 3 个值中选一个，严禁写枚举之外的值**："anchor"(重点页，信息密度高、值得观众停留，通常是核心观点/结论页)|"dense"(信息密集页，要点多、节奏快)|"breathing"(过渡/缓冲页，信息少、节奏放缓，用于章节过渡或给观众喘息)。一页大纲里 anchor 页 1~2 个即可，其余多为 dense，breathing 用于过渡。`;
+const RHYTHM_DESC = `rhythm：本页节奏，**必须且只能从这 3 个值中选一个，严禁写枚举之外的值**："anchor"(重点页，信息密度高、值得观众停留，通常是核心观点/结论页)|"dense"(信息密集页，要点多、节奏快)|"breathing"(过渡/缓冲页，信息少、节奏放缓，用于章节过渡或给观众喘息)。渲染端据此调整元素入场间隔（dense 紧凑 / breathing 舒缓）以及 anchor 页的缓慢推近。一页大纲里 anchor 页 1~2 个即可，其余多为 dense，breathing 用于过渡。`;
 
 const TRANSITION_DESC = `transition：本页进入时的转场，**必须且只能从这 5 个值中选一个，严禁写枚举之外的值**："fade"（淡入，简单方向）|"slide-left"（从左滑入，适合推进/递进）|"slide-right"（从右滑入，适合回看/对比）|"zoom"（缩放推进，适合重点/高潮页）|"none"（无转场，柔和淡入）。第1页用 "fade" 开场；章节过渡页用 "slide-left" 推进；重点/结论页用 "zoom" 强调；其余多用 "fade"。相邻两页避免用相同方向的 slide。`;
 
 const MOTION_DESC = `motion：本页元素动画风格，**必须且只能从这 3 个值中选一个，严禁写枚举之外的值**："spring"（弹簧回弹，默认，生动有活力）|"linear"（线性平稳，适合数据/图表密集页，避免过度晃动）|"float"（柔和漂浮，适合氛围/过渡页）。默认 "spring"，数据密集页（chart/table/stats）建议 "linear"。`;
 
-const EFFECTS_DESC = `effects：本页视觉特效（可选，默认全关）。annotation：手绘标注，**必须且只能从这 4 个值中选一个，严禁写枚举之外的值**："highlight"（高亮，适合重点句）|"underline"（下划线，适合数字/关键词）|"circle"（圆圈，适合圈出重点）|"none"（无）。pathDraw：是否给装饰线/圆环做描边动画（从无到有"画"出来），只能是 true 或 false。threeD：是否给标题/重点做 3D 翻转入场，只能是 true 或 false。建议：重点/结论页用 annotation 强调；封面/章节页可用 threeD 或 pathDraw 增强开场；数据页少用特效避免干扰。`;
+const EFFECTS_DESC = `effects：本页视觉特效（可选，默认全关）。annotation：手绘标注，**必须且只能从这 4 个值中选一个，严禁写枚举之外的值**："highlight"（高亮，适合重点句）|"underline"（下划线，适合数字/关键词）|"circle"（圆圈，适合圈出重点）|"none"（无）。threeD：整页 3D 翻转入场（绕 Y 轴翻转 + 由远推近，约 0.5 秒），只能是 true 或 false。pathDraw：背景装饰圆环/装饰线的描边动画（从无到有"画"出来），只能是 true 或 false。建议：重点/结论页用 annotation 强调；封面/章节页可用 threeD 或 pathDraw 增强开场；数据页少用特效避免干扰。`;
 
 const CUSTOM_SVG_DESC = `customSvg：本页是否用「自定义图形」来可视化（可选，默认 null）。**硬性：若本页大纲已指定 art（如 flow/loop/timeline/quadrant/quote），customSvg 必须为 null**——此时用上方 "art" 字段声明关系图类型，让渲染端用标准关系图自动绘制，不要手绘 SVG 与 art 冲突。仅当本页内容适合用"结构图/示意图"表达且现有版式（flow/loop/timeline/quadrant/chart/table）都不够直观时才用 customSvg，例如：神经网络结构、分层架构、决策树、中心辐射、矩阵归类、任意自定义示意图。**customSvg 是一个通用 SVG 元素数组，你可以自由组合任意形状，不受预设限制**。坐标基于 1920×1080 画布（x 0~1920，y 0~1080），颜色用 CSS 色值（如 "#3B6FF5"、"rgba(59,111,245,0.3)"、"#fff"）。每个元素结构：
 {"type":"circle|rect|ellipse|line|path|polygon|text", ...位置尺寸..., ...样式..., ...动画...}

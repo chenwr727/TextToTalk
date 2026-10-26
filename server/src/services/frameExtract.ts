@@ -5,12 +5,11 @@ import type { Storyboard } from "../types.js";
 import type { TtsSentence } from "./ttsService.js";
 import { outDir, renderDir } from "./runtime.js";
 import { spawnRunner } from "./remotionRun.js";
+import { transitionFramesOf } from "../../../shared/types.js";
 
 const RENDER_DIR = renderDir;
 
 export type FramePage = Storyboard["pages"][number] & { sentences?: TtsSentence[] };
-
-const TRANSITION_FRAMES = 12;
 
 function pageDuration(p: FramePage, fps: number): number {
   return p.sentences && p.sentences.length
@@ -23,7 +22,9 @@ export function pageStartFrames(pages: FramePage[], fps: number): number[] {
   let offset = 0;
   for (let i = 0; i < pages.length; i++) {
     offsets.push(offset);
-    offset += pageDuration(pages[i], fps) - (i < pages.length - 1 ? TRANSITION_FRAMES : 0);
+    // 第 i 页之后的转场占用的是第 i+1 页的 transition（与 DynamicVideo 一致），且按类型长度不同
+    const next = pages[i + 1];
+    offset += pageDuration(pages[i], fps) - (next ? transitionFramesOf(next.transition) : 0);
   }
   return offsets;
 }
@@ -32,8 +33,9 @@ export function previewCaptureFrames(pages: FramePage[], fps: number): number[] 
   const offsets = pageStartFrames(pages, fps);
   return offsets.map((start, i) => {
     const dur = pageDuration(pages[i], fps);
-    const settle = Math.min(Math.max(24, Math.round(dur * 0.75)), Math.max(1, dur - TRANSITION_FRAMES - 2));
-    return start + Math.min(TRANSITION_FRAMES + settle, Math.max(1, dur - 1));
+    const outgoing = transitionFramesOf(pages[i + 1]?.transition);
+    const settle = Math.min(Math.max(24, Math.round(dur * 0.75)), Math.max(1, dur - outgoing - 2));
+    return start + Math.min(outgoing + settle, Math.max(1, dur - 1));
   });
 }
 

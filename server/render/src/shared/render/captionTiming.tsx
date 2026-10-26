@@ -9,6 +9,8 @@ export interface CaptionTiming {
 export interface SceneTiming {
   captions: CaptionTiming[];
   pageFrames: number;
+  /** 本页 rhythm 决定的元素错开帧数，由 PageBody 注入，场景无需各自关心 */
+  stagger: number;
   frameAt: (index: number, baseDelay?: number, stagger?: number) => number;
 }
 
@@ -24,7 +26,13 @@ export const SceneTimingContext = createContext<SceneTiming | null>(null);
  * 3. 没 anchor 时：用第 fi 个字幕的起始帧；若 fi 超出字幕，则在最后一句字幕
  *    基础上按 stagger 递延，保证依然有先后节奏而不是挤在同一帧。
  */
-export const resolveAnchor = (timing: SceneTiming, anchor: number | undefined, fi: number, bd = 0, st = 20): number => {
+export const resolveAnchor = (
+  timing: SceneTiming,
+  anchor: number | undefined,
+  fi: number,
+  bd = 0,
+  st = timing.stagger ?? 20,
+): number => {
   const n = timing.captions.length;
   if (!n) return timing.frameAt(fi, bd, st);
   if (anchor !== undefined) {
@@ -43,6 +51,7 @@ export const useSceneTiming = (): SceneTiming => {
     return {
       captions: [],
       pageFrames: 0,
+      stagger: 20,
       frameAt: (index, baseDelay = 0, stagger = 20) => baseDelay + index * stagger,
     };
   }

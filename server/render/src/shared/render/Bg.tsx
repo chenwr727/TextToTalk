@@ -1,7 +1,11 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { BG_VARIANTS, DECOR, THEMES, DEFAULT_THEME, type ThemeId } from "./theme";
 
-export const Bg: React.FC<{ variant: string; theme?: ThemeId }> = ({ variant, theme = DEFAULT_THEME }) => {
+export const Bg: React.FC<{ variant: string; theme?: ThemeId; draw?: boolean }> = ({
+  variant,
+  theme = DEFAULT_THEME,
+  draw = false,
+}) => {
   const preset = THEMES[theme] || THEMES[DEFAULT_THEME];
   const v = preset.bg[variant] || preset.bg.default || BG_VARIANTS[variant] || BG_VARIANTS.default;
   const isDark = theme === "dark";
@@ -115,6 +119,58 @@ export const Bg: React.FC<{ variant: string; theme?: ThemeId }> = ({ variant, th
             : "radial-gradient(ellipse at center, transparent 62%, rgba(28,37,54,0.10) 100%), linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 28%)",
         }}
       />
+      {draw ? <DrawDecor color={v.orbColor} /> : null}
     </AbsoluteFill>
+  );
+};
+
+/**
+ * effects.pathDraw：把装饰环 / 装饰线"画"出来。
+ *
+ * 用 pathLength={1} 把任意路径长度归一化为 1，再配合 strokeDasharray=1 与
+ * strokeDashoffset=1-progress，就不必测量真实路径长度（getTotalLength 在无头渲染里不可靠）。
+ */
+const DrawDecor: React.FC<{ color: string }> = ({ color }) => {
+  const f = useCurrentFrame();
+  const ring = interpolate(f, [0, 26], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const line = interpolate(f, [10, 44], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const dash = (p: number) => ({ strokeDasharray: 1, strokeDashoffset: 1 - p });
+
+  return (
+    <svg
+      viewBox="0 0 1920 1080"
+      preserveAspectRatio="xMidYMid slice"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+    >
+      {[
+        { cx: 1520, cy: 300, r: 260, w: 3, o: 0.5, p: ring },
+        { cx: 1520, cy: 300, r: 186, w: 2, o: 0.3, p: ring },
+        { cx: 330, cy: 830, r: 150, w: 2, o: 0.28, p: line },
+      ].map((c, i) => (
+        <circle
+          key={i}
+          cx={c.cx}
+          cy={c.cy}
+          r={c.r}
+          fill="none"
+          stroke={color}
+          strokeWidth={c.w}
+          strokeLinecap="round"
+          opacity={c.o}
+          pathLength={1}
+          {...dash(c.p)}
+        />
+      ))}
+      <path
+        d="M 140 700 C 520 640, 900 760, 1480 690"
+        fill="none"
+        stroke={color}
+        strokeWidth={2.5}
+        strokeLinecap="round"
+        opacity={0.26}
+        pathLength={1}
+        {...dash(line)}
+      />
+    </svg>
   );
 };
