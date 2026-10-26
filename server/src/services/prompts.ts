@@ -10,7 +10,8 @@ export function stripPrompt(p: string): string {
 const toneDesc: Record<string, string> = { formal: "正式严谨", casual: "轻松易懂", energetic: "活泼有感染力" };
 export const tone = (params: VideoParams) => toneDesc[params.tone] ?? toneDesc.casual;
 
-export const ICON_ENUM = '"trend"(趋势)|"chart"(图表)|"clock"(时间)|"scale"(量级)|"gear"(机制)|"bulb"(想法)|"question"(疑问)|"alert"(警告)|"check"(确认)|"search"(搜索)|"target"(目标)|"rocket"(冲刺)|"heart"(情感)|"shield"(防护)|"db"(数据)|"globe"(全球)|"book"(知识)|"bolt"(能量)|"star"(亮点)|"flag"(标记)|"link"(链接)|"users"(人群)|"wallet"(价值)|"box"(容器)|"layers"(层次)|"code"(代码)|"pie"(占比)|"calendar"(日程)|"map"(位置)|"cloud"(云)|"lock"(安全)|"eye"(观察)|"compass"(导航)|"home"(日常)|"award"(奖项)';
+export const ICON_ENUM =
+  '"trend"(趋势)|"chart"(图表)|"clock"(时间)|"scale"(量级)|"gear"(机制)|"bulb"(想法)|"question"(疑问)|"alert"(警告)|"check"(确认)|"search"(搜索)|"target"(目标)|"rocket"(冲刺)|"heart"(情感)|"shield"(防护)|"db"(数据)|"globe"(全球)|"book"(知识)|"bolt"(能量)|"star"(亮点)|"flag"(标记)|"link"(链接)|"users"(人群)|"wallet"(价值)|"box"(容器)|"layers"(层次)|"code"(代码)|"pie"(占比)|"calendar"(日程)|"map"(位置)|"cloud"(云)|"lock"(安全)|"eye"(观察)|"compass"(导航)|"home"(日常)|"award"(奖项)';
 
 const GRANULARITY_DESC: Record<string, string> = {
   coarse: "整体偏精简：pages 取 2~4 个，每页要点 2~3 条，只保留最核心的信息，避免展开细节。",
@@ -28,9 +29,14 @@ const MAX_PAGES_HINT = "pages 最多 10 个，严禁超过；信息量再大也�
 
 function contractDesc(params?: VideoParams): string {
   const parts: string[] = [];
-  if (params?.audience?.trim()) parts.push(`目标受众：${params.audience.trim()}。所有内容用词、举例、深度都要贴合这个受众，避免超出其认知的术语。`);
-  if (params?.coreMessage?.trim()) parts.push(`核心信息：${params.coreMessage.trim()}。整片要始终围绕它展开，结尾要落到它。`);
-  if (params?.audienceOutcome?.trim()) parts.push(`观众收获：${params.audienceOutcome.trim()}。结尾页要落到"观众看完能做什么/收获什么"，让整片有明确落点。`);
+  if (params?.audience?.trim())
+    parts.push(`目标受众：${params.audience.trim()}。所有内容用词、举例、深度都要贴合这个受众，避免超出其认知的术语。`);
+  if (params?.coreMessage?.trim())
+    parts.push(`核心信息：${params.coreMessage.trim()}。整片要始终围绕它展开，结尾要落到它。`);
+  if (params?.audienceOutcome?.trim())
+    parts.push(
+      `观众收获：${params.audienceOutcome.trim()}。结尾页要落到"观众看完能做什么/收获什么"，让整片有明确落点。`,
+    );
   return parts.length ? parts.join("\n") : "";
 }
 
@@ -57,7 +63,7 @@ const MOTION_DESC = `motion：本页元素动画风格，**必须且只能从这
 
 const EFFECTS_DESC = `effects：本页视觉特效（可选，默认全关）。annotation：手绘标注，**必须且只能从这 4 个值中选一个，严禁写枚举之外的值**："highlight"（高亮，适合重点句）|"underline"（下划线，适合数字/关键词）|"circle"（圆圈，适合圈出重点）|"none"（无）。pathDraw：是否给装饰线/圆环做描边动画（从无到有"画"出来），只能是 true 或 false。threeD：是否给标题/重点做 3D 翻转入场，只能是 true 或 false。建议：重点/结论页用 annotation 强调；封面/章节页可用 threeD 或 pathDraw 增强开场；数据页少用特效避免干扰。`;
 
-const CUSTOM_SVG_DESC = `customSvg：本页是否用「自定义图形」来可视化（可选，默认 null）。**硬性：若本页大纲已指定 art（如 flow/loop/pyramid/timeline/quadrant/quote），customSvg 必须为 null**——此时用上方 "art" 字段声明关系图类型，让渲染端用标准关系图自动绘制，不要手绘 SVG 与 art 冲突。仅当本页内容适合用"结构图/示意图"表达且现有版式（flow/loop/pyramid/timeline/quadrant/chart/table）都不够直观时才用 customSvg，例如：神经网络结构、分层架构、决策树、中心辐射、矩阵归类、任意自定义示意图。**customSvg 是一个通用 SVG 元素数组，你可以自由组合任意形状，不受预设限制**。坐标基于 1920×1080 画布（x 0~1920，y 0~1080），颜色用 CSS 色值（如 "#3B6FF5"、"rgba(59,111,245,0.3)"、"#fff"）。每个元素结构：
+const CUSTOM_SVG_DESC = `customSvg：本页是否用「自定义图形」来可视化（可选，默认 null）。**硬性：若本页大纲已指定 art（如 flow/loop/timeline/quadrant/quote），customSvg 必须为 null**——此时用上方 "art" 字段声明关系图类型，让渲染端用标准关系图自动绘制，不要手绘 SVG 与 art 冲突。仅当本页内容适合用"结构图/示意图"表达且现有版式（flow/loop/timeline/quadrant/chart/table）都不够直观时才用 customSvg，例如：神经网络结构、分层架构、决策树、中心辐射、矩阵归类、任意自定义示意图。**customSvg 是一个通用 SVG 元素数组，你可以自由组合任意形状，不受预设限制**。坐标基于 1920×1080 画布（x 0~1920，y 0~1080），颜色用 CSS 色值（如 "#3B6FF5"、"rgba(59,111,245,0.3)"、"#fff"）。每个元素结构：
 {"type":"circle|rect|ellipse|line|path|polygon|text", ...位置尺寸..., ...样式..., ...动画...}
 - circle：{"type":"circle","cx":960,"cy":400,"r":60,"fill":"#3B6FF5"}
 - rect：{"type":"rect","x":200,"y":300,"width":300,"height":200,"rx":16,"fill":"#3B6FF5"}
@@ -159,7 +165,8 @@ ${BEST_PRACTICE_DESC}
 
 function positionHint(index: number, total: number): string {
   if (total <= 1) return "这是全片唯一一页，需自成一体。";
-  if (index === 0) return "这是全片第 1 页（共 " + total + " 页），处于开头：负责开场、点题、勾起兴趣，为后续内容做铺垫。";
+  if (index === 0)
+    return "这是全片第 1 页（共 " + total + " 页），处于开头：负责开场、点题、勾起兴趣，为后续内容做铺垫。";
   if (index === total - 1) return "这是全片最后一页（第 " + total + " 页），处于结尾：负责总结、收束、落到行动或结论。";
   return "这是全片第 " + (index + 1) + " 页 / 共 " + total + " 页，处于中段：负责推进一个具体信息点，承上启下。";
 }
@@ -173,7 +180,7 @@ export function pagePrompt(
   block: PlanBlock | undefined,
   params: VideoParams,
   retryHint?: string,
-  totalPages?: number
+  totalPages?: number,
 ): string {
   const contract = contractDesc(params);
   const pos = positionHint(index, totalPages ?? 0);
@@ -364,7 +371,7 @@ export function regeneratePrompt(
   retryHint?: string,
   keepLayout: string = "points",
   keepRole: string = "build",
-  keepIcon: string | null = null
+  keepIcon: string | null = null,
 ): string {
   const block: PlanBlock = {
     layout: keepLayout as PlanBlock["layout"],

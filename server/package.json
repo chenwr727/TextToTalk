@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test --test-isolation=none \"src/services/*.test.ts\""
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

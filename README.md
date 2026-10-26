@@ -63,12 +63,12 @@ cd web && pnpm install && pnpm run dev                              # :3000
 做一集 3 分钟的科普讲解视频，通常要过五关：写稿 → 做 PPT → 配图 → 录音 → 剪辑。
 TextToTalk 把中间三步压缩成一次回车：
 
-| 传统方式 | TextToTalk |
-|---|---|
-| 手写脚本、手动分页 | LLM 按「叙事弧线」自动切 2~10 页，每页带角色定位 |
-| 找图、画图表、调版式 | 26 条场景规则自动分发版式，图表 / 地图 / SmartArt 直接生成 |
-| 自己录音或买配音 | 多引擎 TTS 逐句合成（Edge / CosyVoice / Qwen-Audio / Seed-TTS），字幕与画面动画随语音节奏出现 |
-| 剪辑软件拼轨道 | Remotion 无头渲染，一次出带声 MP4 |
+| 传统方式             | TextToTalk                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| 手写脚本、手动分页   | LLM 按「叙事弧线」自动切 2~10 页，每页带角色定位                                              |
+| 找图、画图表、调版式 | 26 条场景规则自动分发版式，图表 / 地图 / SmartArt 直接生成                                    |
+| 自己录音或买配音     | 多引擎 TTS 逐句合成（Edge / CosyVoice / Qwen-Audio / Seed-TTS），字幕与画面动画随语音节奏出现 |
+| 剪辑软件拼轨道       | Remotion 无头渲染，一次出带声 MP4                                                             |
 
 **你只需要保留两件事的判断权：大纲对不对、这一页要不要重做。**
 
@@ -118,45 +118,45 @@ TextToTalk 把中间三步压缩成一次回车：
 
 16 个场景组件 + 26 条分发规则，由页面字段自动匹配，**不需要你手动挑模板**。
 
-| 维度 | 取值 |
-|---|---|
-| **layout** 版式（13） | `title` 封面 · `section` 章节 · `points` 要点 · `three_card` 三卡片 · `comparison` 对比 · `chart` 图表 · `table` 表格 · `two_column` 左右图文 · `steps` 步骤流程 · `stats` 数据大屏 · `qa` 问答 · `map` 地图 · `end` 总结 |
-| **chart** 图表（8） | `bar` 柱状 · `line` 折线 · `pie` 饼图 · `donut` 环形 · `area` 面积 · `stacked-bar` 堆叠 · `scatter` 散点 · `pyramid` 金字塔 |
-| **art** SmartArt（5） | `flow` 流程 · `loop` 循环 · `timeline` 时间线 · `quadrant` 象限 · `quote` 金句 |
-| **customSvg** 自由图示 | LLM 直接输出 SVG 元素数组（`circle/rect/path/polygon/text...`，2~40 个，支持逐元素 `delay` / `draw` 描边动画 / `anchor` 字幕对齐），可画神经网络、分层架构、决策树等任意示意图；**优先级高于所有 layout** |
-| **map** 离线圈地图 | `markers` 标记点（2~8）· `routes` 路线（`rail/flight/road`，可虚线 / 动画 / 流光）· `regions` 区域多边形；元素均支持 `anchor` 字幕对齐；纯 SVG，不依赖在线地图服务 |
-| **transition** 转场（5） | `fade` · `slide-left` · `slide-right` · `zoom` · `none` |
-| **motion** 动画（3） | `spring` 弹簧 · `linear` 线性 · `float` 浮动 |
-| **effects** 特效（3） | `annotation` 手绘标注（高亮 / 下划线 / 圆圈）· `pathDraw` 路径描边 · `threeD` 3D 翻转入场 |
-| **icon** 图标（35） | 每页一枚语义徽章：`trend chart clock scale gear bulb question alert check search target rocket heart shield db globe book bolt star flag link users wallet box layers code pie calendar map cloud lock eye compass home award` |
-| **role** 角色（12） | `hook` 开场 · `familiar` 铺垫 · `puzzle` 疑问 · `build` 概念 · `mechanism` 机制 · `scale` 量级 · `evidence` 证据 · `case` 案例 · `compare` 对比 · `why` 价值 · `action` 行动 · `end` 收尾 |
-| **rhythm** 节奏（3） | `anchor` 重点 · `dense` 密集 · `breathing` 过渡缓冲 |
+| 维度                     | 取值                                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **layout** 版式（13）    | `title` 封面 · `section` 章节 · `points` 要点 · `three_card` 三卡片 · `comparison` 对比 · `chart` 图表 · `table` 表格 · `two_column` 左右图文 · `steps` 步骤流程 · `stats` 数据大屏 · `qa` 问答 · `map` 地图 · `end` 总结      |
+| **chart** 图表（8）      | `bar` 柱状 · `line` 折线 · `pie` 饼图 · `donut` 环形 · `area` 面积 · `stacked-bar` 堆叠 · `scatter` 散点 · `pyramid` 金字塔                                                                                                    |
+| **art** SmartArt（5）    | `flow` 流程 · `loop` 循环 · `timeline` 时间线 · `quadrant` 象限 · `quote` 金句                                                                                                                                                 |
+| **customSvg** 自由图示   | LLM 直接输出 SVG 元素数组（`circle/rect/path/polygon/text...`，2~40 个，支持逐元素 `delay` / `draw` 描边动画 / `anchor` 字幕对齐），可画神经网络、分层架构、决策树等任意示意图；**优先级高于所有 layout**                      |
+| **map** 离线圈地图       | `markers` 标记点（2~8）· `routes` 路线（`rail/flight/road`，可虚线 / 动画 / 流光）· `regions` 区域多边形；元素均支持 `anchor` 字幕对齐；纯 SVG，不依赖在线地图服务                                                             |
+| **transition** 转场（5） | `fade` · `slide-left` · `slide-right` · `zoom` · `none`                                                                                                                                                                        |
+| **motion** 动画（3）     | `spring` 弹簧 · `linear` 线性 · `float` 浮动                                                                                                                                                                                   |
+| **effects** 特效（3）    | `annotation` 手绘标注（高亮 / 下划线 / 圆圈）· `pathDraw` 路径描边 · `threeD` 3D 翻转入场                                                                                                                                      |
+| **icon** 图标（35）      | 每页一枚语义徽章：`trend chart clock scale gear bulb question alert check search target rocket heart shield db globe book bolt star flag link users wallet box layers code pie calendar map cloud lock eye compass home award` |
+| **role** 角色（12）      | `hook` 开场 · `familiar` 铺垫 · `puzzle` 疑问 · `build` 概念 · `mechanism` 机制 · `scale` 量级 · `evidence` 证据 · `case` 案例 · `compare` 对比 · `why` 价值 · `action` 行动 · `end` 收尾                                      |
+| **rhythm** 节奏（3）     | `anchor` 重点 · `dense` 密集 · `breathing` 过渡缓冲                                                                                                                                                                            |
 
 ### 生成参数
 
-| 参数 | 可选值 |
-|---|---|
-| 语气 `tone` | `formal` 正式严谨 · `casual` 轻松易懂（默认）· `energetic` 活泼有感染力 |
-| 拆稿粒度 `granularity` | `coarse` 2~4 页 · `medium` 4~6 页（默认）· `fine` 6~10 页 |
-| 主题风格 `theme` | `tech` 科技蓝（默认）· `business` 商务蓝 · `fresh` 清新绿 · `warm` 暖橙 · `dark` 深空 |
-| 配音引擎 `engine` | `edge` Edge 在线（默认，免密钥）· `cosyvoice` 阿里云 CosyVoice · `qwen-audio` 阿里云 Qwen-Audio-TTS · `seed-tts` 火山引擎 Seed-TTS |
-| 配音音色 `voice` | 随引擎而定：Edge 默认 `zh-CN-XiaoxiaoNeural` 晓晓·女，其余引擎见 [TTS 文档](docs/TTS.md) |
-| 背景配乐 `bgm` | `default` 轻快配乐 · `none` 静音 |
-| 画幅 / 帧率 | `1920×1080` 横屏 16:9 · `1080×1920` 竖屏 9:16，均 @ `30fps` |
-| 沟通目标（可选） | 目标受众 `audience` · 核心信息 `coreMessage` · 观众收获 `audienceOutcome` |
+| 参数                   | 可选值                                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 语气 `tone`            | `formal` 正式严谨 · `casual` 轻松易懂（默认）· `energetic` 活泼有感染力                                                            |
+| 拆稿粒度 `granularity` | `coarse` 2~4 页 · `medium` 4~6 页（默认）· `fine` 6~10 页                                                                          |
+| 主题风格 `theme`       | `tech` 科技蓝（默认）· `business` 商务蓝 · `fresh` 清新绿 · `warm` 暖橙 · `dark` 深空                                              |
+| 配音引擎 `engine`      | `edge` Edge 在线（默认，免密钥）· `cosyvoice` 阿里云 CosyVoice · `qwen-audio` 阿里云 Qwen-Audio-TTS · `seed-tts` 火山引擎 Seed-TTS |
+| 配音音色 `voice`       | 随引擎而定：Edge 默认 `zh-CN-XiaoxiaoNeural` 晓晓·女，其余引擎见 [TTS 文档](docs/TTS.md)                                           |
+| 背景配乐 `bgm`         | `default` 轻快配乐 · `none` 静音                                                                                                   |
+| 画幅 / 帧率            | `1920×1080` 横屏 16:9 · `1080×1920` 竖屏 9:16，均 @ `30fps`                                                                        |
+| 沟通目标（可选）       | 目标受众 `audience` · 核心信息 `coreMessage` · 观众收获 `audienceOutcome`                                                          |
 
 ---
 
 ## 文档
 
-| 文档 | 内容 |
-|---|---|
-| [部署与开发](docs/DEPLOYMENT.md) | Docker 一键起、本地开发三终端、环境要求、生产注意事项 |
-| [桌面版](docs/DESKTOP.md) | 开发模式、打包流程与自检、免安装版、设置面板、常见问题 |
-| [配置](docs/CONFIGURATION.md) | LLM / 渲染环境变量、桌面版配置、渲染加速 |
-| [API](docs/API.md) | 接口列表、鉴权、SSE 事件 |
-| [架构](docs/ARCHITECTURE.md) | 整体结构、项目结构、技术栈、生成与渲染流水线 |
-| [TTS 配音](docs/TTS.md) | 多引擎配置、音色列表、语速音量、如何扩展新引擎 |
+| 文档                             | 内容                                                   |
+| -------------------------------- | ------------------------------------------------------ |
+| [部署与开发](docs/DEPLOYMENT.md) | Docker 一键起、本地开发三终端、环境要求、生产注意事项  |
+| [桌面版](docs/DESKTOP.md)        | 开发模式、打包流程与自检、免安装版、设置面板、常见问题 |
+| [配置](docs/CONFIGURATION.md)    | LLM / 渲染环境变量、桌面版配置、渲染加速               |
+| [API](docs/API.md)               | 接口列表、鉴权、SSE 事件                               |
+| [架构](docs/ARCHITECTURE.md)     | 整体结构、项目结构、技术栈、生成与渲染流水线           |
+| [TTS 配音](docs/TTS.md)          | 多引擎配置、音色列表、语速音量、如何扩展新引擎         |
 
 ---
 
@@ -182,10 +182,24 @@ TextToTalk 把中间三步压缩成一次回车：
 
 ---
 
+## 开发脚本
+
+仓库根目录有一套统一的工程化脚本（`pnpm install` 一次即可）：
+
+| 命令                 | 说明                                                                     |
+| -------------------- | ------------------------------------------------------------------------ |
+| `pnpm run verify`    | 一把过：typecheck → test → lint                                          |
+| `pnpm run typecheck` | 前后端 TypeScript 类型检查                                               |
+| `pnpm test`          | 单元测试（node:test，覆盖归一化 / prompt 拼装 / 渲染日志 / shim 覆盖率） |
+| `pnpm run lint`      | ESLint（扁平配置，error 级只保留真 bug 规则）                            |
+| `pnpm run format`    | Prettier 格式化（`format:check` 只校验不写）                             |
+
+---
+
 ## 贡献
 
 1. Fork 本仓库，新建分支 `feat/your-idea`
-2. `pnpm run typecheck` 通过后再提交
+2. `pnpm run verify` 通过后再提交
 3. 提 PR 时简单说明改动动机与截图（UI 相关必附）
 
 ---

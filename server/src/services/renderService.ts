@@ -1,5 +1,5 @@
 import { cpus } from "node:os";
-import { existsSync, mkdirSync, rmSync, appendFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { patchTask, getTask } from "./taskStore.js";
 import { outDir, renderDir } from "./runtime.js";
@@ -9,6 +9,7 @@ import { generateBgm } from "./bgmService.js";
 import { enqueueRender } from "./renderQueue.js";
 import { renderPageFrames } from "./frameExtract.js";
 import { spawnRunner } from "./remotionRun.js";
+import { createRenderLogger } from "./renderProgress.js";
 import type { Storyboard } from "../types.js";
 
 export const OUT_DIR = outDir;
@@ -24,7 +25,15 @@ export async function renderTaskSync(
   useBgm: boolean,
   onProgress?: (p: number) => void,
   onWarning?: (w: string) => void,
-  opts?: { theme?: string; width?: number; height?: number; voice?: string; engine?: string; ttsSpeed?: number; ttsVolume?: number }
+  opts?: {
+    theme?: string;
+    width?: number;
+    height?: number;
+    voice?: string;
+    engine?: string;
+    ttsSpeed?: number;
+    ttsVolume?: number;
+  },
 ): Promise<string> {
   const setStage = (p: number) => onProgress?.(Math.min(0.98, p));
 
@@ -34,7 +43,9 @@ export async function renderTaskSync(
     volume: opts?.ttsVolume,
   });
   if (tts.failedCount > 0) {
-    onWarning?.(`有 ${tts.failedCount}/${storyboard.pages.reduce((a, p) => a + p.captions.length, 0)} 句配音合成失败，成片中对应字幕将无旁白，可尝试重新渲染或微调字幕后再试。`);
+    onWarning?.(
+      `有 ${tts.failedCount}/${storyboard.pages.reduce((a, p) => a + p.captions.length, 0)} 句配音合成失败，成片中对应字幕将无旁白，可尝试重新渲染或微调字幕后再试。`,
+    );
   }
   const totalSeconds = tts.pages.reduce((a, p) => a + (p.totalSeconds || 0), 0);
   setStage(0.05);
@@ -113,63 +124,41 @@ export async function renderTaskSync(
   console.log("[render] spawn render runner for task", taskId, "bundle:", serveUrl);
 
   const renderLogFile = path.join(path.dirname(output), `${taskId}.render.log`);
-  try { mkdirSync(path.dirname(renderLogFile), { recursive: true }); } catch {}
+  try {
+    mkdirSync(path.dirname(renderLogFile), { recursive: true });
+  } catch {}
+
+  const logger = createRenderLogger({
+    logFile: renderLogFile,
+    onProgress,
+    onStderrLine: (line) => console.error("[render][remotion]", line),
+  });
 
   await new Promise<string>((resolve, reject) => {
     const child = spawnRunner([configPath], { cwd: RENDER_DIR });
-    const progressRe =
-      /(?:Rendering|Rendered|Stitching|Encod(?:ed|ing))\s+(?:still|stills|frames?)?\s*[^\d]*?(\d+)\s*\/\s*(\d+)/gi;
-    const logChunks: string[] = [];
-    const MAX_LOG = 200;
-    const appendLog = (line: string) => {
-      const clean = line.trim();
-      if (!clean) return;
-      logChunks.push(clean);
-      if (logChunks.length > MAX_LOG) logChunks.splice(0, logChunks.length - MAX_LOG);
-      try { appendFileSync(renderLogFile, clean + "\n"); } catch {}
-    };
-    const onStdout = (chunk: Buffer) => {
-      const text = chunk.toString();
-      for (const line of text.split(/\r?\n/)) appendLog("[out] " + line);
-      if (!onProgress) return;
-      let m: RegExpExecArray | null;
-      let last = 0;
-      progressRe.lastIndex = 0;
-      while ((m = progressRe.exec(text)) !== null) {
-        const done = Number(m[1]);
-        const total = Number(m[2]);
-        if (total > 0) last = Math.min(0.98, 0.12 + (done / total) * 0.86);
-      }
-      if (last > 0) onProgress(last);
-    };
-    const onStderr = (chunk: Buffer) => {
-      const text = chunk.toString();
-      for (const line of text.split(/\r?\n/)) {
-        if (line.trim()) {
-          appendLog("[err] " + line);
-          console.error("[render][remotion]", line.trim());
-        }
-      }
-    };
-    child.stdout?.on("data", onStdout);
-    child.stderr?.on("data", onStderr);
+    child.stdout?.on("data", (chunk: Buffer) => logger.stdout(chunk));
+    child.stderr?.on("data", (chunk: Buffer) => logger.stderr(chunk));
     child.on("error", (e2) => {
-      appendLog("[fatal] " + (e2 instanceof Error ? e2.message : String(e2)));
+      logger.append("fatal", e2 instanceof Error ? e2.message : String(e2));
       reject(e2);
     });
     child.on("close", (code) => {
-      try { rmSync(configPath, { force: true }); } catch {}
+      try {
+        rmSync(configPath, { force: true });
+      } catch {}
       if (code === 0) {
         if (!existsSync(output)) {
-          reject(new Error(
-            `渲染进程正常退出，但输出文件未落盘：${output}。` +
-            `请检查 render/run-render.mjs 的 renderMedia 是否传入 outputLocation（Remotion 4 的参数名，写成 output 会被静默忽略导致不落盘）。完整日志：${renderLogFile}`
-          ));
+          reject(
+            new Error(
+              `渲染进程正常退出，但输出文件未落盘：${output}。` +
+                `请检查 render/run-render.mjs 的 renderMedia 是否传入 outputLocation（Remotion 4 的参数名，写成 output 会被静默忽略导致不落盘）。完整日志：${renderLogFile}`,
+            ),
+          );
         } else {
           resolve(output);
         }
       } else {
-        const tail = logChunks.slice(-12).join("\n") || "(无输出，请查看 " + renderLogFile + ")";
+        const tail = logger.tail(12) || "(无输出，请查看 " + renderLogFile + ")";
         reject(new Error(`Remotion 渲染退出码 ${code}。完整日志：${renderLogFile}\n${tail}`));
       }
     });
@@ -215,11 +204,14 @@ export function renderTaskInBackground(taskId: string): void {
 
     try {
       const outPath = await renderTaskSync(
-        taskId, storyboard, fps || 30, subtitles !== false,
+        taskId,
+        storyboard,
+        fps || 30,
+        subtitles !== false,
         bgm === "default",
         (p) => patchTask(taskId, { progress: p }),
         (w) => patchTask(taskId, { warning: w }),
-        { theme, width, height, voice, engine, ttsSpeed, ttsVolume }
+        { theme, width, height, voice, engine, ttsSpeed, ttsVolume },
       );
       patchTask(taskId, { status: "DONE", progress: 1, outputUrl: `/download/${taskId}` });
       console.log("[render] done ->", outPath);

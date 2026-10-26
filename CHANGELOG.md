@@ -2,6 +2,31 @@
 
 本项目所有值得记录的变更都会汇总在此文件。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- **仓库级工程化工具链**：根目录新增 `package.json`（ESLint 扁平配置 + Prettier + `node:test`），提供 `lint` / `format` / `typecheck` / `test` / `verify` 五个统一入口，不必再进子目录跑脚本。
+- **单元测试（88 项）**：覆盖 `normalize` 的归一化与内容校验、`prompts` 模板拼装、渲染日志与进度解析、`web/src/*-shim.ts` 对 Remotion API 的覆盖率。
+- **shim 覆盖率守护测试**：从 `web/src` 出发遍历真实 import 图，校验每个被前端间接用到的 `remotion` / `@remotion/*` 具名导入都在对应桩文件里有同名导出——升级 Remotion 时漏补桩会直接红灯，而不是静默把缩略图画错。
+- `web` 新增 `typecheck` 脚本，根目录 `pnpm run typecheck` 可同时检查前后端。
+
+### 变更
+
+- `renderService.renderTaskSync` 里约 60 行的子进程日志/进度管道抽成 `services/renderProgress.ts`（`createRenderLogger` + `parseRenderProgress`），行为不变但可单测。
+- 全仓库统一 Prettier 格式（一次性重排，无逻辑改动）。
+
+### 修复
+
+- **散点图（scatter）永远不渲染**：`normalizeChart` 的 labels/values 等长校验排在 scatter 分支之前，导致只给 `points` 的散点图被直接判空——渲染端的 `ScatterScene` 实际是死代码。
+- **堆叠柱状图（stacked-bar）同理**：只给 `series`、不给顶层 `values` 时被判空。
+- **要点 anchor 顺序校验失效**：先排序再比较等同于自比，`anchor 顺序错乱` 这条告警永远不会触发。
+- `normalizeArt` 接受 `"pyramid"`，但 `Art` 类型与 `validatePlan` 都不认可（pyramid 属于 chart 而非 art），prompt 里 art 的举例也一并纠正。
+
+### 清理
+
+- 删除 `server/render/src/gen/` 下 8 个陈旧生成入口、`server/render-profile/` 空任务目录，以及调试期遗留的 `server.repro.log` / `web/vite.repro.log`。
+
 ## [0.2.0] - 2026-09-02
 
 ### 新增

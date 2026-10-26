@@ -1,0 +1,18 @@
+node_modules
+dist
+out
+*.mp4
+*.wav
+*.log
+pnpm-lock.yaml
+package-lock.json
+
+# 运行时生成，每次渲染覆盖，不入库
+server/render/src/gen
+
+# 打包与渲染产物
+desktop/release
+desktop/build
+desktop/dist
+server/render-profile
+web/dist

@@ -1,0 +1,24 @@
+{
+  "name": "texttotalk",
+  "version": "0.2.0",
+  "private": true,
+  "description": "TextToTalk 仓库级开发工具链（lint / format / test / typecheck）",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -C server run typecheck && pnpm -C web run typecheck",
+    "test": "pnpm -C server run test",
+    "verify": "pnpm run typecheck && pnpm run test && pnpm run lint"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
+  }
+}
