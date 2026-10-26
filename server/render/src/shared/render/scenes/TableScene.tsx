@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, FW, LH, RADIUS, CARD_SHADOW, ACCENT_GRAD, springIn } from "../theme";
+import { C, FONT, FS, FW, LH, RADIUS, CARD_SHADOW, GLASS, ACCENT_GRAD, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
@@ -106,7 +106,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
           top: startY,
           left: startX,
           width: totalW,
-          background: "rgba(255,255,255,0.92)",
+          background: GLASS.card,
           borderRadius: RADIUS.box,
           boxShadow: CARD_SHADOW,
           overflow: "hidden",

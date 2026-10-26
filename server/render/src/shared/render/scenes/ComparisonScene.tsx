@@ -130,7 +130,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           style={{
             position: "absolute",
             inset: 3,
-            borderRadius: RADIUS.card - 3,
+            borderRadius: RADIUS.cardInner,
             border: "1px solid rgba(255,255,255,0.6)",
             pointerEvents: "none",
           }}
@@ -276,11 +276,11 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             width: isPortrait ? sp(96) : 96,
             height: isPortrait ? sp(96) : 96,
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${C.accent}, ${C.accent}cc)`,
+            background: `linear-gradient(135deg, ${C.accent}, ${C.accentSoft})`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: `0 10px 28px ${C.accent}55`,
+            boxShadow: `0 10px 28px ${C.accentFaint}`,
             opacity: enterVs,
             transform: `scale(${interpolate(enterVs, [0, 1], [0.4, 1])}) rotate(${interpolate(enterVs, [0, 1], [-90, 0])}deg)`,
             zIndex: 2,

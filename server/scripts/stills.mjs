@@ -135,8 +135,8 @@ mkdirSync(outDir, { recursive: true });
 console.log(`[stills] 总帧数 ${offset}，共 ${shots.length} 张，theme=${inputProps.theme}`);
 
 for (const shot of shots) {
-  const outPng = path.join(outDir, `${shot.name}.png`);
-  const configPath = path.join(outDir, `${shot.name}.still.json`);
+  const outPng = path.join(outDir, `${inputProps.theme}-${shot.name}.png`);
+  const configPath = path.join(outDir, `${inputProps.theme}-${shot.name}.still.json`);
   writeFileSync(
     configPath,
     JSON.stringify({

@@ -16,6 +16,10 @@
 
 - `renderService.renderTaskSync` 里约 60 行的子进程日志/进度管道抽成 `services/renderProgress.ts`（`createRenderLogger` + `parseRenderProgress`），行为不变但可单测。
 - 全仓库统一 Prettier 格式（一次性重排，无逻辑改动）。
+- **主题从「只换背景」升级为完整设计语言**：`theme.ts` 重构为 `THEME_TOKENS`（字体栈、主色与 6 色强调序列、卡面/胶囊底色、圆角、阴影、装饰色、标题形态）+ `themeVars()` 注入 CSS 变量。场景里 22 个文件、290 处 `C` / `RADIUS` / `CARD_SHADOW` / `FONT` 引用无需逐个改 hook，换主题即整体生效。`server/render` 与 `web` 的预览缩略图各自在根节点注入同一份变量。
+  - 5 套主题现在真的不一样：科技蓝（默认黑体 + 胶囊标题 + 24px 圆角）、商务蓝（左对齐竖线标题 + 10px 直角 + 收窄阴影）、清新绿（圆体字 + 34px 大圆角 + 更大字距）、暖橙（宋体衬线 + 纯文字标题 + 6px 直角）、深空（浅字深卡玻璃质感 + 加深阴影）。
+  - 深色主题的文字、卡面、装饰色不再沿用浅色主题的硬编码白底。
+- `web` 的主题下拉框改为从 `THEME_TOKENS` 读取中文名，不再手写一份会漂移的选项列表。
 
 ### 修复
 
@@ -25,6 +29,8 @@
 - `normalizeArt` 接受 `"pyramid"`，但 `Art` 类型与 `validatePlan` 都不认可（pyramid 属于 chart 而非 art），prompt 里 art 的举例也一并纠正。
 - **分镜页「定位到指定页」实际从未生效**：`focusPage` 收尾 effect 在 `highlight` 为空时就立即回调父组件，父组件随即清空 `focusPage`，本 effect 的 cleanup 随即清掉定时器，滚动与高亮都不会发生。改为高亮结束后再回调。
 - **重新生成大纲且页数不变时预览不刷新**：大纲同步 effect 只比较页数，且闭包内读到的是旧的 `outline` / `draft`，同页数重生成会沿用旧草稿；而一旦补齐依赖又会在用户编辑时覆盖输入。改为按 `outline` 引用在渲染期同步草稿。
+- **`points` 版式从不显示页面标题**：`PointsScene` 既不渲染 `PageHeading` 也不读 `page.title`，AI 为每页写的标题在最常见的版式上被静默丢弃。现已补上标题，并把内容起始边距让出标题所需高度。
+- **白色卡面写死**：`CustomSvgScene` / `TableScene` / `SmartArt` 里三处 `#fff` / `rgba(255,255,255,0.92)` 卡面改为 `GLASS.card`，否则深色主题上会出现白块。
 
 ### 清理
 

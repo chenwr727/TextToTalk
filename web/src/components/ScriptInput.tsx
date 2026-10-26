@@ -1,5 +1,9 @@
 import { useState } from "react";
 import type { VideoParams } from "../types";
+import { THEME_IDS, THEME_TOKENS } from "../../../server/render/src/shared/render/theme";
+
+/** 主题的中文名来自渲染端 token，避免两处各写一份漂移；图标只是 UI 装饰 */
+const THEME_EMOJI: Record<string, string> = { tech: "🔵", business: "💼", fresh: "🌿", warm: "🟠", dark: "🌌" };
 
 const EXAMPLES: { t: string; p: string }[] = [
   {
@@ -162,11 +166,11 @@ export function ScriptInput({
                     value={params.theme ?? "tech"}
                     onChange={(e) => onParamsChange({ ...params, theme: e.target.value as any })}
                   >
-                    <option value="tech">🔵 科技蓝</option>
-                    <option value="business">💼 商务蓝</option>
-                    <option value="fresh">🌿 清新绿</option>
-                    <option value="warm">🟠 暖橙</option>
-                    <option value="dark">🌌 深空</option>
+                    {THEME_IDS.map((id) => (
+                      <option key={id} value={id}>
+                        {THEME_EMOJI[id] ?? "🎨"} {THEME_TOKENS[id].label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

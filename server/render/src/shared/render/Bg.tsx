@@ -1,14 +1,14 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
-import { BG_VARIANTS, DECOR, THEMES, DEFAULT_THEME, type ThemeId } from "./theme";
+import { DECOR, THEME_TOKENS, DEFAULT_THEME, normalizeThemeId, type ThemeId } from "./theme";
 
 export const Bg: React.FC<{ variant: string; theme?: ThemeId; draw?: boolean }> = ({
   variant,
   theme = DEFAULT_THEME,
   draw = false,
 }) => {
-  const preset = THEMES[theme] || THEMES[DEFAULT_THEME];
-  const v = preset.bg[variant] || preset.bg.default || BG_VARIANTS[variant] || BG_VARIANTS.default;
-  const isDark = theme === "dark";
+  const tokens = THEME_TOKENS[normalizeThemeId(theme)];
+  const v = tokens.bg[variant] || tokens.bg.default;
+  const isDark = tokens.dark;
   const f = useCurrentFrame();
   const leakX = interpolate(f % 240, [0, 240], [-0.4, 1.4], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const leakO = 0.5 + 0.2 * Math.sin((f / 240) * Math.PI * 2);

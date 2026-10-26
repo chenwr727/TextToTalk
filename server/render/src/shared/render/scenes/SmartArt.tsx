@@ -276,7 +276,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
             width: isPortrait ? sp(64) : 64,
             height: isPortrait ? sp(64) : 64,
             borderRadius: "50%",
-            background: "#fff",
+            background: GLASS.card,
           }}
         />
       </div>
@@ -521,7 +521,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
               right: 1920 - LAST_CX,
               height: 8,
               transform: "translateY(-50%)",
-              background: `linear-gradient(90deg, ${C.accent}, ${C.accent}cc)`,
+              background: `linear-gradient(90deg, ${C.accent}, ${C.accentSoft})`,
               borderRadius: 4,
             }}
           />
@@ -708,7 +708,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
               right: 0,
               top: "50%",
               height: 4,
-              background: `${C.accent}66`,
+              background: `${C.accentMid}`,
               borderRadius: 2,
               transform: "translateY(-50%)",
             }}
@@ -720,7 +720,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
               bottom: 0,
               left: "50%",
               width: 4,
-              background: `${C.accent}66`,
+              background: `${C.accentMid}`,
               borderRadius: 2,
               transform: "translateX(-50%)",
             }}

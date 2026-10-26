@@ -38,7 +38,7 @@ export const Card: React.FC<{
           style={{
             position: "absolute",
             inset: 3,
-            borderRadius: RADIUS.card - 3,
+            borderRadius: RADIUS.cardInner,
             border: "1px solid rgba(255,255,255,0.6)",
             pointerEvents: "none",
           }}

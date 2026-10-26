@@ -69,7 +69,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             width: accentBarW * bar,
             height: 6,
             borderRadius: RADIUS.pill,
-            background: `linear-gradient(90deg, ${C.accent}, ${C.accent}88)`,
+            background: `linear-gradient(90deg, ${C.accent}, ${C.accentTint})`,
             marginBottom: sp(30),
           }}
         />

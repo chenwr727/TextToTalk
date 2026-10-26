@@ -6,7 +6,7 @@ import { none } from "@remotion/transitions/none";
 import type { RenderProps, TransitionType } from "./shared/render/props";
 import { TRANSITION_FRAME_MAP, transitionFramesOf } from "../../../shared/types";
 import { zoomPush } from "./shared/render/presentations";
-import { C, FONT } from "./shared/render/theme";
+import { C, FONT, ThemeContext, THEME_TOKENS, normalizeThemeId, themeVars } from "./shared/render/theme";
 import { Bg } from "./shared/render/Bg";
 import { Spectrum } from "./shared/render/Spectrum";
 import { BgmLayer } from "./components/Caption";
@@ -68,15 +68,17 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
   });
 
   return (
-    <AbsoluteFill>
-      <TransitionSeries>{children}</TransitionSeries>
-      {bgm && <Spectrum src={bgm.audioUrl} />}
-      {bgm && <BgmLayer url={bgm.audioUrl} totalFrames={durationInFrames} />}
-      {projectTitle && (
-        <div style={{ position: "absolute", bottom: 20, right: 24, color: C.muted, fontSize: 20, fontFamily: FONT }}>
-          {projectTitle}
-        </div>
-      )}
-    </AbsoluteFill>
+    <ThemeContext.Provider value={THEME_TOKENS[normalizeThemeId(theme)]}>
+      <AbsoluteFill style={themeVars(theme)}>
+        <TransitionSeries>{children}</TransitionSeries>
+        {bgm && <Spectrum src={bgm.audioUrl} />}
+        {bgm && <BgmLayer url={bgm.audioUrl} totalFrames={durationInFrames} />}
+        {projectTitle && (
+          <div style={{ position: "absolute", bottom: 20, right: 24, color: C.muted, fontSize: 20, fontFamily: FONT }}>
+            {projectTitle}
+          </div>
+        )}
+      </AbsoluteFill>
+    </ThemeContext.Provider>
   );
 };

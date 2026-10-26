@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { evolvePath, getBoundingBox } from "@remotion/paths";
-import { C, FONT, FS, FW, RADIUS, CARD_SHADOW, springIn, accentOf, BORDER, measureTextWidth } from "../theme";
+import { C, FONT, FS, FW, RADIUS, CARD_SHADOW, GLASS, springIn, accentOf, BORDER, measureTextWidth } from "../theme";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { Icon } from "../Icon";
@@ -42,7 +42,7 @@ const BottomPoints: React.FC<{ page: SceneProps["page"]; fps: number }> = ({ pag
             style={{
               opacity: o,
               transform: `translateY(${interpolate(o, [0, 1], [40, 0])}px)`,
-              background: "rgba(255,255,255,0.92)",
+              background: GLASS.card,
               border: `${BORDER.card}px solid ${accentOf(i)}`,
               borderRadius: RADIUS.box,
               padding: "16px 24px",

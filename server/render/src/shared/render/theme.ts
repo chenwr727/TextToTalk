@@ -1,7 +1,16 @@
+import { createContext, useContext, type CSSProperties } from "react";
 import { spring } from "remotion";
 import { fitText, measureText } from "@remotion/layout-utils";
 
-export const FONT = "'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
+/* ------------------------------------------------------------------ *
+ * 字体
+ * ------------------------------------------------------------------ */
+
+/** 真实字体栈：测量文字宽度时必须是真值，CSS 变量在这里无效 */
+export const FONT_STACK = "'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
+
+/** 用于样式的字体值：读主题注入的 CSS 变量，因此主题一换、全站字体跟着换 */
+export const FONT = "var(--ttt-font)";
 
 export const fitFontSize = (
   text: string,
@@ -9,9 +18,10 @@ export const fitFontSize = (
   min = 24,
   max = 56,
   fontWeight: number | string = 700,
+  fontFamily: string = FONT_STACK,
 ) => {
   try {
-    const { fontSize } = fitText({ text, withinWidth, fontFamily: FONT, fontWeight });
+    const { fontSize } = fitText({ text, withinWidth, fontFamily, fontWeight });
     return Math.max(min, Math.min(max, fontSize));
   } catch {
     return max;
@@ -37,9 +47,14 @@ export const fitFontSizeBox = (
   return min;
 };
 
-export const measureTextWidth = (text: string, fontSize: number, fontWeight: number | string = 700): number => {
+export const measureTextWidth = (
+  text: string,
+  fontSize: number,
+  fontWeight: number | string = 700,
+  fontFamily: string = FONT_STACK,
+): number => {
   try {
-    const { width } = measureText({ text, fontFamily: FONT, fontSize, fontWeight });
+    const { width } = measureText({ text, fontFamily, fontSize, fontWeight });
     return width;
   } catch {
     const bold = Number(fontWeight) >= 700;
@@ -51,32 +66,418 @@ export const measureTextWidth = (text: string, fontSize: number, fontWeight: num
   }
 };
 
+/* ------------------------------------------------------------------ *
+ * 主题 token
+ * ------------------------------------------------------------------ */
+
+export type ThemeId = "tech" | "business" | "fresh" | "warm" | "dark";
+
+export type BgVariantMap = Record<string, { grad: string; orb: string; orbColor: string }>;
+
+export interface ThemeTokens {
+  label: string;
+  /** 深色主题：文字色/卡面是反的，Bg 也要走暗色分支 */
+  dark: boolean;
+  font: string;
+  ink: string;
+  sub: string;
+  muted: string;
+  /** 主强调色（按钮、标题线、图表首色） */
+  accent: string;
+  /** 6 色强调序列，按序号分配语义之外的装饰色 */
+  accents: [string, string, string, string, string, string];
+  /** 强调渐变的第二个色（ACCENT_GRAD 用） */
+  gradEnd: string;
+  card: {
+    bg: string;
+    border: string;
+    shadow: string;
+    radius: number;
+    radiusBox: number;
+  };
+  pill: { bg: string; shadow: string };
+  /** 标题呈现方式：胶囊底 / 左侧竖线 / 纯文字 */
+  heading: {
+    style: "pill" | "bar" | "plain";
+    align: "left" | "center";
+    size: number;
+    letterSpacing: number;
+  };
+  decor: { ring: string; ringAccent: string; grid: string; glow: string };
+  bg: BgVariantMap;
+}
+
+const baseOrb = "520px";
+
+export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
+  tech: {
+    label: "科技蓝",
+    dark: false,
+    font: FONT_STACK,
+    ink: "#1c2536",
+    sub: "#5a6b82",
+    muted: "#8a99b0",
+    accent: "#3b6ff5",
+    accents: ["#3b6ff5", "#2fc6a1", "#f2a93b", "#e8659f", "#8b5cf6", "#0ea5e9"],
+    gradEnd: "#2fc6a1",
+    card: {
+      bg: "rgba(255,255,255,0.92)",
+      border: "rgba(255,255,255,0.65)",
+      shadow: "0 1px 2px rgba(28,37,54,0.06), 0 8px 24px rgba(28,37,54,0.10), 0 24px 48px -12px rgba(28,37,54,0.16)",
+      radius: 24,
+      radiusBox: 18,
+    },
+    pill: {
+      bg: "rgba(255,255,255,0.82)",
+      shadow: "0 2px 4px rgba(28,37,54,0.06), 0 8px 20px rgba(28,37,54,0.10)",
+    },
+    heading: { style: "pill", align: "center", size: 48, letterSpacing: 0 },
+    decor: {
+      ring: "rgba(255,255,255,0.55)",
+      ringAccent: "rgba(59,111,245,0.10)",
+      grid: "rgba(28,37,54,0.035)",
+      glow: "rgba(59,111,245,0.18)",
+    },
+    bg: {
+      title: { grad: "linear-gradient(150deg,#eef3ff 0%,#dbe7ff 55%,#cdddff 100%)", orb: baseOrb, orbColor: "#bcd2ff" },
+      section: {
+        grad: "linear-gradient(150deg,#eef7ff 0%,#ddeeff 45%,#cfe8ff 100%)",
+        orb: "560px",
+        orbColor: "#b9defc",
+      },
+      chart: { grad: "linear-gradient(150deg,#f4f8ff 0%,#e9f3ff 50%,#ddeeff 100%)", orb: baseOrb, orbColor: "#c5dcff" },
+      art: { grad: "linear-gradient(160deg,#f2f7ff 0%,#e7f1ff 45%,#dcebff 100%)", orb: baseOrb, orbColor: "#bfd8ff" },
+      end: { grad: "linear-gradient(150deg,#f6f9ff 0%,#eef4ff 45%,#e8f2ff 100%)", orb: baseOrb, orbColor: "#cfe3ff" },
+      default: {
+        grad: "linear-gradient(150deg,#f6f9ff 0%,#eef4ff 45%,#e8f2ff 100%)",
+        orb: baseOrb,
+        orbColor: "#cfe3ff",
+      },
+    },
+  },
+
+  business: {
+    label: "商务蓝",
+    dark: false,
+    font: FONT_STACK,
+    ink: "#16203a",
+    sub: "#4d5a72",
+    muted: "#7d8798",
+    accent: "#1f4fa8",
+    accents: ["#1f4fa8", "#2b7a78", "#9a7b3f", "#8a5a8f", "#4a6fa5", "#5b7c99"],
+    gradEnd: "#2b7a78",
+    card: {
+      bg: "rgba(255,255,255,0.96)",
+      border: "rgba(31,79,168,0.14)",
+      shadow: "0 1px 2px rgba(16,26,48,0.06), 0 6px 18px rgba(16,26,48,0.08), 0 18px 40px -12px rgba(16,26,48,0.14)",
+      radius: 10,
+      radiusBox: 8,
+    },
+    pill: {
+      bg: "rgba(255,255,255,0.9)",
+      shadow: "0 1px 3px rgba(16,26,48,0.08), 0 6px 16px rgba(16,26,48,0.08)",
+    },
+    heading: { style: "bar", align: "left", size: 44, letterSpacing: 0.5 },
+    decor: {
+      ring: "rgba(255,255,255,0.5)",
+      ringAccent: "rgba(31,79,168,0.09)",
+      grid: "rgba(16,26,48,0.05)",
+      glow: "rgba(31,79,168,0.14)",
+    },
+    bg: {
+      title: { grad: "linear-gradient(150deg,#eef2f8 0%,#dbe4f0 55%,#c9d6e8 100%)", orb: baseOrb, orbColor: "#b8c8e0" },
+      section: {
+        grad: "linear-gradient(150deg,#eef4f9 0%,#dde8f2 45%,#cfe0ee 100%)",
+        orb: "560px",
+        orbColor: "#b6cbe2",
+      },
+      chart: { grad: "linear-gradient(150deg,#f2f6fa 0%,#e6eef6 50%,#d9e6f2 100%)", orb: baseOrb, orbColor: "#c2d2e6" },
+      art: { grad: "linear-gradient(160deg,#f0f5fa 0%,#e3edf5 45%,#d6e4f0 100%)", orb: baseOrb, orbColor: "#bccfe4" },
+      end: { grad: "linear-gradient(150deg,#f4f7fb 0%,#ecf2f8 45%,#e4edf5 100%)", orb: baseOrb, orbColor: "#cbd9ea" },
+      default: {
+        grad: "linear-gradient(150deg,#f4f7fb 0%,#ecf2f8 45%,#e4edf5 100%)",
+        orb: baseOrb,
+        orbColor: "#cbd9ea",
+      },
+    },
+  },
+
+  fresh: {
+    label: "清新绿",
+    dark: false,
+    // 幼圆/圆体优先，字形更软，和科技蓝的黑体一眼能看出区别
+    font: "'YouYuan', 'Yuanti SC', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+    ink: "#16302a",
+    sub: "#43685c",
+    muted: "#7d9a90",
+    accent: "#22a06b",
+    accents: ["#22a06b", "#3fb98a", "#f0b429", "#e86a8f", "#59a5d8", "#7bc96f"],
+    gradEnd: "#59c9a5",
+    card: {
+      bg: "rgba(255,255,255,0.9)",
+      border: "rgba(34,160,107,0.16)",
+      shadow:
+        "0 2px 6px rgba(22,110,80,0.06), 0 10px 26px rgba(22,110,80,0.10), 0 28px 56px -16px rgba(22,110,80,0.14)",
+      radius: 34,
+      radiusBox: 26,
+    },
+    pill: {
+      bg: "rgba(255,255,255,0.85)",
+      shadow: "0 2px 6px rgba(22,110,80,0.08), 0 10px 24px rgba(22,110,80,0.10)",
+    },
+    heading: { style: "pill", align: "center", size: 48, letterSpacing: 1 },
+    decor: {
+      ring: "rgba(255,255,255,0.6)",
+      ringAccent: "rgba(34,160,107,0.10)",
+      grid: "rgba(22,110,80,0.035)",
+      glow: "rgba(34,160,107,0.16)",
+    },
+    bg: {
+      title: { grad: "linear-gradient(150deg,#eefaf3 0%,#d9f2e4 55%,#c8ecda 100%)", orb: baseOrb, orbColor: "#b8e6cd" },
+      section: {
+        grad: "linear-gradient(150deg,#eefaf5 0%,#ddf2e8 45%,#cdeee0 100%)",
+        orb: "560px",
+        orbColor: "#b3e3c9",
+      },
+      chart: { grad: "linear-gradient(150deg,#f2fbf6 0%,#e6f6ec 50%,#d9f2e4 100%)", orb: baseOrb, orbColor: "#c0e8d2" },
+      art: { grad: "linear-gradient(160deg,#f0faf4 0%,#e4f5ea 45%,#d8f1e2 100%)", orb: baseOrb, orbColor: "#bae6cc" },
+      end: { grad: "linear-gradient(150deg,#f4fbf7 0%,#ecf8f0 45%,#e4f5ea 100%)", orb: baseOrb, orbColor: "#c8ecd8" },
+      default: {
+        grad: "linear-gradient(150deg,#f4fbf7 0%,#ecf8f0 45%,#e4f5ea 100%)",
+        orb: baseOrb,
+        orbColor: "#c8ecd8",
+      },
+    },
+  },
+
+  warm: {
+    label: "暖橙",
+    dark: false,
+    // 宋体/思源宋体：编辑感的衬线主题，和默认黑体形成强的排版差异
+    font: "'Songti SC', 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', serif",
+    ink: "#33231a",
+    sub: "#6f5645",
+    muted: "#9a8577",
+    accent: "#c2571b",
+    accents: ["#c2571b", "#a8763e", "#d99a2b", "#c04a5e", "#8e6b9e", "#4f8a8b"],
+    gradEnd: "#d99a2b",
+    card: {
+      bg: "rgba(255,252,247,0.95)",
+      border: "rgba(194,87,27,0.16)",
+      shadow: "0 1px 2px rgba(90,50,20,0.06), 0 8px 20px rgba(90,50,20,0.10), 0 22px 44px -12px rgba(90,50,20,0.16)",
+      radius: 6,
+      radiusBox: 5,
+    },
+    pill: {
+      bg: "rgba(255,252,247,0.88)",
+      shadow: "0 2px 4px rgba(90,50,20,0.07), 0 8px 18px rgba(90,50,20,0.10)",
+    },
+    heading: { style: "plain", align: "left", size: 46, letterSpacing: 0 },
+    decor: {
+      ring: "rgba(255,255,255,0.5)",
+      ringAccent: "rgba(194,87,27,0.10)",
+      grid: "rgba(90,50,20,0.04)",
+      glow: "rgba(194,87,27,0.16)",
+    },
+    bg: {
+      title: { grad: "linear-gradient(150deg,#fff6ee 0%,#ffe9d8 55%,#ffddc6 100%)", orb: baseOrb, orbColor: "#ffd0b0" },
+      section: {
+        grad: "linear-gradient(150deg,#fff7f0 0%,#ffecdd 45%,#ffe3cf 100%)",
+        orb: "560px",
+        orbColor: "#ffd2b4",
+      },
+      chart: { grad: "linear-gradient(150deg,#fffaf4 0%,#fff0e4 50%,#ffe6d4 100%)", orb: baseOrb, orbColor: "#ffd8bd" },
+      art: { grad: "linear-gradient(160deg,#fff8f1 0%,#ffede0 45%,#ffe3d2 100%)", orb: baseOrb, orbColor: "#ffd4b8" },
+      end: { grad: "linear-gradient(150deg,#fffbf7 0%,#fff3ea 45%,#ffecdf 100%)", orb: baseOrb, orbColor: "#ffdcc6" },
+      default: {
+        grad: "linear-gradient(150deg,#fffbf7 0%,#fff3ea 45%,#ffecdf 100%)",
+        orb: baseOrb,
+        orbColor: "#ffdcc6",
+      },
+    },
+  },
+
+  dark: {
+    label: "深空",
+    dark: true,
+    font: FONT_STACK,
+    ink: "#eaf0ff",
+    sub: "#a8b7d4",
+    muted: "#7c8aa6",
+    accent: "#6f9bff",
+    accents: ["#6f9bff", "#4fd6b0", "#ffc266", "#ff8ab8", "#b18cff", "#5cd3f0"],
+    gradEnd: "#4fd6b0",
+    card: {
+      bg: "rgba(255,255,255,0.08)",
+      border: "rgba(255,255,255,0.14)",
+      shadow: "0 2px 6px rgba(0,0,0,0.35), 0 12px 30px rgba(0,0,0,0.45), 0 30px 60px -18px rgba(0,0,0,0.55)",
+      radius: 20,
+      radiusBox: 16,
+    },
+    pill: {
+      bg: "rgba(255,255,255,0.12)",
+      shadow: "0 2px 8px rgba(0,0,0,0.35), 0 10px 26px rgba(0,0,0,0.4)",
+    },
+    heading: { style: "pill", align: "center", size: 48, letterSpacing: 0 },
+    decor: {
+      ring: "rgba(255,255,255,0.12)",
+      ringAccent: "rgba(111,155,255,0.14)",
+      grid: "rgba(255,255,255,0.05)",
+      glow: "rgba(111,155,255,0.24)",
+    },
+    bg: {
+      title: { grad: "linear-gradient(150deg,#1a2233 0%,#232f47 55%,#2c3a58 100%)", orb: baseOrb, orbColor: "#3a4f7a" },
+      section: {
+        grad: "linear-gradient(150deg,#1b2436 0%,#24314a 45%,#2e3d5c 100%)",
+        orb: "560px",
+        orbColor: "#3d5480",
+      },
+      chart: { grad: "linear-gradient(150deg,#1c2538 0%,#26334d 50%,#30405f 100%)", orb: baseOrb, orbColor: "#405a88" },
+      art: { grad: "linear-gradient(160deg,#1b2437 0%,#25324c 45%,#2f3e5d 100%)", orb: baseOrb, orbColor: "#3e5682" },
+      end: { grad: "linear-gradient(150deg,#1d2639 0%,#27344e 45%,#31415f 100%)", orb: baseOrb, orbColor: "#425c8a" },
+      default: {
+        grad: "linear-gradient(150deg,#1d2639 0%,#27344e 45%,#31415f 100%)",
+        orb: baseOrb,
+        orbColor: "#425c8a",
+      },
+    },
+  },
+};
+
+/** 兼容旧导出：theme -> { label, bg } */
+export const THEMES = (Object.keys(THEME_TOKENS) as ThemeId[]).reduce(
+  (acc, id) => {
+    acc[id] = { label: THEME_TOKENS[id].label, bg: THEME_TOKENS[id].bg };
+    return acc;
+  },
+  {} as Record<ThemeId, { label: string; bg: BgVariantMap }>,
+);
+
+export const BG_VARIANTS = THEME_TOKENS.tech.bg;
+
+export const DEFAULT_THEME: ThemeId = "tech";
+
+export const THEME_IDS = Object.keys(THEME_TOKENS) as ThemeId[];
+
+export const normalizeThemeId = (id?: string | null): ThemeId =>
+  id && Object.prototype.hasOwnProperty.call(THEME_TOKENS, id) ? (id as ThemeId) : DEFAULT_THEME;
+
+/** 主题的结构化信息（标题形态等需要分支判断的地方用它，而不是纯 CSS 变量） */
+export const ThemeContext = createContext<ThemeTokens>(THEME_TOKENS[DEFAULT_THEME]);
+export const useTheme = (): ThemeTokens => useContext(ThemeContext);
+
+/* ------------------------------------------------------------------ *
+ * token -> CSS 变量
+ * ------------------------------------------------------------------ */
+
+const clampByte = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+
+/** #rrggbb -> rgba(r,g,b,a)；令牌里都是 hex，运行期只需要这一处颜色运算 */
+export const withAlpha = (hex: string, alpha: number): string => {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const v = parseInt(m[1], 16);
+  const r = (v >> 16) & 255;
+  const g = (v >> 8) & 255;
+  const b = v & 255;
+  return `rgba(${clampByte(r)},${clampByte(g)},${clampByte(b)},${alpha})`;
+};
+
+/**
+ * 把主题铺成 CSS 变量，挂到渲染根节点上。
+ * 这样 22 个场景文件里的 C / RADIUS / CARD_SHADOW 等常量不必逐个改成 hook，
+ * 只要它们引用 var(--ttt-*)，换主题就整体生效。
+ */
+export const themeVars = (id?: string | null): CSSProperties => {
+  const t = THEME_TOKENS[normalizeThemeId(id)];
+  return {
+    "--ttt-font": t.font,
+    "--ttt-ink": t.ink,
+    "--ttt-sub": t.sub,
+    "--ttt-muted": t.muted,
+    "--ttt-accent": t.accent,
+    "--ttt-a0": t.accents[0],
+    "--ttt-a1": t.accents[1],
+    "--ttt-a2": t.accents[2],
+    "--ttt-a3": t.accents[3],
+    "--ttt-a4": t.accents[4],
+    "--ttt-a5": t.accents[5],
+    "--ttt-accent-a88": withAlpha(t.accent, 0.53),
+    "--ttt-accent-a80": withAlpha(t.accent, 0.8),
+    "--ttt-accent-a66": withAlpha(t.accent, 0.4),
+    "--ttt-accent-a55": withAlpha(t.accent, 0.33),
+    "--ttt-accent-a33": withAlpha(t.accent, 0.2),
+    "--ttt-accent-a0d": withAlpha(t.accent, 0.05),
+    "--ttt-grad-accent": `linear-gradient(90deg, ${t.accent}, ${t.gradEnd})`,
+    "--ttt-grad-accent-soft": `linear-gradient(90deg, ${withAlpha(t.accent, 0.8)}, ${withAlpha(t.gradEnd, 0.8)})`,
+    "--ttt-card-bg": t.card.bg,
+    "--ttt-card-border": t.card.border,
+    "--ttt-card-shadow": t.card.shadow,
+    "--ttt-pill-bg": t.pill.bg,
+    "--ttt-pill-shadow": t.pill.shadow,
+    "--ttt-glass-card": t.card.bg,
+    "--ttt-glass-pill": t.pill.bg,
+    "--ttt-glass-border": t.card.border,
+    "--ttt-shadow-card": t.card.shadow,
+    "--ttt-shadow-pill": t.pill.shadow,
+    "--ttt-shadow-dot": t.pill.shadow,
+    "--ttt-shadow-solid": t.card.shadow,
+    "--ttt-shadow-text": t.dark ? "0 2px 8px rgba(0,0,0,0.5)" : "0 2px 6px rgba(28,37,54,0.10)",
+    "--ttt-r-card": `${t.card.radius}px`,
+    "--ttt-r-card-inner": `${Math.max(0, t.card.radius - 3)}px`,
+    "--ttt-r-box": `${t.card.radiusBox}px`,
+    "--ttt-r-chip": `${Math.max(0, t.card.radiusBox - 4)}px`,
+    "--ttt-r-pill": "999px",
+    "--ttt-decor-ring": t.decor.ring,
+    "--ttt-decor-ring-accent": t.decor.ringAccent,
+    "--ttt-decor-grid": t.decor.grid,
+    "--ttt-decor-glow": t.decor.glow,
+    "--ttt-heading-size": `${t.heading.size}px`,
+    "--ttt-heading-spacing": `${t.heading.letterSpacing}px`,
+  } as CSSProperties;
+};
+
+/* ------------------------------------------------------------------ *
+ * 静态 token（引用 CSS 变量，值由 themeVars 决定）
+ * ------------------------------------------------------------------ */
+
 export const C = {
-  ink: "#1c2536",
-  sub: "#5a6b82",
-  accent: "#3b6ff5",
-  muted: "#8a99b0",
+  ink: "var(--ttt-ink)",
+  sub: "var(--ttt-sub)",
+  accent: "var(--ttt-accent)",
+  muted: "var(--ttt-muted)",
+  /**
+   * 主色的半透明档位。
+   * 原来是 `${C.accent}cc` 这种拼 hex 后缀的写法，颜色变量化之后必须改成命名 token，
+   * 否则会拼出 "var(--ttt-accent)cc" 这种非法值。
+   */
+  accentTint: "var(--ttt-accent-a88)",
+  accentSoft: "var(--ttt-accent-a80)",
+  accentMid: "var(--ttt-accent-a66)",
+  accentFaint: "var(--ttt-accent-a55)",
+  accentWash: "var(--ttt-accent-a0d)",
 };
 
-export const ACCENT_PALETTE = ["#3b6ff5", "#2fc6a1", "#f2a93b", "#e8659f", "#8b5cf6", "#0ea5e9"];
-export const accentOf = (i: number) => ACCENT_PALETTE[i % ACCENT_PALETTE.length];
+export const ACCENT_PALETTE = [
+  "var(--ttt-a0)",
+  "var(--ttt-a1)",
+  "var(--ttt-a2)",
+  "var(--ttt-a3)",
+  "var(--ttt-a4)",
+  "var(--ttt-a5)",
+];
+export const accentOf = (i: number) => ACCENT_PALETTE[Math.abs(i) % ACCENT_PALETTE.length];
 
-const SH = {
-  ink1: "rgba(28,37,54,0.06)",
-  ink2: "rgba(28,37,54,0.10)",
-  ink3: "rgba(28,37,54,0.16)",
-};
-
-export const CARD_SHADOW = `0 1px 2px ${SH.ink1}, 0 8px 24px ${SH.ink2}, 0 24px 48px -12px ${SH.ink3}`;
-export const PILL_SHADOW = `0 2px 4px ${SH.ink1}, 0 8px 20px ${SH.ink2}`;
-export const DOT_SHADOW = `0 2px 6px ${SH.ink2}, 0 6px 16px ${SH.ink3}`;
-export const SOLID_SHADOW = `0 6px 16px -4px ${SH.ink2}, 0 16px 32px -8px ${SH.ink3}`;
-export const TEXT_SHADOW = `0 2px 6px ${SH.ink2}, 0 10px 30px -6px ${SH.ink3}`;
+export const CARD_SHADOW = "var(--ttt-shadow-card)";
+export const PILL_SHADOW = "var(--ttt-shadow-pill)";
+export const DOT_SHADOW = "var(--ttt-shadow-dot)";
+export const SOLID_SHADOW = "var(--ttt-shadow-solid)";
+export const TEXT_SHADOW = "var(--ttt-shadow-text)";
 
 export const GLASS = {
-  card: "rgba(255,255,255,0.92)",
-  pill: "rgba(255,255,255,0.82)",
-  border: "rgba(255,255,255,0.65)",
+  card: "var(--ttt-glass-card)",
+  pill: "var(--ttt-glass-pill)",
+  border: "var(--ttt-glass-border)",
 };
 
 export const SAFE = { x: 120, y: 100 };
@@ -84,7 +485,13 @@ export const CONTENT_WIDTH = 1920 - SAFE.x * 2;
 export const HEADER_OFFSET = 250;
 
 export const SPACE = { xs: 8, sm: 16, md: 24, lg: 32, xl: 48 };
-export const RADIUS = { card: 24, box: 18, chip: 14, pill: 999 };
+export const RADIUS = {
+  card: "var(--ttt-r-card)",
+  cardInner: "var(--ttt-r-card-inner)",
+  box: "var(--ttt-r-box)",
+  chip: "var(--ttt-r-chip)",
+  pill: "var(--ttt-r-pill)",
+};
 export const FS = {
   display: 86,
   hero: 96,
@@ -149,131 +556,13 @@ export const springIn = (frame: number, fps: number, delay = 0, style: "spring" 
 };
 
 export const DECOR = {
-  ring: "rgba(255,255,255,0.55)",
-  ringAccent: "rgba(59,111,245,0.10)",
-  grid: "rgba(28,37,54,0.035)",
-  glow: "rgba(59,111,245,0.18)",
+  ring: "var(--ttt-decor-ring)",
+  ringAccent: "var(--ttt-decor-ring-accent)",
+  grid: "var(--ttt-decor-grid)",
+  glow: "var(--ttt-decor-glow)",
 };
 
-export const ACCENT_GRAD = `linear-gradient(90deg, ${C.accent}, #2fc6a1)`;
-export const ACCENT_GRAD_SOFT = `linear-gradient(90deg, ${C.accent}cc, #2fc6a1cc)`;
+export const ACCENT_GRAD = "var(--ttt-grad-accent)";
+export const ACCENT_GRAD_SOFT = "var(--ttt-grad-accent-soft)";
 
 export const PAPER = { base: "22", mid: "33", top: "40", deep: "55" };
-
-export const BG_VARIANTS: Record<string, { grad: string; orb: string; orbColor: string }> = {
-  title: { grad: "linear-gradient(150deg,#eef3ff 0%,#dbe7ff 55%,#cdddff 100%)", orb: "520px", orbColor: "#bcd2ff" },
-  section: { grad: "linear-gradient(150deg,#eef7ff 0%,#ddeeff 45%,#cfe8ff 100%)", orbColor: "#b9defc", orb: "560px" },
-  chart: { grad: "linear-gradient(150deg,#f4f8ff 0%,#e9f3ff 50%,#ddeeff 100%)", orbColor: "#c5dcff", orb: "520px" },
-  art: { grad: "linear-gradient(160deg,#f2f7ff 0%,#e7f1ff 45%,#dcebff 100%)", orbColor: "#bfd8ff", orb: "520px" },
-  end: { grad: "linear-gradient(150deg,#f6f9ff 0%,#eef4ff 45%,#e8f2ff 100%)", orbColor: "#cfe3ff", orb: "520px" },
-  default: { grad: "linear-gradient(150deg,#f6f9ff 0%,#eef4ff 45%,#e8f2ff 100%)", orbColor: "#cfe3ff", orb: "520px" },
-};
-
-export type ThemeId = "tech" | "business" | "fresh" | "warm" | "dark";
-
-export interface ThemePreset {
-  label: string;
-  bg: Record<string, { grad: string; orb: string; orbColor: string }>;
-}
-
-const baseOrb = "520px";
-
-export const THEMES: Record<ThemeId, ThemePreset> = {
-  tech: {
-    label: "科技蓝",
-    bg: {
-      title: { grad: "linear-gradient(150deg,#eef3ff 0%,#dbe7ff 55%,#cdddff 100%)", orb: baseOrb, orbColor: "#bcd2ff" },
-      section: {
-        grad: "linear-gradient(150deg,#eef7ff 0%,#ddeeff 45%,#cfe8ff 100%)",
-        orb: "560px",
-        orbColor: "#b9defc",
-      },
-      chart: { grad: "linear-gradient(150deg,#f4f8ff 0%,#e9f3ff 50%,#ddeeff 100%)", orb: baseOrb, orbColor: "#c5dcff" },
-      art: { grad: "linear-gradient(160deg,#f2f7ff 0%,#e7f1ff 45%,#dcebff 100%)", orb: baseOrb, orbColor: "#bfd8ff" },
-      end: { grad: "linear-gradient(150deg,#f6f9ff 0%,#eef4ff 45%,#e8f2ff 100%)", orb: baseOrb, orbColor: "#cfe3ff" },
-      default: {
-        grad: "linear-gradient(150deg,#f6f9ff 0%,#eef4ff 45%,#e8f2ff 100%)",
-        orb: baseOrb,
-        orbColor: "#cfe3ff",
-      },
-    },
-  },
-  business: {
-    label: "商务蓝",
-    bg: {
-      title: { grad: "linear-gradient(150deg,#eef2f8 0%,#dbe4f0 55%,#c9d6e8 100%)", orb: baseOrb, orbColor: "#b8c8e0" },
-      section: {
-        grad: "linear-gradient(150deg,#eef4f9 0%,#dde8f2 45%,#cfe0ee 100%)",
-        orb: "560px",
-        orbColor: "#b6cbe2",
-      },
-      chart: { grad: "linear-gradient(150deg,#f2f6fa 0%,#e6eef6 50%,#d9e6f2 100%)", orb: baseOrb, orbColor: "#c2d2e6" },
-      art: { grad: "linear-gradient(160deg,#f0f5fa 0%,#e3edf5 45%,#d6e4f0 100%)", orb: baseOrb, orbColor: "#bccfe4" },
-      end: { grad: "linear-gradient(150deg,#f4f7fb 0%,#ecf2f8 45%,#e4edf5 100%)", orb: baseOrb, orbColor: "#cbd9ea" },
-      default: {
-        grad: "linear-gradient(150deg,#f4f7fb 0%,#ecf2f8 45%,#e4edf5 100%)",
-        orb: baseOrb,
-        orbColor: "#cbd9ea",
-      },
-    },
-  },
-  fresh: {
-    label: "清新绿",
-    bg: {
-      title: { grad: "linear-gradient(150deg,#eefaf3 0%,#d9f2e4 55%,#c8ecda 100%)", orb: baseOrb, orbColor: "#b8e6cd" },
-      section: {
-        grad: "linear-gradient(150deg,#eefaf5 0%,#ddf2e8 45%,#cdeee0 100%)",
-        orb: "560px",
-        orbColor: "#b3e3c9",
-      },
-      chart: { grad: "linear-gradient(150deg,#f2fbf6 0%,#e6f6ec 50%,#d9f2e4 100%)", orb: baseOrb, orbColor: "#c0e8d2" },
-      art: { grad: "linear-gradient(160deg,#f0faf4 0%,#e4f5ea 45%,#d8f1e2 100%)", orb: baseOrb, orbColor: "#bae6cc" },
-      end: { grad: "linear-gradient(150deg,#f4fbf7 0%,#ecf8f0 45%,#e4f5ea 100%)", orb: baseOrb, orbColor: "#c8ecd8" },
-      default: {
-        grad: "linear-gradient(150deg,#f4fbf7 0%,#ecf8f0 45%,#e4f5ea 100%)",
-        orb: baseOrb,
-        orbColor: "#c8ecd8",
-      },
-    },
-  },
-  warm: {
-    label: "暖橙",
-    bg: {
-      title: { grad: "linear-gradient(150deg,#fff6ee 0%,#ffe9d8 55%,#ffddc6 100%)", orb: baseOrb, orbColor: "#ffd0b0" },
-      section: {
-        grad: "linear-gradient(150deg,#fff7f0 0%,#ffecdd 45%,#ffe3cf 100%)",
-        orb: "560px",
-        orbColor: "#ffd2b4",
-      },
-      chart: { grad: "linear-gradient(150deg,#fffaf4 0%,#fff0e4 50%,#ffe6d4 100%)", orb: baseOrb, orbColor: "#ffd8bd" },
-      art: { grad: "linear-gradient(160deg,#fff8f1 0%,#ffede0 45%,#ffe3d2 100%)", orb: baseOrb, orbColor: "#ffd4b8" },
-      end: { grad: "linear-gradient(150deg,#fffbf7 0%,#fff3ea 45%,#ffecdf 100%)", orb: baseOrb, orbColor: "#ffdcc6" },
-      default: {
-        grad: "linear-gradient(150deg,#fffbf7 0%,#fff3ea 45%,#ffecdf 100%)",
-        orb: baseOrb,
-        orbColor: "#ffdcc6",
-      },
-    },
-  },
-  dark: {
-    label: "深空",
-    bg: {
-      title: { grad: "linear-gradient(150deg,#1a2233 0%,#232f47 55%,#2c3a58 100%)", orb: baseOrb, orbColor: "#3a4f7a" },
-      section: {
-        grad: "linear-gradient(150deg,#1b2436 0%,#24314a 45%,#2e3d5c 100%)",
-        orb: "560px",
-        orbColor: "#3d5480",
-      },
-      chart: { grad: "linear-gradient(150deg,#1c2538 0%,#26334d 50%,#30405f 100%)", orb: baseOrb, orbColor: "#405a88" },
-      art: { grad: "linear-gradient(160deg,#1b2437 0%,#25324c 45%,#2f3e5d 100%)", orb: baseOrb, orbColor: "#3e5682" },
-      end: { grad: "linear-gradient(150deg,#1d2639 0%,#27344e 45%,#31415f 100%)", orb: baseOrb, orbColor: "#425c8a" },
-      default: {
-        grad: "linear-gradient(150deg,#1d2639 0%,#27344e 45%,#31415f 100%)",
-        orb: baseOrb,
-        orbColor: "#425c8a",
-      },
-    },
-  },
-};
-
-export const DEFAULT_THEME: ThemeId = "tech";

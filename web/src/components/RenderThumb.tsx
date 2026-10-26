@@ -6,6 +6,12 @@ import { matchScene } from "../../../server/render/src/shared/render/scenes/scen
 import { Bg } from "../../../server/render/src/shared/render/Bg";
 import { IconView } from "../../../server/render/src/shared/render/Icon";
 import { ResponsiveContext } from "../../../server/render/src/shared/render/responsive";
+import {
+  ThemeContext,
+  THEME_TOKENS,
+  normalizeThemeId,
+  themeVars,
+} from "../../../server/render/src/shared/render/theme";
 
 const DESIGN_W = 1920;
 const DESIGN_H = 1080;
@@ -48,19 +54,22 @@ export function RenderThumb({
           width: isPortrait ? width : DESIGN_W,
           height: isPortrait ? height : DESIGN_H,
           transform: `scale(${scale})`,
+          ...themeVars(theme),
         }}
       >
-        <ResponsiveContext.Provider value={isPortrait ? { width, height } : null}>
-          <Bg
-            variant={bg}
-            theme={theme as any}
-            draw={!!(p as { effects?: { pathDraw?: boolean } }).effects?.pathDraw}
-          />
-          <div className="dsh-thumb-layer">
-            {!isFirst && rp.icon ? <IconView icon={rp.icon} /> : null}
-            <SceneView Scene={Scene} page={rp} isFirst={isFirst} />
-          </div>
-        </ResponsiveContext.Provider>
+        <ThemeContext.Provider value={THEME_TOKENS[normalizeThemeId(theme)]}>
+          <ResponsiveContext.Provider value={isPortrait ? { width, height } : null}>
+            <Bg
+              variant={bg}
+              theme={theme as any}
+              draw={!!(p as { effects?: { pathDraw?: boolean } }).effects?.pathDraw}
+            />
+            <div className="dsh-thumb-layer">
+              {!isFirst && rp.icon ? <IconView icon={rp.icon} /> : null}
+              <SceneView Scene={Scene} page={rp} isFirst={isFirst} />
+            </div>
+          </ResponsiveContext.Provider>
+        </ThemeContext.Provider>
       </div>
     </div>
   );

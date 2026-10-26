@@ -15,6 +15,7 @@ import {
   springIn,
 } from "../theme";
 import { Icon } from "../Icon";
+import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandHighlight } from "../rough";
 import { useResponsive, useCaptionReserve } from "../responsive";
@@ -238,7 +239,8 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const scaleIdx = Math.min(SCALES.length - 1, Math.max(byCount, byLength));
   const scale: Scale = SCALES[scaleIdx] ?? SCALES[3];
 
-  const padTop = [260, 230, 200, 170][scaleIdx] ?? 170;
+  // 顶部要同时容纳 PageHeading（标题 + 装饰线，约 200px），否则首卡会压住标题
+  const padTop = [360, 330, 300, 270][scaleIdx] ?? 270;
 
   const SINGLE_COL_W = isPortrait ? contentWidth : 1240;
   const availW = SINGLE_COL_W;
@@ -290,6 +292,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       });
     return (
       <AbsoluteFill style={{ justifyContent: "flex-start", alignItems: "center", overflow: "hidden" }}>
+        <PageHeading text={page.title} />
         <div
           style={{
             width: isPortrait ? contentWidth : CONTENT_WIDTH,
@@ -321,6 +324,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   return (
     <AbsoluteFill style={{ justifyContent: "flex-start", alignItems: "center", overflow: "hidden" }}>
+      <PageHeading text={page.title} />
       <div
         style={{
           width: isPortrait ? contentWidth : SINGLE_COL_W,

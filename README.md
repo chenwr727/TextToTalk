@@ -134,16 +134,16 @@ TextToTalk 把中间三步压缩成一次回车：
 
 ### 生成参数
 
-| 参数                   | 可选值                                                                                                                             |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| 语气 `tone`            | `formal` 正式严谨 · `casual` 轻松易懂（默认）· `energetic` 活泼有感染力                                                            |
-| 拆稿粒度 `granularity` | `coarse` 2~4 页 · `medium` 4~6 页（默认）· `fine` 6~10 页                                                                          |
-| 主题风格 `theme`       | `tech` 科技蓝（默认）· `business` 商务蓝 · `fresh` 清新绿 · `warm` 暖橙 · `dark` 深空                                              |
-| 配音引擎 `engine`      | `edge` Edge 在线（默认，免密钥）· `cosyvoice` 阿里云 CosyVoice · `qwen-audio` 阿里云 Qwen-Audio-TTS · `seed-tts` 火山引擎 Seed-TTS |
-| 配音音色 `voice`       | 随引擎而定：Edge 默认 `zh-CN-XiaoxiaoNeural` 晓晓·女，其余引擎见 [TTS 文档](docs/TTS.md)                                           |
-| 背景配乐 `bgm`         | `default` 轻快配乐 · `none` 静音                                                                                                   |
-| 画幅 / 帧率            | `1920×1080` 横屏 16:9 · `1080×1920` 竖屏 9:16，均 @ `30fps`                                                                        |
-| 沟通目标（可选）       | 目标受众 `audience` · 核心信息 `coreMessage` · 观众收获 `audienceOutcome`                                                          |
+| 参数                   | 可选值                                                                                                                                                                                                        |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 语气 `tone`            | `formal` 正式严谨 · `casual` 轻松易懂（默认）· `energetic` 活泼有感染力                                                                                                                                       |
+| 拆稿粒度 `granularity` | `coarse` 2~4 页 · `medium` 4~6 页（默认）· `fine` 6~10 页                                                                                                                                                     |
+| 主题风格 `theme`       | `tech` 科技蓝（默认，黑体 + 胶囊标题 + 24px 圆角）· `business` 商务蓝（左对齐竖线标题 + 直角卡）· `fresh` 清新绿（圆体 + 34px 大圆角）· `warm` 暖橙（宋体衬线 + 纯文字标题）· `dark` 深空（浅字深卡玻璃质感） |
+| 配音引擎 `engine`      | `edge` Edge 在线（默认，免密钥）· `cosyvoice` 阿里云 CosyVoice · `qwen-audio` 阿里云 Qwen-Audio-TTS · `seed-tts` 火山引擎 Seed-TTS                                                                            |
+| 配音音色 `voice`       | 随引擎而定：Edge 默认 `zh-CN-XiaoxiaoNeural` 晓晓·女，其余引擎见 [TTS 文档](docs/TTS.md)                                                                                                                      |
+| 背景配乐 `bgm`         | `default` 轻快配乐 · `none` 静音                                                                                                                                                                              |
+| 画幅 / 帧率            | `1920×1080` 横屏 16:9 · `1080×1920` 竖屏 9:16，均 @ `30fps`                                                                                                                                                   |
+| 沟通目标（可选）       | 目标受众 `audience` · 核心信息 `coreMessage` · 观众收获 `audienceOutcome`                                                                                                                                     |
 
 ---
 

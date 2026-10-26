@@ -31,7 +31,7 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
         {page.effects?.pathDraw ? (
           <CirclePath progress={springIn(f, fps, t0 + 8, page.motion)} color={C.accent} />
         ) : (
-          <circle cx={960} cy={540} r={150} fill={`${C.accent}0d`} stroke={C.accent} strokeWidth={2} opacity={0.4} />
+          <circle cx={960} cy={540} r={150} fill={`${C.accentWash}`} stroke={C.accent} strokeWidth={2} opacity={0.4} />
         )}
       </svg>
       <div
