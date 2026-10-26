@@ -106,3 +106,40 @@ describe("生成式页代码校验", () => {
     );
   });
 });
+
+describe("原型链逃逸防护", () => {
+  test("({}).constructor.constructor 这条老套绕过必须被拦", () => {
+    const r = checkPageCode(`
+      const Page = () => {
+        const F = ({}).constructor.constructor;
+        return <div>{F("return 1")()}</div>;
+      };
+      export default Page;
+    `);
+    assert.equal(r.ok, false, "应当拒绝原型链访问");
+    assert.ok(
+      r.problems.some((p) => p.includes("constructor")),
+      r.problems.join(" / "),
+    );
+  });
+
+  test("字符串下标形式同样拦截", () => {
+    const r = checkPageCode(`
+      const Page = () => <div>{(window)["constructor"]}</div>;
+      export default Page;
+    `);
+    assert.equal(r.ok, false);
+    assert.ok(
+      r.problems.some((p) => p.includes("constructor")),
+      r.problems.join(" / "),
+    );
+  });
+
+  test("正常的点号链式调用不受影响", () => {
+    const r = checkPageCode(`
+      const Page = ({ page }) => <div>{page.title.trim().toUpperCase()}</div>;
+      export default Page;
+    `);
+    assert.equal(r.ok, true, r.problems.join(" / "));
+  });
+});

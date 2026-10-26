@@ -119,9 +119,20 @@ export const checkPageCode = (source: string): CodeCheckResult => {
       problems.push("禁止动态 import()");
       return;
     }
+    // 原型链逃逸：({}).constructor.constructor("...") 能绕过标识符黑名单拿到 Function，
+    // 所以必须连属性名一起禁，而不是只禁 Function 这个标识符。
+    const PROPERTY_BANNED = new Set(["constructor", "__proto__", "prototype"]);
     if (ts.isPropertyAccessExpression(node)) {
       if (ts.isIdentifier(node.expression) && node.expression.text === "Math" && node.name.text === "random") {
         problems.push("禁止 Math.random：逐帧渲染要求同一帧永远得到同一画面");
+      }
+      if (PROPERTY_BANNED.has(node.name.text)) {
+        problems.push(`禁止访问 .${node.name.text}：可经原型链拿到 Function 等宿主能力`);
+      }
+    }
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+      if (PROPERTY_BANNED.has(node.argumentExpression.text)) {
+        problems.push(`禁止访问 ["${node.argumentExpression.text}"]：可经原型链拿到 Function 等宿主能力`);
       }
     }
     if (ts.isIdentifier(node) && BANNED_IDENTIFIERS.has(node.text) && !isNamePosition(node)) {
