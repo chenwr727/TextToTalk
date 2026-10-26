@@ -43,7 +43,7 @@ export async function renderPageFrames(
   pages: FramePage[],
   fps: number,
   onProgress?: (p: number) => void,
-  opts?: { theme?: string; width?: number; height?: number }
+  opts?: { theme?: string; width?: number; height?: number },
 ): Promise<string[]> {
   const framesDir = path.join(outDir, taskId, "frames");
   mkdirSync(framesDir, { recursive: true });
@@ -70,7 +70,7 @@ export async function renderPageFrames(
       const frame = captures[i];
       const outPng = path.join(framesDir, `p${i}.png`);
       try {
-        if (canFfmpeg && await ffmpegExtract(video, frame, fps || 30, outPng)) {
+        if (canFfmpeg && (await ffmpegExtract(video, frame, fps || 30, outPng))) {
           written.push(outPng);
         } else {
           await renderStill(RENDER_DIR, configPath, serveUrl, inputProps, frame, outPng);
@@ -82,7 +82,9 @@ export async function renderPageFrames(
       onProgress?.(0.98 + ((i + 1) / storyboard.pages.length) * 0.02);
     }
   } finally {
-    try { rmSync(configPath, { force: true }); } catch {}
+    try {
+      rmSync(configPath, { force: true });
+    } catch {}
   }
   return written;
 }
@@ -95,7 +97,9 @@ function ffmpegExtract(video: string, frame: number, fps: number, outPng: string
       shell: process.platform === "win32",
     });
     let err = "";
-    child.stderr?.on("data", (c: Buffer) => { err += c.toString(); });
+    child.stderr?.on("data", (c: Buffer) => {
+      err += c.toString();
+    });
     child.on("error", () => resolve(false));
     child.on("close", (code) => {
       if (code === 0 && existsSync(outPng)) resolve(true);
@@ -113,7 +117,7 @@ function renderStill(
   serveUrl: string,
   inputProps: Record<string, unknown>,
   frame: number,
-  outPng: string
+  outPng: string,
 ): Promise<void> {
   writeFileSync(
     configPath,
@@ -130,7 +134,9 @@ function renderStill(
   return new Promise((resolve, reject) => {
     const child = spawnRunner([configPath], { cwd: renderDir });
     let err = "";
-    child.stderr?.on("data", (c: Buffer) => { err += c.toString(); });
+    child.stderr?.on("data", (c: Buffer) => {
+      err += c.toString();
+    });
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();

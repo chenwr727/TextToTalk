@@ -11,12 +11,12 @@
 
 ## 支持的模型
 
-| 引擎 ID | 名称 | 密钥 | 说明 |
-|---|---|---|---|
-| `edge` | Edge 在线语音 | 免密钥 | 微软 Edge 在线合成，开箱即用 |
-| `dashscope` | 阿里云百炼 CosyVoice | 需 `DASHSCOPE_*` | 支持方言、声音复刻 |
-| `qwen-audio` | 阿里云百炼 Qwen-Audio-TTS | 需 `DASHSCOPE_*` | 支持情感标签、多语言 |
-| `seedtts` | 火山引擎 Seed-TTS | 需 `SEED_TTS_*` | 豆包语音合成大模型 2.0，HTTP Chunked 单向流式 |
+| 引擎 ID      | 名称                      | 密钥             | 说明                                          |
+| ------------ | ------------------------- | ---------------- | --------------------------------------------- |
+| `edge`       | Edge 在线语音             | 免密钥           | 微软 Edge 在线合成，开箱即用                  |
+| `dashscope`  | 阿里云百炼 CosyVoice      | 需 `DASHSCOPE_*` | 支持方言、声音复刻                            |
+| `qwen-audio` | 阿里云百炼 Qwen-Audio-TTS | 需 `DASHSCOPE_*` | 支持情感标签、多语言                          |
+| `seedtts`    | 火山引擎 Seed-TTS         | 需 `SEED_TTS_*`  | 豆包语音合成大模型 2.0，HTTP Chunked 单向流式 |
 
 > `dashscope` 与 `qwen-audio` 共用阿里云百炼的密钥与工作空间。
 > 未配置 `DASHSCOPE_*` 时，这两个引擎会自动隐藏，仅保留 Edge。
@@ -89,15 +89,15 @@ SEED_TTS_API_KEY=your-volcengine-api-key
 
 ### 字段说明
 
-| 字段 | 说明 |
-|---|---|
-| `id` | 引擎唯一标识，前端下拉框的 value |
-| `name` | 引擎显示名 |
-| `enabled` | `false` 时禁用该引擎 |
-| `type` | 引擎实现类型，缺省等于 `id`；多个引擎可复用同一实现（如 dashscope / qwen-audio 都用 `dashscope`） |
-| `model` / `sampleRate` / `format` | 传给引擎的模型参数 |
-| `requiresEnv` | 该引擎运行所需的环境变量，缺失时引擎不加载；`secret: true` 的设置面板用密码框 |
-| `voices` | 音色列表，`id` 传给引擎，`label` 前端展示 |
+| 字段                              | 说明                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `id`                              | 引擎唯一标识，前端下拉框的 value                                                                  |
+| `name`                            | 引擎显示名                                                                                        |
+| `enabled`                         | `false` 时禁用该引擎                                                                              |
+| `type`                            | 引擎实现类型，缺省等于 `id`；多个引擎可复用同一实现（如 dashscope / qwen-audio 都用 `dashscope`） |
+| `model` / `sampleRate` / `format` | 传给引擎的模型参数                                                                                |
+| `requiresEnv`                     | 该引擎运行所需的环境变量，缺失时引擎不加载；`secret: true` 的设置面板用密码框                     |
+| `voices`                          | 音色列表，`id` 传给引擎，`label` 前端展示                                                         |
 
 ### 音色列表
 
@@ -112,9 +112,9 @@ SEED_TTS_API_KEY=your-volcengine-api-key
 
 前端「🎙️ 配音设置」面板可调：
 
-| 参数 | 范围 | 默认 | 说明 |
-|---|---|---|---|
-| 语速 | 0.5× ~ 2× | 1× | 配音语速倍率 |
+| 参数 | 范围      | 默认 | 说明         |
+| ---- | --------- | ---- | ------------ |
+| 语速 | 0.5× ~ 2× | 1×   | 配音语速倍率 |
 | 音量 | 0% ~ 200% | 100% | 配音音量倍率 |
 
 各引擎实现：

@@ -27,9 +27,10 @@ export function publish(taskId: string, event: string, data: unknown): void {
   }
 }
 
-export function setupSseStream(
-  reply: FastifyReply
-): { push: (event: string, data: unknown) => void; close: () => void } {
+export function setupSseStream(reply: FastifyReply): {
+  push: (event: string, data: unknown) => void;
+  close: () => void;
+} {
   reply.raw.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",

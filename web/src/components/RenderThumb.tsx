@@ -10,7 +10,19 @@ import { ResponsiveContext } from "../../../server/render/src/shared/render/resp
 const DESIGN_W = 1920;
 const DESIGN_H = 1080;
 
-export function RenderThumb({ p, isFirst, theme, width = 1920, height = 1080 }: { p: WebStoryPage; isFirst: boolean; theme?: string; width?: number; height?: number }) {
+export function RenderThumb({
+  p,
+  isFirst,
+  theme,
+  width = 1920,
+  height = 1080,
+}: {
+  p: WebStoryPage;
+  isFirst: boolean;
+  theme?: string;
+  width?: number;
+  height?: number;
+}) {
   const rp = p as unknown as RenderStoryPage;
   const { render: Scene, bg } = matchScene(rp, isFirst);
   const isPortrait = height > width;

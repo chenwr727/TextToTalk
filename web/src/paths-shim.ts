@@ -22,4 +22,8 @@ export const reduceInstructions = (d: unknown) => d;
 export const extendViewBox = (d: string) => d;
 export const warpPath = (d: string) => d;
 export const centerPath = (d: string) => d;
-export const PathInternals = { getBoundingBoxFromInstructions: () => ({ x1: 0, y1: 0, x2: 0, y2: 0, width: 0, height: 0 }), debugPath: (d: string) => [{ d, color: "#000" }], cutPath: (d: string) => d };
+export const PathInternals = {
+  getBoundingBoxFromInstructions: () => ({ x1: 0, y1: 0, x2: 0, y2: 0, width: 0, height: 0 }),
+  debugPath: (d: string) => [{ d, color: "#000" }],
+  cutPath: (d: string) => d,
+};

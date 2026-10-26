@@ -12,20 +12,28 @@ const CANVAS = { w: 1920, h: 1080 };
 const SAFE = { x: 80, y: 240, w: 1760, h: 540 };
 
 function parsePolygon(points: string): [number, number][] {
-  return points.split(/\s+/).map((p) => p.split(",").map(Number) as [number, number]).filter((p) => p.length === 2 && p.every(Number.isFinite));
+  return points
+    .split(/\s+/)
+    .map((p) => p.split(",").map(Number) as [number, number])
+    .filter((p) => p.length === 2 && p.every(Number.isFinite));
 }
 
-function computeMapBounds(spec: MapSpec, regionPolys: [number, number][][]): { minX: number; minY: number; maxX: number; maxY: number } {
+function computeMapBounds(
+  spec: MapSpec,
+  regionPolys: [number, number][][],
+): { minX: number; minY: number; maxX: number; maxY: number } {
   const xs: number[] = [];
   const ys: number[] = [];
   const markers = spec.markers ?? [];
 
   for (const m of markers) {
-    xs.push(m.x); ys.push(m.y);
+    xs.push(m.x);
+    ys.push(m.y);
   }
   for (const poly of regionPolys) {
     for (const [px, py] of poly) {
-      xs.push(px); ys.push(py);
+      xs.push(px);
+      ys.push(py);
     }
   }
   if (!xs.length) return { minX: 0, minY: 0, maxX: CANVAS.w, maxY: CANVAS.h };
@@ -36,7 +44,11 @@ function computeMapBounds(spec: MapSpec, regionPolys: [number, number][][]): { m
   return { minX, minY, maxX, maxY };
 }
 
-function computeFitTransform(spec: MapSpec, regionPolys: [number, number][][], safe: { x: number; y: number; w: number; h: number }): { scale: number; tx: number; ty: number } {
+function computeFitTransform(
+  spec: MapSpec,
+  regionPolys: [number, number][][],
+  safe: { x: number; y: number; w: number; h: number },
+): { scale: number; tx: number; ty: number } {
   const b = computeMapBounds(spec, regionPolys);
   const contentW = Math.max(b.maxX - b.minX, 100);
   const contentH = Math.max(b.maxY - b.minY, 100);
@@ -51,7 +63,15 @@ function computeFitTransform(spec: MapSpec, regionPolys: [number, number][][], s
   return { scale, tx, ty };
 }
 
-const RegionEl: React.FC<{ region: MapRegion; pts: [number, number][]; markers: NonNullable<MapSpec["markers"]>; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ region, pts, markers, frame, fps, motion, timing }) => {
+const RegionEl: React.FC<{
+  region: MapRegion;
+  pts: [number, number][];
+  markers: NonNullable<MapSpec["markers"]>;
+  frame: number;
+  fps: number;
+  motion: "spring" | "linear" | "float";
+  timing: SceneTiming;
+}> = ({ region, pts, markers, frame, fps, motion, timing }) => {
   const o = springIn(frame, fps, resolveAnchor(timing, region.anchor, 0), motion);
   const fill = region.color ?? accentOf(0);
   if (!pts.length) return null;
@@ -62,10 +82,26 @@ const RegionEl: React.FC<{ region: MapRegion; pts: [number, number][]; markers: 
   const labelY = nearMarker ? cy - 40 : cy;
   return (
     <g opacity={o}>
-      <polygon points={pts.map((p) => p.join(",")).join(" ")} fill={fill} fillOpacity={0.18} stroke={fill} strokeWidth={2} strokeLinejoin="round" />
+      <polygon
+        points={pts.map((p) => p.join(",")).join(" ")}
+        fill={fill}
+        fillOpacity={0.18}
+        stroke={fill}
+        strokeWidth={2}
+        strokeLinejoin="round"
+      />
       {label ? (
-        <text x={cx} y={labelY} textAnchor="middle" dominantBaseline="central" fill={fill} fontSize={26} fontWeight={FW.bold} fontFamily={FONT}
-          style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 5 }}>
+        <text
+          x={cx}
+          y={labelY}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={fill}
+          fontSize={26}
+          fontWeight={FW.bold}
+          fontFamily={FONT}
+          style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 5 }}
+        >
           {label}
         </text>
       ) : null}
@@ -79,7 +115,14 @@ function routeStyle(type: MapRoute["type"], dashed?: boolean): { width: number; 
   return { width: 4, dash: undefined };
 }
 
-const RouteEl: React.FC<{ route: MapRoute; markers: NonNullable<MapSpec["markers"]>; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ route, markers, frame, fps, motion, timing }) => {
+const RouteEl: React.FC<{
+  route: MapRoute;
+  markers: NonNullable<MapSpec["markers"]>;
+  frame: number;
+  fps: number;
+  motion: "spring" | "linear" | "float";
+  timing: SceneTiming;
+}> = ({ route, markers, frame, fps, motion, timing }) => {
   const a = markers[route.from];
   const b = markers[route.to];
   if (!a || !b) return null;
@@ -88,33 +131,68 @@ const RouteEl: React.FC<{ route: MapRoute; markers: NonNullable<MapSpec["markers
   const animated = route.animated !== false;
   const o = springIn(frame, fps, resolveAnchor(timing, route.anchor, 0), motion);
   const len = Math.max(Math.hypot(b.x - a.x, b.y - a.y), 1);
-  const drawFrames = Math.max(20, Math.round(len / 100 * 8));
+  const drawFrames = Math.max(20, Math.round((len / 100) * 8));
   const progress = animated
-    ? interpolate(frame, [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    ? interpolate(
+        frame,
+        [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames],
+        [0, 1],
+        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+      )
     : 1;
   const { strokeDasharray, strokeDashoffset } = evolvePath(progress, d);
   const drawOpacity = animated && frame < resolveAnchor(timing, route.anchor, 0) + drawFrames ? 1 : o;
-  const flowX = interpolate(frame, [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames], [a.x, b.x], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const flowY = interpolate(frame, [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames], [a.y, b.y], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const flowX = interpolate(
+    frame,
+    [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames],
+    [a.x, b.x],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+  const flowY = interpolate(
+    frame,
+    [resolveAnchor(timing, route.anchor, 0), resolveAnchor(timing, route.anchor, 0) + drawFrames],
+    [a.y, b.y],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
   const flowOpacity = frame < resolveAnchor(timing, route.anchor, 0) + drawFrames ? 1 : 0;
   const { width, dash } = routeStyle(route.type, route.dashed);
   const finalDash = dash ?? strokeDasharray;
 
   return (
     <g>
-      <path d={d} stroke={color} strokeWidth={width} strokeLinecap="round"
+      <path
+        d={d}
+        stroke={color}
+        strokeWidth={width}
+        strokeLinecap="round"
         strokeDasharray={finalDash}
         strokeDashoffset={strokeDashoffset}
-        opacity={drawOpacity} />
+        opacity={drawOpacity}
+      />
       {route.flow !== false && animated ? (
-        <circle r={route.type === "road" ? 3.5 : 5} fill={color} stroke="#fff" strokeWidth={1.5}
-          cx={flowX} cy={flowY} opacity={flowOpacity} />
+        <circle
+          r={route.type === "road" ? 3.5 : 5}
+          fill={color}
+          stroke="#fff"
+          strokeWidth={1.5}
+          cx={flowX}
+          cy={flowY}
+          opacity={flowOpacity}
+        />
       ) : null}
     </g>
   );
 };
 
-const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; index: number; frame: number; fps: number; motion: "spring" | "linear" | "float"; labelBelow: boolean; timing: SceneTiming }> = ({ marker, index, frame, fps, motion, labelBelow, timing }) => {
+const MarkerEl: React.FC<{
+  marker: NonNullable<MapSpec["markers"]>[number];
+  index: number;
+  frame: number;
+  fps: number;
+  motion: "spring" | "linear" | "float";
+  labelBelow: boolean;
+  timing: SceneTiming;
+}> = ({ marker, index, frame, fps, motion, labelBelow, timing }) => {
   const o = springIn(frame, fps, resolveAnchor(timing, marker.anchor, 0) + 10 + index * 12, motion);
   const color = marker.color ?? accentOf(index);
   const r = marker.size ?? 10;
@@ -124,16 +202,31 @@ const MarkerEl: React.FC<{ marker: NonNullable<MapSpec["markers"]>[number]; inde
       <circle cx={marker.x} cy={marker.y} r={r * 2.2} fill={color} fillOpacity={0.12} />
       <circle cx={marker.x} cy={marker.y} r={r * 1.5} fill="none" stroke={color} strokeWidth={2} strokeOpacity={0.5} />
       <circle cx={marker.x} cy={marker.y} r={r} fill={color} stroke="#fff" strokeWidth={2} />
-      <text x={marker.x} y={labelY} textAnchor="middle" dominantBaseline="central"
-        fill={C.ink} fontSize={24} fontWeight={FW.bold} fontFamily={FONT}
-        style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 4 }}>
+      <text
+        x={marker.x}
+        y={labelY}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={C.ink}
+        fontSize={24}
+        fontWeight={FW.bold}
+        fontFamily={FONT}
+        style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 4 }}
+      >
         {marker.name}
       </text>
     </g>
   );
 };
 
-const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion: "spring" | "linear" | "float"; safe: { x: number; y: number; w: number; h: number }; timing: SceneTiming }> = ({ routes, frame, fps, motion, safe, timing }) => {
+const Legend: React.FC<{
+  routes: MapRoute[];
+  frame: number;
+  fps: number;
+  motion: "spring" | "linear" | "float";
+  safe: { x: number; y: number; w: number; h: number };
+  timing: SceneTiming;
+}> = ({ routes, frame, fps, motion, safe, timing }) => {
   const o = springIn(frame, fps, resolveAnchor(timing, undefined, 0) + 40, motion);
   const types = Array.from(new Set(routes.map((r) => r.type ?? "rail")));
   const items = types.map((t) => ({
@@ -145,12 +238,37 @@ const Legend: React.FC<{ routes: MapRoute[]; frame: number; fps: number; motion:
   if (!items.length) return null;
   return (
     <g opacity={o} transform={`translate(${safe.x + safe.w - 220}, ${safe.y + safe.h - 70})`}>
-      <rect x={-12} y={-14} width={232} height={items.length * 30 + 20} rx={12}
-        fill="rgba(255,255,255,0.85)" stroke="rgba(28,37,54,0.10)" strokeWidth={1} />
+      <rect
+        x={-12}
+        y={-14}
+        width={232}
+        height={items.length * 30 + 20}
+        rx={12}
+        fill="rgba(255,255,255,0.85)"
+        stroke="rgba(28,37,54,0.10)"
+        strokeWidth={1}
+      />
       {items.map((it, i) => (
         <g key={it.t} transform={`translate(0, ${i * 30})`}>
-          <line x1={0} y1={0} x2={34} y2={0} stroke={C.ink} strokeWidth={it.width} strokeLinecap="round" strokeDasharray={it.dash} />
-          <text x={44} y={0} dominantBaseline="central" fill={C.ink} fontSize={18} fontWeight={FW.regular} fontFamily={FONT}>
+          <line
+            x1={0}
+            y1={0}
+            x2={34}
+            y2={0}
+            stroke={C.ink}
+            strokeWidth={it.width}
+            strokeLinecap="round"
+            strokeDasharray={it.dash}
+          />
+          <text
+            x={44}
+            y={0}
+            dominantBaseline="central"
+            fill={C.ink}
+            fontSize={18}
+            fontWeight={FW.regular}
+            fontFamily={FONT}
+          >
             {it.label}
           </text>
         </g>
@@ -186,14 +304,40 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
               <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24} fill="white" />
             </mask>
           </defs>
-          <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24}
-            fill="rgba(255,255,255,0.55)" stroke="rgba(28,37,54,0.10)" strokeWidth={1.5} />
-          <rect x={safe.x + 10} y={safe.y + 10} width={safe.w - 20} height={safe.h - 20} rx={18}
-            fill="none" stroke="rgba(28,37,54,0.08)" strokeWidth={1.5} strokeDasharray="8 8" />
+          <rect
+            x={safe.x}
+            y={safe.y}
+            width={safe.w}
+            height={safe.h}
+            rx={24}
+            fill="rgba(255,255,255,0.55)"
+            stroke="rgba(28,37,54,0.10)"
+            strokeWidth={1.5}
+          />
+          <rect
+            x={safe.x + 10}
+            y={safe.y + 10}
+            width={safe.w - 20}
+            height={safe.h - 20}
+            rx={18}
+            fill="none"
+            stroke="rgba(28,37,54,0.08)"
+            strokeWidth={1.5}
+            strokeDasharray="8 8"
+          />
           <g mask="url(#map-safe-mask)">
             <g transform={`translate(${tx}, ${ty}) scale(${scale})`}>
               {regions.map((rg, i) => (
-                <RegionEl key={i} region={rg} pts={regionPolys[i] ?? []} markers={markers} frame={f} fps={fps} motion={motion} timing={timing} />
+                <RegionEl
+                  key={i}
+                  region={rg}
+                  pts={regionPolys[i] ?? []}
+                  markers={markers}
+                  frame={f}
+                  fps={fps}
+                  motion={motion}
+                  timing={timing}
+                />
               ))}
               {routes.map((rt, i) => (
                 <RouteEl key={i} route={rt} markers={markers} frame={f} fps={fps} motion={motion} timing={timing} />
@@ -201,7 +345,18 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
               {markers.map((mk, i) => {
                 const fitY = mk.y * scale + ty;
                 const labelBelow = fitY < safe.y + 80;
-                return <MarkerEl key={i} marker={mk} index={i} frame={f} fps={fps} motion={motion} labelBelow={labelBelow} timing={timing} />;
+                return (
+                  <MarkerEl
+                    key={i}
+                    marker={mk}
+                    index={i}
+                    frame={f}
+                    fps={fps}
+                    motion={motion}
+                    labelBelow={labelBelow}
+                    timing={timing}
+                  />
+                );
               })}
             </g>
           </g>

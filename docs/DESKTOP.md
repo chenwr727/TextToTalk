@@ -34,12 +34,12 @@ cd ../desktop && npm install && npm run dev
 
 ### 环境要求
 
-| 依赖 | 说明 |
-|---|---|
-| Node | 20.19+ / 22.12+（推荐 22 或 24） |
-| pnpm | 9+ |
-| ffmpeg | **已随包内置**，无需自行安装 |
-| Chromium | 自动探测系统 Edge / Chrome |
+| 依赖     | 说明                             |
+| -------- | -------------------------------- |
+| Node     | 20.19+ / 22.12+（推荐 22 或 24） |
+| pnpm     | 9+                               |
+| ffmpeg   | **已随包内置**，无需自行安装     |
+| Chromium | 自动探测系统 Edge / Chrome       |
 
 ---
 
@@ -54,8 +54,8 @@ npm run dist:linux   # Linux AppImage
 
 实测产物（Windows，x64）：
 
-| 文件 | 体积 | 说明 |
-|---|---|---|
+| 文件                                | 体积   | 说明               |
+| ----------------------------------- | ------ | ------------------ |
 | `TextToTalk-0.2.0-win-portable.zip` | 199 MB | 免安装版，解压即用 |
 
 ### 打包自检
@@ -75,14 +75,14 @@ cd desktop && npm run verify
 
 `npm run dist:win` 依次执行：
 
-| 步骤 | 命令 | 作用 |
-|---|---|---|
-| 1 | `npm run icon` | 从 `web/public/favicon.svg` 生成 `icon.ico / icon.icns / icon.png` |
-| 2 | `npm run ffmpeg` | 把 `ffmpeg-static` 的二进制复制到 `build/bin` |
-| 3 | `npm run stage` | 把后端暂存到 `build/resources/payload/server` |
-| 4 | `tsc` | 编译主进程与 preload |
-| 5 | `electron-builder` | 产出免安装 zip 包 |
-| 6 | `npm run verify` | 产物自检 |
+| 步骤 | 命令               | 作用                                                               |
+| ---- | ------------------ | ------------------------------------------------------------------ |
+| 1    | `npm run icon`     | 从 `web/public/favicon.svg` 生成 `icon.ico / icon.icns / icon.png` |
+| 2    | `npm run ffmpeg`   | 把 `ffmpeg-static` 的二进制复制到 `build/bin`                      |
+| 3    | `npm run stage`    | 把后端暂存到 `build/resources/payload/server`                      |
+| 4    | `tsc`              | 编译主进程与 preload                                               |
+| 5    | `electron-builder` | 产出免安装 zip 包                                                  |
+| 6    | `npm run verify`   | 产物自检                                                           |
 
 第 3 步是关键，它绕开了两个坑：
 
@@ -104,11 +104,11 @@ cd desktop && npm run verify
 
 模式由 exe 同级的 **`portable.txt`** 控制：
 
-| | `portable.txt` 存在 | `portable.txt` 不存在 |
-|---|---|---|
-| 模式 | 免安装 | 安装 |
+|          | `portable.txt` 存在  | `portable.txt` 不存在          |
+| -------- | -------------------- | ------------------------------ |
+| 模式     | 免安装               | 安装                           |
 | 数据位置 | exe 同级 `UserData/` | `%APPDATA%\texttotalk-desktop` |
-| 适用场景 | U 盘携带、多机切换 | 固定机器 |
+| 适用场景 | U 盘携带、多机切换   | 固定机器                       |
 
 - 两份数据**互不干扰**，切换模式后各自保留
 - 应用目录不可写时（比如解压到了 `Program Files`）会**自动回退**到 `%APPDATA%` 并告警，不会静默失败
@@ -143,10 +143,10 @@ cd desktop && npm run verify
 
 ### 依赖处理
 
-| 依赖 | 策略 |
-|---|---|
-| **ffmpeg** | 已内置（`ffmpeg-static`），后端启动时把 `resources/bin` 并入 PATH |
-| **ffprobe** | 不再需要。配音时长改由服务端解析 WAV 头得到（省 60MB） |
+| 依赖         | 策略                                                                                               |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| **ffmpeg**   | 已内置（`ffmpeg-static`），后端启动时把 `resources/bin` 并入 PATH                                  |
+| **ffprobe**  | 不再需要。配音时长改由服务端解析 WAV 头得到（省 60MB）                                             |
 | **Chromium** | 自动探测系统 Edge / Chrome。都没找到时 Remotion 会尝试联网下载自带内核，设置面板与渲染日志都会提示 |
 
 ### 渲染前依赖校验
@@ -167,11 +167,11 @@ cd desktop && npm run verify
 
 `Ctrl/Cmd + ,` 打开，或菜单「设置 → API 与渲染设置」。
 
-| 分组 | 项 |
-|---|---|
-| LLM 接口 | API Key（必填）、接口地址、模型 |
-| 渲染 | Chromium 路径（留空自动探测）、并发导帧数（留空 = CPU 核数一半） |
-| 本机环境 | Chromium / ffmpeg 探测结果与路径、输出目录、运行模式 |
+| 分组     | 项                                                               |
+| -------- | ---------------------------------------------------------------- |
+| LLM 接口 | API Key（必填）、接口地址、模型                                  |
+| 渲染     | Chromium 路径（留空自动探测）、并发导帧数（留空 = CPU 核数一半） |
+| 本机环境 | Chromium / ffmpeg 探测结果与路径、输出目录、运行模式             |
 
 - 配置保存在**应用数据目录**的 `config.json`，不写入仓库的 `server/.env`
 - 保存后**自动重启后端**，无需手动重启应用

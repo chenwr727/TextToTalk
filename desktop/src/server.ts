@@ -28,7 +28,9 @@ function ensureNodeShim(): string {
       : `#!/bin/sh\nexport ELECTRON_RUN_AS_NODE=1\n"${electronBin}" "$@"\n`;
   fs.writeFileSync(bin, script, { mode: 0o755 });
   if (process.platform !== "win32") {
-    try { fs.chmodSync(bin, 0o755); } catch {}
+    try {
+      fs.chmodSync(bin, 0o755);
+    } catch {}
   }
   nodeShimDir = dir;
   return dir;
@@ -100,7 +102,11 @@ function buildEnv(port: number, cfg: AppConfig, packaged: boolean): NodeJS.Proce
   if (fs.existsSync(path.join(web, "index.html"))) env.TTT_WEB_DIR = web;
 
   const keys = new Set([
-    "LLM_API_KEY", "LLM_API_URL", "LLM_MODEL", "CHROME_PATH", "RENDER_CONCURRENCY",
+    "LLM_API_KEY",
+    "LLM_API_URL",
+    "LLM_MODEL",
+    "CHROME_PATH",
+    "RENDER_CONCURRENCY",
     ...ttsEnvKeys(),
   ]);
   for (const key of keys) {

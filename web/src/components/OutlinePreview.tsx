@@ -85,9 +85,11 @@ export function OutlinePreview({
         <div style={{ flex: 1 }}>
           <div className="dsh-outline-title">
             大纲预览
-            {generating
-              ? <span className="dsh-badge-loading">AI 正在生成…</span>
-              : <span className="dsh-badge dsh-badge-green">{pages.length} 页</span>}
+            {generating ? (
+              <span className="dsh-badge-loading">AI 正在生成…</span>
+            ) : (
+              <span className="dsh-badge dsh-badge-green">{pages.length} 页</span>
+            )}
           </div>
           <div className="dsh-outline-sub">
             {generating
@@ -95,7 +97,9 @@ export function OutlinePreview({
               : "可直接编辑每页内容与顺序，确认后 AI 将基于此页逐页展开生成分镜"}
           </div>
         </div>
-        <button onClick={onBack} className="dsh-ghost">← 返回</button>
+        <button onClick={onBack} className="dsh-ghost">
+          ← 返回
+        </button>
       </div>
 
       {tokens && (
@@ -106,10 +110,10 @@ export function OutlinePreview({
               STAGES.filter((x) => x.id === "plan").map((s) => {
                 const on = s.id === stage;
                 return (
-                  <span
-                    key={s.id}
-                    className={"dsh-stage " + (on ? "dsh-stage-on" : "dsh-stage-off")}
-                  >{s.label}{on ? " •" : ""}</span>
+                  <span key={s.id} className={"dsh-stage " + (on ? "dsh-stage-on" : "dsh-stage-off")}>
+                    {s.label}
+                    {on ? " •" : ""}
+                  </span>
                 );
               })
             ) : (
@@ -134,7 +138,11 @@ export function OutlinePreview({
               </span>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); copyTokens(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  copyTokens();
+                }}
                 className={"dsh-raw-copy" + (copied ? " copied" : "")}
               >
                 {copied ? "已复制 ✓" : "复制"}
@@ -179,41 +187,86 @@ export function OutlinePreview({
                 placeholder={`第 ${i + 1} 页要传达的核心信息`}
               />
               <div className="dsh-page-ops">
-                <button className="dsh-icon-btn" disabled={i === 0} onClick={() => movePage(i, -1)} title="上移">↑</button>
-                <button className="dsh-icon-btn" disabled={i === pages.length - 1} onClick={() => movePage(i, 1)} title="下移">↓</button>
-                <button className="dsh-icon-btn danger" onClick={() => removePage(i)} title="删除本页">🗑</button>
+                <button className="dsh-icon-btn" disabled={i === 0} onClick={() => movePage(i, -1)} title="上移">
+                  ↑
+                </button>
+                <button
+                  className="dsh-icon-btn"
+                  disabled={i === pages.length - 1}
+                  onClick={() => movePage(i, 1)}
+                  title="下移"
+                >
+                  ↓
+                </button>
+                <button className="dsh-icon-btn danger" onClick={() => removePage(i)} title="删除本页">
+                  🗑
+                </button>
               </div>
             </div>
 
             <div className="dsh-page-opts">
               <div className="dsh-opt">
                 <span className="dsh-opt-label">版式</span>
-                <select className="dsh-field" value={p.layout ?? "points"} onChange={(e) => setPage(i, { layout: e.target.value })}>
-                  {LAYOUTS.map((l) => <option key={l} value={l}>{LAYOUT_LABEL[l]}</option>)}
+                <select
+                  className="dsh-field"
+                  value={p.layout ?? "points"}
+                  onChange={(e) => setPage(i, { layout: e.target.value })}
+                >
+                  {LAYOUTS.map((l) => (
+                    <option key={l} value={l}>
+                      {LAYOUT_LABEL[l]}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="dsh-opt">
                 <span className="dsh-opt-label">关系图</span>
-                <select className="dsh-field" value={p.art ?? ""} onChange={(e) => setPage(i, { art: e.target.value || undefined })}>
+                <select
+                  className="dsh-field"
+                  value={p.art ?? ""}
+                  onChange={(e) => setPage(i, { art: e.target.value || undefined })}
+                >
                   <option value="">无</option>
-                  {ARTS.map((a) => <option key={a} value={a}>{ART_LABEL[a]}</option>)}
+                  {ARTS.map((a) => (
+                    <option key={a} value={a}>
+                      {ART_LABEL[a]}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="dsh-opt">
                 <span className="dsh-opt-label">角色</span>
-                <select className="dsh-field" value={p.role ?? ""} onChange={(e) => setPage(i, { role: e.target.value || undefined })}>
+                <select
+                  className="dsh-field"
+                  value={p.role ?? ""}
+                  onChange={(e) => setPage(i, { role: e.target.value || undefined })}
+                >
                   <option value="">无</option>
-                  {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                  {ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="dsh-opt">
                 <span className="dsh-opt-label">图标</span>
-                <select className="dsh-field" value={p.icon ?? ""} onChange={(e) => setPage(i, { icon: e.target.value || undefined })}>
+                <select
+                  className="dsh-field"
+                  value={p.icon ?? ""}
+                  onChange={(e) => setPage(i, { icon: e.target.value || undefined })}
+                >
                   <option value="">无</option>
-                  {ICONS.map((ic) => <option key={ic} value={ic}>{ICON_EMOJI[ic]} {ic}</option>)}
+                  {ICONS.map((ic) => (
+                    <option key={ic} value={ic}>
+                      {ICON_EMOJI[ic]} {ic}
+                    </option>
+                  ))}
                 </select>
               </div>
-              <button onClick={() => addPage(i)} className="dsh-ghost dsh-insert">＋ 在此后插入</button>
+              <button onClick={() => addPage(i)} className="dsh-ghost dsh-insert">
+                ＋ 在此后插入
+              </button>
             </div>
           </div>
         ))}

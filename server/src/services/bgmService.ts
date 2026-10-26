@@ -28,7 +28,8 @@ async function synthBgmWav(durationSec: number): Promise<Buffer> {
       const bass = Math.sin(2 * Math.PI * bassF * t) * 0.3;
       const v = arp * 0.85 + bass * 0.15;
       samples[i] = v;
-      if (v > peak) peak = v; else if (-v > peak) peak = -v;
+      if (v > peak) peak = v;
+      else if (-v > peak) peak = -v;
     }
   };
   for (let start = 0; start < n; start += CHUNK_SAMPLES) {
@@ -61,8 +62,10 @@ async function synthBgmWav(durationSec: number): Promise<Buffer> {
       let v = samples[i] * scale * MASTER;
       v = Math.max(-1, Math.min(1, v));
       const s = Math.round(v * 32767);
-      buf.writeInt16LE(s, o); o += 2;
-      buf.writeInt16LE(s, o); o += 2;
+      buf.writeInt16LE(s, o);
+      o += 2;
+      buf.writeInt16LE(s, o);
+      o += 2;
     }
     if (end < n) await new Promise((r) => setImmediate(r));
   }

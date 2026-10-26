@@ -80,16 +80,16 @@
 
 ## 技术栈
 
-| 层 | 技术 |
-|---|---|
-| 前端 | React 19 · Vite 8 · TypeScript |
-| 后端 | Node.js · Fastify 5 · TypeScript（`tsx watch` 热载） |
-| 桌面 | Electron 44 · electron-builder |
-| 渲染 | Remotion 4.0（无头 Chromium）· transitions · rough-notation · paths · shapes · media-utils |
-| 网页抓取 | Node 内置 fetch（轻量）+ Playwright（JS 动态页兜底） |
-| TTS | msedge-tts（Edge 在线音色）+ ffmpeg 转码 |
-| BGM | 自研纯 Node 合成（44.1kHz 手写 WAV，无任何音频素材） |
-| LLM | OpenAI 兼容接口（`/chat/completions` 流式） |
+| 层       | 技术                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------ |
+| 前端     | React 19 · Vite 8 · TypeScript                                                             |
+| 后端     | Node.js · Fastify 5 · TypeScript（`tsx watch` 热载）                                       |
+| 桌面     | Electron 44 · electron-builder                                                             |
+| 渲染     | Remotion 4.0（无头 Chromium）· transitions · rough-notation · paths · shapes · media-utils |
+| 网页抓取 | Node 内置 fetch（轻量）+ Playwright（JS 动态页兜底）                                       |
+| TTS      | msedge-tts（Edge 在线音色）+ ffmpeg 转码                                                   |
+| BGM      | 自研纯 Node 合成（44.1kHz 手写 WAV，无任何音频素材）                                       |
+| LLM      | OpenAI 兼容接口（`/chat/completions` 流式）                                                |
 
 ---
 
@@ -97,12 +97,12 @@
 
 后端 `storyboardGenerator` 采用「大纲 → 分镜」两段式 LLM 流水线，中间夹一层强类型归一化：
 
-| 阶段 | 作用 |
-|---|---|
-| **Pass 1 · 大纲规划** | 定全局 `arc` 叙事弧线与每页 `role / icon / layout / art / chart / table / rhythm`，流式流出供确认与编辑 |
-| **Pass 2 · 逐页展开** | 基于确认后的大纲逐页填充标题 / 要点 / 解说 / 字幕，注入上一页上下文保持连贯（SSE 实时流出） |
-| **normalize** | LLM JSON → 强类型分镜；越界值收敛、缺失字段补全，并产出「某页与大纲版式偏差 / 图表未兑现 / 要点过多」等偏差告警 |
-| **fallbackDirect** | 管线异常时直出兜底分镜，保证不中断 |
+| 阶段                  | 作用                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Pass 1 · 大纲规划** | 定全局 `arc` 叙事弧线与每页 `role / icon / layout / art / chart / table / rhythm`，流式流出供确认与编辑         |
+| **Pass 2 · 逐页展开** | 基于确认后的大纲逐页填充标题 / 要点 / 解说 / 字幕，注入上一页上下文保持连贯（SSE 实时流出）                     |
+| **normalize**         | LLM JSON → 强类型分镜；越界值收敛、缺失字段补全，并产出「某页与大纲版式偏差 / 图表未兑现 / 要点过多」等偏差告警 |
+| **fallbackDirect**    | 管线异常时直出兜底分镜，保证不中断                                                                              |
 
 ---
 

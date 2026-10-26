@@ -20,17 +20,46 @@ const BottomPoints: React.FC<{ page: SceneProps["page"]; fps: number }> = ({ pag
   const items = page.points ?? [];
   if (!items.length) return null;
   return (
-    <div style={{ position: "absolute", bottom: isPortrait ? sp(180) : 180, left: 0, right: 0, display: "flex", flexWrap: "wrap", justifyContent: "center", gap: isPortrait ? sp(16) : 16, rowGap: isPortrait ? sp(12) : 12, padding: isPortrait ? `0 ${sp(120)}px` : "0 120px" }}>
+    <div
+      style={{
+        position: "absolute",
+        bottom: isPortrait ? sp(180) : 180,
+        left: 0,
+        right: 0,
+        display: "flex",
+        flexWrap: "wrap",
+        justifyContent: "center",
+        gap: isPortrait ? sp(16) : 16,
+        rowGap: isPortrait ? sp(12) : 12,
+        padding: isPortrait ? `0 ${sp(120)}px` : "0 120px",
+      }}
+    >
       {items.map((it, i) => {
         const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i, 30, 20), page.motion);
         return (
-          <div key={i} style={{
-            opacity: o, transform: `translateY(${interpolate(o, [0, 1], [40, 0])}px)`,
-            background: "rgba(255,255,255,0.92)", border: `${BORDER.card}px solid ${accentOf(i)}`,
-            borderRadius: RADIUS.box, padding: "16px 24px", fontSize: FS.body, fontWeight: FW.bold,
-            color: C.ink, fontFamily: FONT, textAlign: "center", flex: "0 1 auto", minWidth: 200, boxShadow: CARD_SHADOW,
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-          }}>
+          <div
+            key={i}
+            style={{
+              opacity: o,
+              transform: `translateY(${interpolate(o, [0, 1], [40, 0])}px)`,
+              background: "rgba(255,255,255,0.92)",
+              border: `${BORDER.card}px solid ${accentOf(i)}`,
+              borderRadius: RADIUS.box,
+              padding: "16px 24px",
+              fontSize: FS.body,
+              fontWeight: FW.bold,
+              color: C.ink,
+              fontFamily: FONT,
+              textAlign: "center",
+              flex: "0 1 auto",
+              minWidth: 200,
+              boxShadow: CARD_SHADOW,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+            }}
+          >
             <Icon name={pointIcon(it, i)} size={22} color={accentOf(i)} />
             <span>{pointText(it, i)}</span>
           </div>
@@ -47,23 +76,37 @@ function elementBounds(el: SvgElement): { minX: number; minY: number; maxX: numb
 
   switch (el.type) {
     case "circle": {
-      const cx = el.cx ?? 0, cy = el.cy ?? 0, r = el.r ?? 0;
+      const cx = el.cx ?? 0,
+        cy = el.cy ?? 0,
+        r = el.r ?? 0;
       return { minX: cx - r, minY: cy - r, maxX: cx + r, maxY: cy + r };
     }
     case "rect": {
-      const x = el.x ?? 0, y = el.y ?? 0;
+      const x = el.x ?? 0,
+        y = el.y ?? 0;
       return { minX: x, minY: y, maxX: x + (el.width ?? 0), maxY: y + (el.height ?? 0) };
     }
     case "ellipse": {
-      const cx = el.cx ?? 0, cy = el.cy ?? 0, rx = el.rx ?? 0, ry = el.ry ?? 0;
+      const cx = el.cx ?? 0,
+        cy = el.cy ?? 0,
+        rx = el.rx ?? 0,
+        ry = el.ry ?? 0;
       return { minX: cx - rx, minY: cy - ry, maxX: cx + rx, maxY: cy + ry };
     }
     case "line":
       return { minX: min(el.x1, el.x2), minY: min(el.y1, el.y2), maxX: max(el.x1, el.x2), maxY: max(el.y1, el.y2) };
     case "polygon": {
-      const pts = (el.points ?? "").split(/\s+/).map((p) => p.split(",").map(Number)).filter((p) => p.length === 2 && p.every(Number.isFinite));
+      const pts = (el.points ?? "")
+        .split(/\s+/)
+        .map((p) => p.split(",").map(Number))
+        .filter((p) => p.length === 2 && p.every(Number.isFinite));
       if (!pts.length) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
-      return { minX: Math.min(...pts.map((p) => p[0])), minY: Math.min(...pts.map((p) => p[1])), maxX: Math.max(...pts.map((p) => p[0])), maxY: Math.max(...pts.map((p) => p[1])) };
+      return {
+        minX: Math.min(...pts.map((p) => p[0])),
+        minY: Math.min(...pts.map((p) => p[1])),
+        maxX: Math.max(...pts.map((p) => p[0])),
+        maxY: Math.max(...pts.map((p) => p[1])),
+      };
     }
     case "path": {
       try {
@@ -87,7 +130,10 @@ function elementBounds(el: SvgElement): { minX: number; minY: number; maxX: numb
   }
 }
 
-function computeFitTransform(els: SvgElement[], safe: { x: number; y: number; w: number; h: number }): { scale: number; tx: number; ty: number } {
+function computeFitTransform(
+  els: SvgElement[],
+  safe: { x: number; y: number; w: number; h: number },
+): { scale: number; tx: number; ty: number } {
   if (!els.length) return { scale: 1, tx: 0, ty: 0 };
   const bounds = els.map(elementBounds);
   const minX = Math.min(...bounds.map((b) => b.minX));
@@ -108,7 +154,14 @@ function computeFitTransform(els: SvgElement[], safe: { x: number; y: number; w:
   return { scale, tx, ty };
 }
 
-const SvgEl: React.FC<{ el: SvgElement; index: number; frame: number; fps: number; motion: "spring" | "linear" | "float"; timing: SceneTiming }> = ({ el, index, frame, fps, motion, timing }) => {
+const SvgEl: React.FC<{
+  el: SvgElement;
+  index: number;
+  frame: number;
+  fps: number;
+  motion: "spring" | "linear" | "float";
+  timing: SceneTiming;
+}> = ({ el, index, frame, fps, motion, timing }) => {
   const delay = resolveAnchor(timing, el.anchor, index, 0, 8) + (el.delay ?? 0);
   const o = springIn(frame, fps, delay, motion);
   const common = {
@@ -121,13 +174,49 @@ const SvgEl: React.FC<{ el: SvgElement; index: number; frame: number; fps: numbe
 
   switch (el.type) {
     case "circle":
-      return <circle cx={el.cx} cy={el.cy} r={el.r} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />;
+      return (
+        <circle cx={el.cx} cy={el.cy} r={el.r} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />
+      );
     case "rect":
-      return <rect x={el.x} y={el.y} width={el.width} height={el.height} rx={el.rx} ry={el.ry} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />;
+      return (
+        <rect
+          x={el.x}
+          y={el.y}
+          width={el.width}
+          height={el.height}
+          rx={el.rx}
+          ry={el.ry}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          {...common}
+        />
+      );
     case "ellipse":
-      return <ellipse cx={el.cx} cy={el.cy} rx={el.rx} ry={el.ry} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />;
+      return (
+        <ellipse
+          cx={el.cx}
+          cy={el.cy}
+          rx={el.rx}
+          ry={el.ry}
+          fill={fill}
+          stroke={stroke}
+          strokeWidth={strokeWidth}
+          {...common}
+        />
+      );
     case "line":
-      return <line x1={el.x1} y1={el.y1} x2={el.x2} y2={el.y2} stroke={stroke ?? "#3B6FF5"} strokeWidth={strokeWidth ?? 2} {...common} />;
+      return (
+        <line
+          x1={el.x1}
+          y1={el.y1}
+          x2={el.x2}
+          y2={el.y2}
+          stroke={stroke ?? "#3B6FF5"}
+          strokeWidth={strokeWidth ?? 2}
+          {...common}
+        />
+      );
     case "polygon":
       return <polygon points={el.points} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />;
     case "path": {
@@ -135,23 +224,42 @@ const SvgEl: React.FC<{ el: SvgElement; index: number; frame: number; fps: numbe
       if (el.draw) {
         const bb = getBoundingBox(d);
         const len = Math.max(bb.x2 - bb.x1, bb.y2 - bb.y1, 1);
-        const drawFrames = Math.max(20, Math.round(len / 100 * 8));
-        const progress = interpolate(frame, [delay, delay + drawFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+        const drawFrames = Math.max(20, Math.round((len / 100) * 8));
+        const progress = interpolate(frame, [delay, delay + drawFrames], [0, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        });
         const { strokeDasharray, strokeDashoffset } = evolvePath(progress, d);
         const drawOpacity = frame < delay + drawFrames ? 1 : o;
         return (
-          <path d={d} fill={fill} stroke={el.stroke ?? "#3B6FF5"} strokeWidth={strokeWidth ?? 3}
-            strokeDasharray={strokeDasharray} strokeDashoffset={strokeDashoffset} strokeLinecap="round"
+          <path
+            d={d}
+            fill={fill}
+            stroke={el.stroke ?? "#3B6FF5"}
+            strokeWidth={strokeWidth ?? 3}
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
             opacity={drawOpacity * (el.opacity ?? 1)}
-            transform={common.transform} />
+            transform={common.transform}
+          />
         );
       }
       return <path d={d} fill={fill} stroke={stroke} strokeWidth={strokeWidth} {...common} />;
     }
     case "text":
       return (
-        <text x={el.x} y={el.y} textAnchor={el.textAnchor ?? "start"} dominantBaseline="central"
-          fill={el.fill ?? C.ink} fontSize={el.fontSize ?? 28} fontWeight={el.fontWeight ?? 700} fontFamily={FONT} {...common}>
+        <text
+          x={el.x}
+          y={el.y}
+          textAnchor={el.textAnchor ?? "start"}
+          dominantBaseline="central"
+          fill={el.fill ?? C.ink}
+          fontSize={el.fontSize ?? 28}
+          fontWeight={el.fontWeight ?? 700}
+          fontFamily={FONT}
+          {...common}
+        >
           {el.text}
         </text>
       );

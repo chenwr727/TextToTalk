@@ -10,7 +10,7 @@ export const interpolate = (
   _frame: number,
   _inputRange: readonly number[],
   outputRange: readonly number[],
-  _opts?: InterpOpts
+  _opts?: InterpOpts,
 ): number => outputRange[outputRange.length - 1];
 
 export const useCurrentFrame = (): number => 1e9;
@@ -39,7 +39,7 @@ export const AbsoluteFill: React.FC<{
         ...style,
       },
     },
-    children
+    children,
   );
 
 export const Sequence: React.FC<{

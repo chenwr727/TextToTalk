@@ -49,7 +49,12 @@ const REGISTRY: SceneEntry[] = [
   { key: "chart_donut", match: (p) => p.chart?.type === "donut", render: DonutScene, bg: "chart" },
   { key: "chart_stacked_bar", match: (p) => p.chart?.type === "stacked-bar", render: StackedBarScene, bg: "chart" },
   { key: "chart_scatter", match: (p) => p.chart?.type === "scatter", render: ScatterScene, bg: "chart" },
-  { key: "chart_bar", match: (p) => !!p.chart, render: ChartScene, bg: (p) => (p.chart && "values" in p.chart && p.chart.values.length <= 3 ? "chart" : "default") },
+  {
+    key: "chart_bar",
+    match: (p) => !!p.chart,
+    render: ChartScene,
+    bg: (p) => (p.chart && "values" in p.chart && p.chart.values.length <= 3 ? "chart" : "default"),
+  },
   { key: "points", match: () => true, render: PointsScene, bg: "default" },
 ];
 
@@ -59,7 +64,5 @@ const resolveBg = (resolver: BgResolver, page: StoryPage, ctx: SceneCtx): string
 export const matchScene = (page: StoryPage, isFirst: boolean): SceneMatch => {
   const ctx = { isFirst };
   const hit = REGISTRY.find((e) => e.match(page, ctx));
-  return hit
-    ? { render: hit.render, bg: resolveBg(hit.bg, page, ctx) }
-    : { render: PointsScene, bg: "default" };
+  return hit ? { render: hit.render, bg: resolveBg(hit.bg, page, ctx) } : { render: PointsScene, bg: "default" };
 };

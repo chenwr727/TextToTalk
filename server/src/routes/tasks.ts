@@ -54,9 +54,10 @@ export function registerTaskRoutes(app: FastifyInstance) {
       .type("video/mp4")
       .header("Accept-Ranges", "bytes")
       .header("Access-Control-Allow-Origin", "*")
-      .header("Content-Disposition", asAttachment
-        ? `attachment; filename="${taskId}.mp4"`
-        : `inline; filename="${taskId}.mp4"`);
+      .header(
+        "Content-Disposition",
+        asAttachment ? `attachment; filename="${taskId}.mp4"` : `inline; filename="${taskId}.mp4"`,
+      );
     const m = /bytes=(\d*)-(\d*)/.exec(range);
     if (m) {
       const start = m[1] ? parseInt(m[1], 10) : 0;
@@ -80,7 +81,9 @@ export function registerTaskRoutes(app: FastifyInstance) {
     const task = authorizeTask(req, reply, taskId);
     if (!task || !task.storyboard) return reply.code(404).send({ error: "任务或分镜不存在" });
     void renderPageFrames(taskId, task.storyboard, task.storyboard.pages as any[], task.params.fps || 30, undefined, {
-      theme: task.params.theme, width: task.params.width, height: task.params.height,
+      theme: task.params.theme,
+      width: task.params.width,
+      height: task.params.height,
     })
       .then((paths) => console.log(`[frame] 已生成 ${paths.length} 页预览帧 (${taskId})`))
       .catch((e) => console.warn("[frame] 预览帧生成失败:", e));
@@ -116,7 +119,8 @@ export function registerTaskRoutes(app: FastifyInstance) {
     const next: typeof cur = { ...cur };
 
     if (body.title !== undefined) {
-      if (typeof body.title !== "string" || !body.title.trim()) return reply.code(400).send({ error: "title 必须是非空字符串" });
+      if (typeof body.title !== "string" || !body.title.trim())
+        return reply.code(400).send({ error: "title 必须是非空字符串" });
       next.title = body.title.trim();
     }
     if (body.narration !== undefined) {
@@ -143,11 +147,26 @@ export function registerTaskRoutes(app: FastifyInstance) {
     }
     if (body.durationSec !== undefined) {
       const d = Number(body.durationSec);
-      if (!Number.isFinite(d) || d <= 0 || d > 120) return reply.code(400).send({ error: "durationSec 必须是 0~120 之间的秒数" });
+      if (!Number.isFinite(d) || d <= 0 || d > 120)
+        return reply.code(400).send({ error: "durationSec 必须是 0~120 之间的秒数" });
       next.durationSec = d;
     }
     if (body.layout !== undefined) {
-      const LAYOUTS = ["title", "section", "points", "three_card", "comparison", "chart", "table", "end", "two_column", "steps", "stats", "qa", "map"];
+      const LAYOUTS = [
+        "title",
+        "section",
+        "points",
+        "three_card",
+        "comparison",
+        "chart",
+        "table",
+        "end",
+        "two_column",
+        "steps",
+        "stats",
+        "qa",
+        "map",
+      ];
       if (typeof body.layout !== "string" || !LAYOUTS.includes(body.layout))
         return reply.code(400).send({ error: `layout 必须是 ${LAYOUTS.join("/")} 之一` });
       next.layout = body.layout as typeof cur.layout;
@@ -163,7 +182,11 @@ export function registerTaskRoutes(app: FastifyInstance) {
       const mp4 = path.join(OUT_DIR, `${id}.mp4`);
       const framesDir = path.join(OUT_DIR, id, "frames");
       for (const f of [mp4, framesDir]) {
-        try { if (existsSync(f)) rmSync(f, { recursive: true, force: true }); } catch { /* 忽略清理失败 */ }
+        try {
+          if (existsSync(f)) rmSync(f, { recursive: true, force: true });
+        } catch {
+          /* 忽略清理失败 */
+        }
       }
     }
     patchTask(id, {
@@ -191,7 +214,11 @@ export function registerTaskRoutes(app: FastifyInstance) {
         const mp4 = path.join(OUT_DIR, `${id}.mp4`);
         const framesDir = path.join(OUT_DIR, id, "frames");
         for (const f of [mp4, framesDir]) {
-          try { if (existsSync(f)) rmSync(f, { recursive: true, force: true }); } catch { /* 忽略清理失败 */ }
+          try {
+            if (existsSync(f)) rmSync(f, { recursive: true, force: true });
+          } catch {
+            /* 忽略清理失败 */
+          }
         }
       }
       patchTask(id, {

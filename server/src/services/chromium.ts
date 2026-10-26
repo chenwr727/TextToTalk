@@ -55,7 +55,8 @@ export async function findSystemChromium(): Promise<string | null> {
     const userCandidates = [
       process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Google", "Chrome", "Application", "chrome.exe"),
       process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Microsoft", "Edge", "Application", "msedge.exe"),
-      process.env.USERPROFILE && path.join(process.env.USERPROFILE, "AppData", "Local", "Chromium", "Application", "chrome.exe"),
+      process.env.USERPROFILE &&
+        path.join(process.env.USERPROFILE, "AppData", "Local", "Chromium", "Application", "chrome.exe"),
     ].filter((p): p is string => Boolean(p));
     for (const p of [...WINDOWS_CANDIDATES, ...userCandidates]) {
       if (exists(p)) {

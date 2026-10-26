@@ -19,9 +19,11 @@ const buildFrameAt =
 
 export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirst, Scene }) => {
   const gapFrames = Math.round((page.sentenceGap || 0) * fps);
-  const pageFrames = page.sentences && page.sentences.length
-    ? page.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * fps)), 0) + gapFrames * Math.max(0, page.sentences.length - 1)
-    : Math.round((page.durationSec || 4) * fps);
+  const pageFrames =
+    page.sentences && page.sentences.length
+      ? page.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * fps)), 0) +
+        gapFrames * Math.max(0, page.sentences.length - 1)
+      : Math.round((page.durationSec || 4) * fps);
 
   let timing: SceneTiming;
   if (page.sentences && page.sentences.length) {
@@ -64,32 +66,30 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
         <Scene page={page} fps={fps} subtitles={subtitles} isFirst={isFirst} />
       </SceneTimingContext.Provider>
 
-      {page.sentences && page.sentences.length ? (
-        (() => {
-          let off = 0;
-          return page.sentences.map((s, i) => {
-            const dur = Math.max(1, Math.round(s.seconds * fps));
-            const el = (
-              <Sequence key={i} from={off}>
-                <AudioSentence sentence={s} fps={fps} subtitles={subtitles} />
+      {page.sentences && page.sentences.length
+        ? (() => {
+            let off = 0;
+            return page.sentences.map((s, i) => {
+              const dur = Math.max(1, Math.round(s.seconds * fps));
+              const el = (
+                <Sequence key={i} from={off}>
+                  <AudioSentence sentence={s} fps={fps} subtitles={subtitles} />
+                </Sequence>
+              );
+              off += dur + gapFrames;
+              return el;
+            });
+          })()
+        : (() => {
+            if (!page.captions.length) return null;
+            const step = Math.round(pageFrames / page.captions.length);
+            const el = page.captions.map((c, i) => (
+              <Sequence key={i} from={i * step} durationInFrames={step}>
+                <CaptionSentence text={c} durFrames={step} />
               </Sequence>
-            );
-            off += dur + gapFrames;
+            ));
             return el;
-          });
-        })()
-      ) : (
-        (() => {
-          if (!page.captions.length) return null;
-          const step = Math.round(pageFrames / page.captions.length);
-          const el = page.captions.map((c, i) => (
-            <Sequence key={i} from={i * step} durationInFrames={step}>
-              <CaptionSentence text={c} durFrames={step} />
-            </Sequence>
-          ));
-          return el;
-        })()
-      )}
+          })()}
     </AbsoluteFill>
   );
 };

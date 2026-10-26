@@ -21,21 +21,41 @@ async function request<T>(path: string, init?: RequestInit, errMsg = "请求失�
   return res.json();
 }
 
-export interface TtsEngineInfo { id: string; name: string; voices: { id: string; label: string }[] }
+export interface TtsEngineInfo {
+  id: string;
+  name: string;
+  voices: { id: string; label: string }[];
+}
 export function getTtsEngines(): Promise<{ defaultEngine: string; engines: TtsEngineInfo[] }> {
   return request("/tts/engines", undefined, "获取 TTS 引擎列表失败");
 }
 
 export function createGeneration(prompt: string, params: VideoParams): Promise<{ taskId: string; token: string }> {
-  return request("/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, params }),
-  }, "创建生成失败");
+  return request(
+    "/generate",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, params }),
+    },
+    "创建生成失败",
+  );
 }
 
-export interface OutlineBlock { idea?: string; chart?: boolean; table?: boolean; layout?: string; art?: string; role?: string; icon?: string }
-export interface Outline { projectTitle?: string; arc?: string; pages?: OutlineBlock[] }
+export interface OutlineBlock {
+  idea?: string;
+  chart?: boolean;
+  table?: boolean;
+  layout?: string;
+  art?: string;
+  role?: string;
+  icon?: string;
+}
+export interface Outline {
+  projectTitle?: string;
+  arc?: string;
+  pages?: OutlineBlock[];
+}
 
 export function subscribeOutline(
   prompt: string,
@@ -78,14 +98,23 @@ export function subscribeOutline(
           const event = lines.find((l) => l.startsWith("event: "))?.slice(7) ?? "message";
           const data = lines.find((l) => l.startsWith("data: "))?.slice(6) ?? "";
           let parsed: any;
-          try { parsed = JSON.parse(data); } catch { continue; }
+          try {
+            parsed = JSON.parse(data);
+          } catch {
+            continue;
+          }
           if (event === "token" && typeof parsed?.token === "string") onToken(parsed.token);
           else if (event === "reset") onReset?.();
           else if (event === "stage" && typeof parsed?.stage === "string") onStage(parsed.stage);
           else if (event === "section" && typeof parsed?.label === "string") onSection(parsed.label);
           else if (event === "final") onFinal(parsed.outline);
-          else if (event === "error") { onError(new Error(parsed?.error || "生成大纲失败")); return; }
-          else if (event === "done") { onDone(); return; }
+          else if (event === "error") {
+            onError(new Error(parsed?.error || "生成大纲失败"));
+            return;
+          } else if (event === "done") {
+            onDone();
+            return;
+          }
         }
       }
     } catch (e) {
@@ -96,12 +125,20 @@ export function subscribeOutline(
   return () => controller.abort();
 }
 
-export function generateStoryboardFromPlan(prompt: string, outline: Outline, params: VideoParams): Promise<{ taskId: string; token: string }> {
-  return request("/storyboard", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt, outline, params }),
-  }, "创建分镜生成失败");
+export function generateStoryboardFromPlan(
+  prompt: string,
+  outline: Outline,
+  params: VideoParams,
+): Promise<{ taskId: string; token: string }> {
+  return request(
+    "/storyboard",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, outline, params }),
+    },
+    "创建分镜生成失败",
+  );
 }
 
 export function getTask(taskId: string): Promise<Task> {
@@ -117,7 +154,7 @@ export function subscribeStoryboard(
   onStage?: (stage: string) => void,
   onFinal?: (sb: unknown) => void,
   onSection?: (label: string) => void,
-  onReset?: () => void
+  onReset?: () => void,
 ): () => void {
   const es = new EventSource(withToken(`${BASE}/stream?id=${taskId}`));
   const on = (type: string, handler: (d: any) => void) => {
@@ -130,22 +167,35 @@ export function subscribeStoryboard(
     });
   };
   on("page", (d) => onPage(d));
-  on("token", (d) => { if (typeof d?.token === "string") onToken?.(d.token); });
+  on("token", (d) => {
+    if (typeof d?.token === "string") onToken?.(d.token);
+  });
   on("reset", () => onReset?.());
-  on("stage", (d) => { if (typeof d?.stage === "string") onStage?.(d.stage); });
-  on("section", (d) => { if (typeof d?.label === "string") onSection?.(d.label); });
+  on("stage", (d) => {
+    if (typeof d?.stage === "string") onStage?.(d.stage);
+  });
+  on("section", (d) => {
+    if (typeof d?.label === "string") onSection?.(d.label);
+  });
   on("final", (d) => onFinal?.(d));
-  on("done", (d) => { onDone(d); es.close(); });
+  on("done", (d) => {
+    onDone(d);
+    es.close();
+  });
   es.onerror = () => {};
   return () => es.close();
 }
 
 export function submitRender(taskId: string, params?: Partial<VideoParams>): Promise<Task> {
-  return request(`/tasks/${taskId}/render`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ params }),
-  }, "提交渲染失败");
+  return request(
+    `/tasks/${taskId}/render`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ params }),
+    },
+    "提交渲染失败",
+  );
 }
 
 export const inlineVideoUrl = (taskId: string) => withToken(`${BASE}/tasks/${taskId}/download`);
@@ -161,11 +211,21 @@ export function regeneratePage(taskId: string, pageIndex: number): Promise<{ ok:
   return request(`/tasks/${taskId}/pages/${pageIndex}/regenerate`, { method: "POST" }, "重新生成失败");
 }
 
-export type PagePatch = Partial<Pick<StoryPage, "title" | "narration" | "captions" | "points" | "durationSec" | "layout">>;
-export function updatePage(taskId: string, pageIndex: number, patch: PagePatch): Promise<{ ok: boolean; page?: StoryPage }> {
-  return request(`/tasks/${taskId}/pages/${pageIndex}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  }, "保存分镜失败");
+export type PagePatch = Partial<
+  Pick<StoryPage, "title" | "narration" | "captions" | "points" | "durationSec" | "layout">
+>;
+export function updatePage(
+  taskId: string,
+  pageIndex: number,
+  patch: PagePatch,
+): Promise<{ ok: boolean; page?: StoryPage }> {
+  return request(
+    `/tasks/${taskId}/pages/${pageIndex}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    },
+    "保存分镜失败",
+  );
 }

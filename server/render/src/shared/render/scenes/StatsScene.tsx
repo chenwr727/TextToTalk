@@ -30,34 +30,107 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
-      <div style={{ display: "flex", flexWrap: isPortrait ? "wrap" : "nowrap", gap: isPortrait ? sp(24) : 24, marginTop: isPortrait ? 0 : HEADER_OFFSET, width: isPortrait ? contentWidth : 1560, justifyContent: "center", alignItems: "stretch" }}>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: isPortrait ? "wrap" : "nowrap",
+          gap: isPortrait ? sp(24) : 24,
+          marginTop: isPortrait ? 0 : HEADER_OFFSET,
+          width: isPortrait ? contentWidth : 1560,
+          justifyContent: "center",
+          alignItems: "stretch",
+        }}
+      >
         {points.map((p, i) => {
           const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
           const a = accentOf(i);
           const { num, rest } = extractNum(pointText(p, i));
           return (
-            <div key={i} style={{
-              flex: isPortrait ? "0 1 calc(50% - 12px)" : "0 1 calc(25% - 24px)", minWidth: isPortrait ? 0 : 300, padding: `${isPortrait ? sp(32) : 32}px ${isPortrait ? sp(28) : 28}px ${isPortrait ? sp(36) : 36}px`, textAlign: "center",
-              background: GLASS.card, border: `${BORDER.card}px solid ${a}`, borderRadius: RADIUS.card, boxShadow: CARD_SHADOW,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
-              opacity: t, transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,
-            }}>
-              <div style={{ width: isPortrait ? sp(64) : 64, height: isPortrait ? sp(64) : 64, borderRadius: 16, background: `${a}1a`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", flexShrink: 0 }}>
+            <div
+              key={i}
+              style={{
+                flex: isPortrait ? "0 1 calc(50% - 12px)" : "0 1 calc(25% - 24px)",
+                minWidth: isPortrait ? 0 : 300,
+                padding: `${isPortrait ? sp(32) : 32}px ${isPortrait ? sp(28) : 28}px ${isPortrait ? sp(36) : 36}px`,
+                textAlign: "center",
+                background: GLASS.card,
+                border: `${BORDER.card}px solid ${a}`,
+                borderRadius: RADIUS.card,
+                boxShadow: CARD_SHADOW,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                opacity: t,
+                transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,
+              }}
+            >
+              <div
+                style={{
+                  width: isPortrait ? sp(64) : 64,
+                  height: isPortrait ? sp(64) : 64,
+                  borderRadius: 16,
+                  background: `${a}1a`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 20px",
+                  flexShrink: 0,
+                }}
+              >
                 <Icon name={pointIcon(p, i)} size={isPortrait ? sp(34) : 34} color={a} />
               </div>
-              <div style={{ position: "relative", fontSize: isPortrait ? fs(FS.hero) : FS.hero, fontWeight: FW.heavy, color: a, lineHeight: LH.tight, fontFamily: FONT, marginBottom: isPortrait ? sp(12) : 12, minHeight: isPortrait ? sp(96) : 96, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <div
+                style={{
+                  position: "relative",
+                  fontSize: isPortrait ? fs(FS.hero) : FS.hero,
+                  fontWeight: FW.heavy,
+                  color: a,
+                  lineHeight: LH.tight,
+                  fontFamily: FONT,
+                  marginBottom: isPortrait ? sp(12) : 12,
+                  minHeight: isPortrait ? sp(96) : 96,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
                 {num ? (
                   page.effects?.annotation === "underline" ? (
-                    <HandUnderline color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 6, page.motion)} strokeWidth={10} iterations={2}>
+                    <HandUnderline
+                      color={a}
+                      progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 6, page.motion)}
+                      strokeWidth={10}
+                      iterations={2}
+                    >
                       {num}
                     </HandUnderline>
-                  ) : num
-                ) : "—"}
+                  ) : (
+                    num
+                  )
+                ) : (
+                  "—"
+                )}
                 {num && (
-                  <SparkBadge color={a} progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 10, page.motion)} />
+                  <SparkBadge
+                    color={a}
+                    progress={springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i) + 10, page.motion)}
+                  />
                 )}
               </div>
-              <div style={{ fontSize: isPortrait ? fs(FS.caption) : FS.caption, fontWeight: FW.regular, color: C.ink, lineHeight: LH.body, fontFamily: FONT, width: "100%" }}>{rest}</div>
+              <div
+                style={{
+                  fontSize: isPortrait ? fs(FS.caption) : FS.caption,
+                  fontWeight: FW.regular,
+                  color: C.ink,
+                  lineHeight: LH.body,
+                  fontFamily: FONT,
+                  width: "100%",
+                }}
+              >
+                {rest}
+              </div>
             </div>
           );
         })}
@@ -74,7 +147,9 @@ const SparkBadge: React.FC<{ color: string; progress: number }> = ({ color, prog
       height={40}
       viewBox="0 0 40 40"
       style={{
-        position: "absolute", top: -18, right: -14,
+        position: "absolute",
+        top: -18,
+        right: -14,
         opacity: progress,
         transform: `scale(${interpolate(progress, [0, 1], [0.3, 1], { output: "perceptual-scale" })}) rotate(${interpolate(progress, [0, 1], [-30, 0])}deg)`,
       }}

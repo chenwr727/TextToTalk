@@ -72,7 +72,10 @@ async function resolveEntryUrl(b: Backend): Promise<string> {
   return (await ping("http://127.0.0.1:3000")) ? "http://127.0.0.1:3000" : b.baseUrl;
 }
 
-async function health(): Promise<{ outDir: string; llm: { baseUrl: string; model: string; configured: boolean } } | null> {
+async function health(): Promise<{
+  outDir: string;
+  llm: { baseUrl: string; model: string; configured: boolean };
+} | null> {
   if (!backend) return null;
   try {
     const res = await fetch(`${backend.baseUrl}/api/health`, { signal: AbortSignal.timeout(2000) });
@@ -177,7 +180,11 @@ function buildMenu() {
       submenu: [
         { label: "API 与渲染设置…", accelerator: "CmdOrCtrl+,", click: () => showSettings() },
         { label: "重新加载页面", accelerator: "CmdOrCtrl+R", click: () => activeWebContents()?.reload() },
-        { label: "开发者工具", accelerator: "CmdOrCtrl+Shift+I", click: () => activeWebContents()?.openDevTools({ mode: "detach" }) },
+        {
+          label: "开发者工具",
+          accelerator: "CmdOrCtrl+Shift+I",
+          click: () => activeWebContents()?.openDevTools({ mode: "detach" }),
+        },
       ],
     },
   );
@@ -230,7 +237,9 @@ function registerIpc() {
     if (!backend) return { fields: [] };
     try {
       const res = await fetch(`${backend.baseUrl}/api/tts/config-fields`, { signal: AbortSignal.timeout(3000) });
-      return (await res.json()) as { fields: { name: string; label: string; secret?: boolean; required?: boolean; placeholder?: string }[] };
+      return (await res.json()) as {
+        fields: { name: string; label: string; secret?: boolean; required?: boolean; placeholder?: string }[];
+      };
     } catch {
       return { fields: [] };
     }

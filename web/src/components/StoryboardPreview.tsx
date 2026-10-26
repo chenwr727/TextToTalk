@@ -169,7 +169,7 @@ export function StoryboardPreview({
     onTokensChange("");
     const unsub = subscribeStoryboard(
       taskId,
-      (p) => onPagesChange((prev) => prev.some((x) => x.pageIndex === p.pageIndex) ? prev : [...prev, p]),
+      (p) => onPagesChange((prev) => (prev.some((x) => x.pageIndex === p.pageIndex) ? prev : [...prev, p])),
       () => onDoneChange(true),
       () => {},
       (tok) => {
@@ -188,7 +188,7 @@ export function StoryboardPreview({
         if (p != null) {
           const tag = `${SECTION_DELIM} ${label} ${SECTION_DELIM}\n`;
           starts.set(p, tag);
-          if (!(map.has(p))) map.set(p, "");
+          if (!map.has(p)) map.set(p, "");
           activePageRef.current = p;
         }
         flushBuffers();
@@ -199,9 +199,12 @@ export function StoryboardPreview({
           map.set(ap, "");
           flushBuffers();
         }
-      }
+      },
     );
-    return () => { cancelled = true; unsub(); };
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, [taskId]);
 
   const totalSec = pages.reduce((a, p) => a + (p.durationSec || 0), 0);
@@ -217,13 +220,18 @@ export function StoryboardPreview({
           </div>
           <div style={{ fontSize: 12.5, color: "#8a99b0", marginTop: 2 }}>
             {done ? (
-              <>全片预计约 <b style={{ color: "#5a6b82" }}>{Math.max(1, Math.round(totalSec))} 秒</b> · 逐页可随时重生成，随时可以继续</>
+              <>
+                全片预计约 <b style={{ color: "#5a6b82" }}>{Math.max(1, Math.round(totalSec))} 秒</b> ·
+                逐页可随时重生成，随时可以继续
+              </>
             ) : (
               "逐页预览实时更新中"
             )}
           </div>
         </div>
-        <button onClick={onBack} className="dsh-ghost">← 返回</button>
+        <button onClick={onBack} className="dsh-ghost">
+          ← 返回
+        </button>
       </div>
 
       {!done && (
@@ -236,9 +244,14 @@ export function StoryboardPreview({
               return (
                 <span
                   key={s.id}
-                  className={"dsh-sb-stage " + (on ? "dsh-sb-stage-on" : past ? "dsh-sb-stage-past" : "dsh-sb-stage-future")}
+                  className={
+                    "dsh-sb-stage " + (on ? "dsh-sb-stage-on" : past ? "dsh-sb-stage-past" : "dsh-sb-stage-future")
+                  }
                   style={on ? { background: s.color } : undefined}
-                >{s.label}{on ? " •" : ""}</span>
+                >
+                  {s.label}
+                  {on ? " •" : ""}
+                </span>
               );
             })}
           </div>
@@ -258,10 +271,10 @@ export function StoryboardPreview({
               STAGES.filter((x) => x.id === "expand").map((s) => {
                 const on = s.id === stage;
                 return (
-                  <span
-                    key={s.id}
-                    className={"dsh-stage " + (on ? "dsh-stage-on" : "dsh-stage-off")}
-                  >{s.label}{on ? " •" : ""}</span>
+                  <span key={s.id} className={"dsh-stage " + (on ? "dsh-stage-on" : "dsh-stage-off")}>
+                    {s.label}
+                    {on ? " •" : ""}
+                  </span>
                 );
               })
             )}
@@ -278,12 +291,15 @@ export function StoryboardPreview({
               >
                 <summary>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <span className="dsh-raw-caret">▶</span>
-                    第 {sec.page} 页 AI 返回内容（{sec.content.length} 字符）
+                    <span className="dsh-raw-caret">▶</span>第 {sec.page} 页 AI 返回内容（{sec.content.length} 字符）
                   </span>
                   <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); e.preventDefault(); copySection(sec.page, sec.content); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      copySection(sec.page, sec.content);
+                    }}
                     className={"dsh-raw-copy" + (copiedPage === sec.page ? " copied" : "")}
                   >
                     {copiedPage === sec.page ? "已复制 ✓" : "复制"}
@@ -306,7 +322,11 @@ export function StoryboardPreview({
                 </span>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); copyTokens(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    copyTokens();
+                  }}
                   className={"dsh-raw-copy" + (copied ? " copied" : "")}
                 >
                   {copied ? "已复制 ✓" : "复制"}
@@ -323,7 +343,9 @@ export function StoryboardPreview({
         {pages.map((p, i) => (
           <div
             key={p.pageIndex}
-            ref={(el) => { pageRefs.current[i] = el; }}
+            ref={(el) => {
+              pageRefs.current[i] = el;
+            }}
             className={"dsh-card dsh-sb-page" + (highlight === i + 1 ? " highlight" : "")}
           >
             <div className="dsh-sb-head">
@@ -331,7 +353,11 @@ export function StoryboardPreview({
               <b className="dsh-sb-title">{p.title}</b>
               <span style={{ color: "#8a99b0", fontSize: 12.5 }}>≈{p.durationSec}s</span>
               <div className="dsh-sb-actions">
-                {p.icon ? <span className="dsh-sb-tag" title="图标">{ICON_EMOJI[p.icon] ?? "•"}</span> : null}
+                {p.icon ? (
+                  <span className="dsh-sb-tag" title="图标">
+                    {ICON_EMOJI[p.icon] ?? "•"}
+                  </span>
+                ) : null}
                 {(p.art ?? p.layout) ? (
                   <span className="dsh-sb-tag dsh-sb-tag-blue">
                     {p.art ? (ART_LABEL[p.art] ?? "") : p.layout ? (LAYOUT_LABEL[p.layout] ?? "") : ""}
@@ -385,7 +411,11 @@ export function StoryboardPreview({
         ))}
       </div>
 
-      <button onClick={onConfirm} disabled={!done || renGen !== null || editing !== null} className="dsh-btn dsh-sb-confirm">
+      <button
+        onClick={onConfirm}
+        disabled={!done || renGen !== null || editing !== null}
+        className="dsh-btn dsh-sb-confirm"
+      >
         {!done
           ? "正在生成分镜，请稍候…"
           : renGen !== null

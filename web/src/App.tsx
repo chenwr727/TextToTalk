@@ -62,9 +62,14 @@ export function App() {
         const t = await getTask(taskId);
         if (!stop) setTask(t);
         if (t.status === "DONE" || t.status === "FAILED") clearInterval(timer);
-      } catch { /* 轮询容错 */ }
+      } catch {
+        /* 轮询容错 */
+      }
     }, 1200);
-    return () => { stop = true; clearInterval(timer); };
+    return () => {
+      stop = true;
+      clearInterval(timer);
+    };
   }, [phase, taskId, task?.status]);
 
   const startOutlineStream = (p: string, pr: VideoParams, onErrorBack?: () => void) => {
@@ -128,32 +133,91 @@ export function App() {
     <div className="dsh-app" style={{ minHeight: "100vh", padding: "26px 18px 60px" }}>
       <header style={{ maxWidth: 1320, margin: "0 auto 30px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src="/favicon.svg" alt="TextToTalk" width={42} height={42} style={{ borderRadius: 13, boxShadow: "0 4px 14px rgba(47,109,246,.32)" }} />
+          <img
+            src="/favicon.svg"
+            alt="TextToTalk"
+            width={42}
+            height={42}
+            style={{ borderRadius: 13, boxShadow: "0 4px 14px rgba(47,109,246,.32)" }}
+          />
           <div style={{ textAlign: "left" }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#1e2a3a", lineHeight: 1.15 }}>🎬 TextToTalk</div>
-            <div style={{ fontSize: 12, color: "#8a99b0", letterSpacing: .3 }}>文案一键变讲解视频</div>
+            <div style={{ fontSize: 12, color: "#8a99b0", letterSpacing: 0.3 }}>文案一键变讲解视频</div>
           </div>
         </div>
 
-        <div className="dsh-card dsh-steps" style={{ padding: "16px 18px 14px", marginTop: 22, background: "rgba(255,255,255,.85)" }}>
+        <div
+          className="dsh-card dsh-steps"
+          style={{ padding: "16px 18px 14px", marginTop: 22, background: "rgba(255,255,255,.85)" }}
+        >
           <div style={{ display: "flex", width: "100%" }}>
             {STEPS.map((s, i) => {
               const active = i === cur;
               const doneStep = i < cur;
               return (
-                <div key={s.id} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", position: "relative" }}>
-                  <span style={{
-                    width: 34, height: 34, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, fontSize: 15,
-                    background: active ? "linear-gradient(135deg,#2f6df6,#5c7dff)" : doneStep ? "#2f6df6" : "#e8eefb",
-                    color: active ? "#fff" : doneStep ? "#fff" : "#93a3c0",
-                    boxShadow: active ? "0 4px 12px rgba(47,109,246,.35)" : "none",
-                    zIndex: 1,
-                  }}>{doneStep ? "✓" : i + 1}</span>
-                  <span className="dsh-step-label" style={{ fontSize: 14, fontWeight: 700, color: active ? "#2f6df6" : doneStep ? "#1e2a3a" : "#8a9ab4", whiteSpace: "nowrap", marginTop: 7 }}>{s.label}</span>
-                  <span className="dsh-step-desc" style={{ fontSize: 11, color: active ? "#7f97c9" : "#a7b4cc", whiteSpace: "nowrap", marginTop: 2, textAlign: "center" }}>{s.desc}</span>
+                <div
+                  key={s.id}
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    position: "relative",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 800,
+                      fontSize: 15,
+                      background: active ? "linear-gradient(135deg,#2f6df6,#5c7dff)" : doneStep ? "#2f6df6" : "#e8eefb",
+                      color: active ? "#fff" : doneStep ? "#fff" : "#93a3c0",
+                      boxShadow: active ? "0 4px 12px rgba(47,109,246,.35)" : "none",
+                      zIndex: 1,
+                    }}
+                  >
+                    {doneStep ? "✓" : i + 1}
+                  </span>
+                  <span
+                    className="dsh-step-label"
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: active ? "#2f6df6" : doneStep ? "#1e2a3a" : "#8a9ab4",
+                      whiteSpace: "nowrap",
+                      marginTop: 7,
+                    }}
+                  >
+                    {s.label}
+                  </span>
+                  <span
+                    className="dsh-step-desc"
+                    style={{
+                      fontSize: 11,
+                      color: active ? "#7f97c9" : "#a7b4cc",
+                      whiteSpace: "nowrap",
+                      marginTop: 2,
+                      textAlign: "center",
+                    }}
+                  >
+                    {s.desc}
+                  </span>
                   {i < STEPS.length - 1 && (
-                    <div style={{ position: "absolute", top: 17, left: "calc(50% + 22px)", right: "calc(-50% + 22px)", height: 2, background: doneStep ? "#2f6df6" : "#dfe7f5" }} />
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 17,
+                        left: "calc(50% + 22px)",
+                        right: "calc(-50% + 22px)",
+                        height: 2,
+                        background: doneStep ? "#2f6df6" : "#dfe7f5",
+                      }}
+                    />
                   )}
                 </div>
               );

@@ -11,10 +11,7 @@ export function runnerCommand(args: string[]): { cmd: string; extraEnv: NodeJS.P
   return { cmd, extraEnv: inElectronNode ? { ELECTRON_RUN_AS_NODE: "1" } : {} };
 }
 
-export function spawnRunner(
-  args: string[],
-  opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {},
-): ChildProcess {
+export function spawnRunner(args: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}): ChildProcess {
   const { cmd, extraEnv } = runnerCommand(args);
   return spawn(cmd, {
     cwd: opts.cwd ?? renderDir,

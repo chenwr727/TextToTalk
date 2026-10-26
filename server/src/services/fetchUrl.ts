@@ -39,7 +39,8 @@ export async function fetchUrlContent(url: string): Promise<{ title: string; tex
     });
     if (!res.ok) throw new Error(`抓取失败：HTTP ${res.status}`);
     const contentLength = Number(res.headers.get("content-length") ?? "");
-    if (contentLength > MAX_BODY_BYTES) throw new Error(`页面过大（>${Math.round(MAX_BODY_BYTES / 1024 / 1024)}MB），已跳过`);
+    if (contentLength > MAX_BODY_BYTES)
+      throw new Error(`页面过大（>${Math.round(MAX_BODY_BYTES / 1024 / 1024)}MB），已跳过`);
     let html = "";
     const reader = res.body!.getReader();
     for (;;) {
@@ -64,10 +65,7 @@ export async function fetchUrlContentWithBrowser(url: string): Promise<{ title: 
   const { chromium } = await import("playwright-core");
   const { resolveChromiumPath } = await import("./chromium.js");
   const executablePath =
-    process.env.CHROME_PATH ||
-    process.env.REMOTION_BROWSER_EXECUTABLE ||
-    (await resolveChromiumPath()) ||
-    undefined;
+    process.env.CHROME_PATH || process.env.REMOTION_BROWSER_EXECUTABLE || (await resolveChromiumPath()) || undefined;
   if (!executablePath) {
     throw new Error("未检测到 Chromium 内核（Edge / Chrome），无法抓取该网页。可设置 CHROME_PATH 指定浏览器路径。");
   }
@@ -85,9 +83,7 @@ export async function fetchUrlContentWithBrowser(url: string): Promise<{ title: 
     const page = await context.newPage();
     await page.goto(url, { waitUntil: "networkidle", timeout: 30000 }).catch(() => {});
 
-    await page
-      .waitForSelector("#js_content, article, .rich_media_content, body", { timeout: 15000 })
-      .catch(() => {});
+    await page.waitForSelector("#js_content, article, .rich_media_content, body", { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(1500);
 
     const title = (await page.title()).trim();
@@ -97,7 +93,7 @@ export async function fetchUrlContentWithBrowser(url: string): Promise<{ title: 
         document.querySelector(".rich_media_content") ||
         document.querySelector("article") ||
         document.body;
-      const clone = root ? (root as HTMLElement).cloneNode(true) as HTMLElement : document.body;
+      const clone = root ? ((root as HTMLElement).cloneNode(true) as HTMLElement) : document.body;
       clone.querySelectorAll("script,style,noscript,svg").forEach((n) => n.remove());
       return (clone.textContent || "").replace(/\s+/g, " ").trim();
     });

@@ -6,7 +6,12 @@ export interface ChatMessage {
 }
 
 export class LlmError extends Error {
-  constructor(msg: string, public status?: number) { super(msg); }
+  constructor(
+    msg: string,
+    public status?: number,
+  ) {
+    super(msg);
+  }
 }
 
 export interface ChatStreamOptions {
@@ -24,8 +29,7 @@ export async function chatStream(opts: ChatStreamOptions): Promise<string> {
 
   const endpoint = env("LLM_API_URL").replace(/\/$/, "");
   const model = env("LLM_MODEL") || "deepseek-v4-flash";
-  const enableThinking =
-    opts.enableThinking ?? env("LLM_ENABLE_THINKING") === "true";
+  const enableThinking = opts.enableThinking ?? env("LLM_ENABLE_THINKING") === "true";
 
   const resp = await fetch(endpoint, {
     method: "POST",
@@ -40,9 +44,7 @@ export async function chatStream(opts: ChatStreamOptions): Promise<string> {
       stream: true,
       temperature: opts.temperature ?? 0.7,
       ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
-      ...(enableThinking
-        ? { thinking: { type: "enabled" } }
-        : { thinking: { type: "disabled" } }),
+      ...(enableThinking ? { thinking: { type: "enabled" } } : { thinking: { type: "disabled" } }),
     }),
   });
 
@@ -74,7 +76,9 @@ export async function chatStream(opts: ChatStreamOptions): Promise<string> {
           full += delta;
           opts.onDelta?.(delta);
         }
-      } catch { /* 忽略非 JSON 帧 */ }
+      } catch {
+        /* 忽略非 JSON 帧 */
+      }
     }
   }
   return full;

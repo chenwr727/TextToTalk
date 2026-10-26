@@ -45,15 +45,22 @@ export function registerGenerateRoutes(app: FastifyInstance) {
     try {
       const { prompt, fromUrl, urlTitle } = await resolvePrompt(raw);
       push("meta", { status: "thinking" });
-      const outline = await generateOutline(prompt, (tok) => {
-        push("token", { token: tok });
-      }, (stage) => {
-        push("stage", { stage });
-      }, (label) => {
-        push("section", { label });
-      }, params, () => {
-        push("reset", {});
-      });
+      const outline = await generateOutline(
+        prompt,
+        (tok) => {
+          push("token", { token: tok });
+        },
+        (stage) => {
+          push("stage", { stage });
+        },
+        (label) => {
+          push("section", { label });
+        },
+        params,
+        () => {
+          push("reset", {});
+        },
+      );
       if (!outline.pages?.length) {
         push("error", { error: "未能生成大纲，请重试" });
       } else {
@@ -111,17 +118,25 @@ async function runGeneration(taskId: string, rawPrompt: string, params: VideoPar
     console.warn("[generate] 网址抓取失败，改用原文案:", (e as Error).message);
   }
   try {
-    const { storyboard, plan } = await generateStoryboard(prompt, params, (tok) => {
-      publish(taskId, "token", { token: tok });
-    }, (stage) => {
-      publish(taskId, "stage", { stage });
-    }, (page) => {
-      publish(taskId, "page", page);
-    }, (label) => {
-      publish(taskId, "section", { label });
-    }, () => {
-      publish(taskId, "reset", {});
-    });
+    const { storyboard, plan } = await generateStoryboard(
+      prompt,
+      params,
+      (tok) => {
+        publish(taskId, "token", { token: tok });
+      },
+      (stage) => {
+        publish(taskId, "stage", { stage });
+      },
+      (page) => {
+        publish(taskId, "page", page);
+      },
+      (label) => {
+        publish(taskId, "section", { label });
+      },
+      () => {
+        publish(taskId, "reset", {});
+      },
+    );
     patchTask(taskId, { status: "REVIEWING", storyboard, warning: collectStoryboardWarnings(storyboard, plan) });
     publish(taskId, "final", storyboard);
     publish(taskId, "done", storyboard);
@@ -136,17 +151,26 @@ async function runFromPlan(taskId: string, prompt: string, outline: Plan, params
   await sleep(150);
   publish(taskId, "meta", { status: "thinking" });
   try {
-    const storyboard = await generateFromPlan(prompt, outline, params, (tok) => {
-      publish(taskId, "token", { token: tok });
-    }, (stage) => {
-      publish(taskId, "stage", { stage });
-    }, (page) => {
-      publish(taskId, "page", page);
-    }, (label) => {
-      publish(taskId, "section", { label });
-    }, () => {
-      publish(taskId, "reset", {});
-    });
+    const storyboard = await generateFromPlan(
+      prompt,
+      outline,
+      params,
+      (tok) => {
+        publish(taskId, "token", { token: tok });
+      },
+      (stage) => {
+        publish(taskId, "stage", { stage });
+      },
+      (page) => {
+        publish(taskId, "page", page);
+      },
+      (label) => {
+        publish(taskId, "section", { label });
+      },
+      () => {
+        publish(taskId, "reset", {});
+      },
+    );
     patchTask(taskId, { status: "REVIEWING", storyboard, warning: collectStoryboardWarnings(storyboard, outline) });
     publish(taskId, "final", storyboard);
     publish(taskId, "done", storyboard);

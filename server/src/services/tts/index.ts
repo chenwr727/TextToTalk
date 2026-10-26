@@ -1,12 +1,28 @@
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { serverRoot } from "../env.js";
-import type { TtsEngine, TtsEngineConfig, TtsEngineFactory, TtsEngineRegistry, TtsConfigFile, TtsEnvField } from "./types.js";
+import type {
+  TtsEngine,
+  TtsEngineConfig,
+  TtsEngineFactory,
+  TtsEngineRegistry,
+  TtsConfigFile,
+  TtsEnvField,
+} from "./types.js";
 import { edgeFactory } from "./edge.js";
 import { dashScopeFactory } from "./dashscope.js";
 import { seedTtsFactory } from "./seedtts.js";
 
-export type { TtsEngine, TtsEngineConfig, TtsEngineFactory, TtsEngineRegistry, TtsVoiceOption, TtsConfigFile, TtsSynthOptions, TtsEnvField } from "./types.js";
+export type {
+  TtsEngine,
+  TtsEngineConfig,
+  TtsEngineFactory,
+  TtsEngineRegistry,
+  TtsVoiceOption,
+  TtsConfigFile,
+  TtsSynthOptions,
+  TtsEnvField,
+} from "./types.js";
 
 const factories: Record<string, TtsEngineFactory> = {
   edge: edgeFactory,
@@ -68,12 +84,11 @@ export function loadEngines(): TtsEngineRegistry {
 
 export const ttsEngines: TtsEngineRegistry = loadEngines();
 
-export const DEFAULT_TTS_ENGINE: string =
-  (() => {
-    const cfg = loadConfigFile();
-    if (cfg.defaultEngine && ttsEngines[cfg.defaultEngine]) return cfg.defaultEngine;
-    return Object.keys(ttsEngines)[0] ?? "";
-  })();
+export const DEFAULT_TTS_ENGINE: string = (() => {
+  const cfg = loadConfigFile();
+  if (cfg.defaultEngine && ttsEngines[cfg.defaultEngine]) return cfg.defaultEngine;
+  return Object.keys(ttsEngines)[0] ?? "";
+})();
 
 export function resolveEngine(id?: string): TtsEngine | undefined {
   if (id && ttsEngines[id]) return ttsEngines[id];

@@ -18,7 +18,7 @@ const renderHighlight = (text: string) => {
     parts.push(
       <span key={k++} style={{ color: HIGHLIGHT, fontWeight: FW.heavy }}>
         {m[0]}
-      </span>
+      </span>,
     );
     last = m.index + m[0].length;
   }
@@ -30,19 +30,43 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({
   const f = useCurrentFrame();
   const { isPortrait, fs, sp } = useResponsive();
   const fade = Math.max(1, Math.min(8, Math.floor(durFrames / 4)));
-  const o = interpolate(f, [0, fade, Math.max(fade + 1, durFrames - fade), Math.max(fade + 2, durFrames)], [0, 1, 1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const o = interpolate(
+    f,
+    [0, fade, Math.max(fade + 1, durFrames - fade), Math.max(fade + 2, durFrames)],
+    [0, 1, 1, 0],
+    {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    },
+  );
   return (
-    <div style={{ position: "absolute", bottom: sp(CAPTION_METRICS.bottom), width: "100%", display: "flex", justifyContent: "center", opacity: o }}>
+    <div
+      style={{
+        position: "absolute",
+        bottom: sp(CAPTION_METRICS.bottom),
+        width: "100%",
+        display: "flex",
+        justifyContent: "center",
+        opacity: o,
+      }}
+    >
       <div style={{ display: "flex", alignItems: "stretch", maxWidth: isPortrait ? "88%" : "78%" }}>
         <div style={{ width: 10, background: C.accent, borderRadius: "999px 0 0 999px" }} />
-        <div style={{
-          background: "rgba(20,30,45,0.88)", color: "#fff", padding: `${sp(CAPTION_METRICS.padY)}px ${sp(42)}px`, fontSize: fs(CAPTION_METRICS.fontSize), fontFamily: FONT, fontWeight: FW.regular,
-          textAlign: "center", borderRadius: "0 999px 999px 0", boxShadow: "0 8px 24px rgba(20,30,45,0.4)", letterSpacing: 1,
-          textShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.6)",
-        }}>
+        <div
+          style={{
+            background: "rgba(20,30,45,0.88)",
+            color: "#fff",
+            padding: `${sp(CAPTION_METRICS.padY)}px ${sp(42)}px`,
+            fontSize: fs(CAPTION_METRICS.fontSize),
+            fontFamily: FONT,
+            fontWeight: FW.regular,
+            textAlign: "center",
+            borderRadius: "0 999px 999px 0",
+            boxShadow: "0 8px 24px rgba(20,30,45,0.4)",
+            letterSpacing: 1,
+            textShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.6)",
+          }}
+        >
           {renderHighlight(text)}
         </div>
       </div>
@@ -50,7 +74,11 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({
   );
 };
 
-export const AudioSentence: React.FC<{ sentence: TtsSentence; fps: number; subtitles: boolean }> = ({ sentence, fps, subtitles }) => {
+export const AudioSentence: React.FC<{ sentence: TtsSentence; fps: number; subtitles: boolean }> = ({
+  sentence,
+  fps,
+  subtitles,
+}) => {
   const dur = Math.max(1, Math.round(sentence.seconds * fps));
   return (
     <Sequence durationInFrames={dur}>

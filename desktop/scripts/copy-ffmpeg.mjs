@@ -26,4 +26,6 @@ const target = path.join(outDir, path.basename(src));
 fs.copyFileSync(src, target);
 if (process.platform !== "win32") fs.chmodSync(target, 0o755);
 
-console.log(`[ffmpeg] 已复制 ${path.basename(src)} (${(fs.statSync(target).size / 1048576).toFixed(1)} MB) -> ${outDir}`);
+console.log(
+  `[ffmpeg] 已复制 ${path.basename(src)} (${(fs.statSync(target).size / 1048576).toFixed(1)} MB) -> ${outDir}`,
+);

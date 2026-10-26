@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { AppConfig } from "./config";
 
-
 export interface RuntimeInfo {
   packaged: boolean;
   portable: boolean;

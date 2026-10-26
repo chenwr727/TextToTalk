@@ -7,11 +7,9 @@ export function findChromium(configured?: string): string | undefined {
 
   const candidates: string[] = [];
   if (process.platform === "win32") {
-    const bases = [
-      process.env["ProgramFiles(x86)"],
-      process.env["ProgramFiles"],
-      process.env["LOCALAPPDATA"],
-    ].filter(Boolean) as string[];
+    const bases = [process.env["ProgramFiles(x86)"], process.env["ProgramFiles"], process.env["LOCALAPPDATA"]].filter(
+      Boolean,
+    ) as string[];
     for (const base of bases) {
       candidates.push(path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"));
       candidates.push(path.join(base, "Google", "Chrome", "Application", "chrome.exe"));
@@ -41,9 +39,11 @@ export function findFfmpeg(bin: string, extraBinDir?: string): string | undefine
   try {
     const cmd = process.platform === "win32" ? "where" : "which";
     const out = execFileSync(cmd, [bin], { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] });
-    const first = out.split(/\r?\n/).map((s) => s.trim()).find(Boolean);
+    const first = out
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .find(Boolean);
     if (first) return first;
-  } catch {
-  }
+  } catch {}
   return undefined;
 }

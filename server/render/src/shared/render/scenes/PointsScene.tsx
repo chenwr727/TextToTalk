@@ -1,5 +1,19 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, CONTENT_WIDTH, SPACE, RADIUS, BORDER, CARD_SHADOW, DOT_SHADOW, accentOf, FS, FW, GLASS, springIn } from "../theme";
+import {
+  C,
+  FONT,
+  CONTENT_WIDTH,
+  SPACE,
+  RADIUS,
+  BORDER,
+  CARD_SHADOW,
+  DOT_SHADOW,
+  accentOf,
+  FS,
+  FW,
+  GLASS,
+  springIn,
+} from "../theme";
 import { Icon } from "../Icon";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandHighlight } from "../rough";
@@ -8,21 +22,79 @@ import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
 type Scale = {
-  leadFs: number; subFs: number;
-  leadPad: string; subPad: string;
-  btnLead: number; btnSub: number;
-  iconLead: number; iconSub: number;
+  leadFs: number;
+  subFs: number;
+  leadPad: string;
+  subPad: string;
+  btnLead: number;
+  btnSub: number;
+  iconLead: number;
+  iconSub: number;
   lineHeight: number;
-  gap: number; rowMb: number; padTop: number;
+  gap: number;
+  rowMb: number;
+  padTop: number;
 };
 
 const LEAD_ROLES: ReadonlySet<string> = new Set(["hook", "why"]);
 
 const SCALES: Scale[] = [
-  { leadFs: 64, subFs: 52, leadPad: "30px 40px", subPad: "26px 36px", btnLead: 76, btnSub: 64, iconLead: 40, iconSub: 34, lineHeight: 1.4, gap: 26, rowMb: SPACE.lg, padTop: 240 },
-  { leadFs: 58, subFs: 48, leadPad: "28px 38px", subPad: "24px 34px", btnLead: 72, btnSub: 60, iconLead: 38, iconSub: 32, lineHeight: 1.4, gap: 24, rowMb: SPACE.lg, padTop: 225 },
-  { leadFs: 52, subFs: 44, leadPad: "26px 34px", subPad: "22px 30px", btnLead: 66, btnSub: 56, iconLead: 36, iconSub: 30, lineHeight: 1.4, gap: 22, rowMb: SPACE.md, padTop: 210 },
-  { leadFs: 46, subFs: 38, leadPad: "24px 32px", subPad: "20px 28px", btnLead: 60, btnSub: 50, iconLead: 32, iconSub: 28, lineHeight: 1.35, gap: 20, rowMb: SPACE.sm, padTop: 195 },
+  {
+    leadFs: 64,
+    subFs: 52,
+    leadPad: "30px 40px",
+    subPad: "26px 36px",
+    btnLead: 76,
+    btnSub: 64,
+    iconLead: 40,
+    iconSub: 34,
+    lineHeight: 1.4,
+    gap: 26,
+    rowMb: SPACE.lg,
+    padTop: 240,
+  },
+  {
+    leadFs: 58,
+    subFs: 48,
+    leadPad: "28px 38px",
+    subPad: "24px 34px",
+    btnLead: 72,
+    btnSub: 60,
+    iconLead: 38,
+    iconSub: 32,
+    lineHeight: 1.4,
+    gap: 24,
+    rowMb: SPACE.lg,
+    padTop: 225,
+  },
+  {
+    leadFs: 52,
+    subFs: 44,
+    leadPad: "26px 34px",
+    subPad: "22px 30px",
+    btnLead: 66,
+    btnSub: 56,
+    iconLead: 36,
+    iconSub: 30,
+    lineHeight: 1.4,
+    gap: 22,
+    rowMb: SPACE.md,
+    padTop: 210,
+  },
+  {
+    leadFs: 46,
+    subFs: 38,
+    leadPad: "24px 32px",
+    subPad: "20px 28px",
+    btnLead: 60,
+    btnSub: 50,
+    iconLead: 32,
+    iconSub: 28,
+    lineHeight: 1.35,
+    gap: 20,
+    rowMb: SPACE.sm,
+    padTop: 195,
+  },
 ];
 
 const lenAdjOf = (len: number) => (len <= 14 ? 1 : len <= 20 ? 0.94 : len <= 26 ? 0.88 : 0.82);
@@ -52,7 +124,19 @@ const pulseAt = (frame: number, startFrame: number): number => {
   return decay >= 1 ? 0 : 1 - decay;
 };
 
-const PointCard: React.FC<CardProps> = ({ text, index, isLead, scale, isPortrait, highlight, enter, fs, sp, icon, pulse }) => {
+const PointCard: React.FC<CardProps> = ({
+  text,
+  index,
+  isLead,
+  scale,
+  isPortrait,
+  highlight,
+  enter,
+  fs,
+  sp,
+  icon,
+  pulse,
+}) => {
   const a = accentOf(index);
   const len = [...text].length;
   const fsz = Math.round((isLead ? scale.leadFs : scale.subFs) * lenAdjOf(len));
@@ -60,32 +144,77 @@ const PointCard: React.FC<CardProps> = ({ text, index, isLead, scale, isPortrait
   const btn = isLead ? scale.btnLead : scale.btnSub;
   const ic = isLead ? scale.iconLead : scale.iconSub;
   return (
-    <div style={{
-      position: "relative",
-      opacity: enter,
-      transform: `translateY(${interpolate(enter, [0, 1], [40, 0])}px)`,
-    }}>
-      <div style={{
-        position: "relative", display: "flex", alignItems: "center", padding: isPortrait ? pad.replace(/(\d+)px/g, (m, n) => `${sp(Number(n))}px`) : pad,
-        background: pulse > 0.02 ? `linear-gradient(0deg, ${a}14, ${a}14), ${GLASS.card}` : GLASS.card,
-        border: `${BORDER.card}px solid ${a}`,
-        borderRadius: RADIUS.card,
-        boxShadow: pulse > 0.02 ? `0 8px 18px ${a}30, ${CARD_SHADOW}` : CARD_SHADOW,
-        maxWidth: "100%", boxSizing: "border-box",
-      }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: (isLead ? 10 : 6) + pulse * 4, background: `linear-gradient(180deg, ${a}, ${a}66)`, opacity: 0.75 + pulse * 0.25 }} />
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "50%", background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%)", pointerEvents: "none" }} />
-        <div style={{
-          marginRight: isPortrait ? sp(24) : 24, flexShrink: 0,
-          width: isPortrait ? sp(btn) : btn, height: isPortrait ? sp(btn) : btn, borderRadius: "50%",
-          background: `${a}1a`, display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: DOT_SHADOW,
-        }}>
+    <div
+      style={{
+        position: "relative",
+        opacity: enter,
+        transform: `translateY(${interpolate(enter, [0, 1], [40, 0])}px)`,
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          padding: isPortrait ? pad.replace(/(\d+)px/g, (m, n) => `${sp(Number(n))}px`) : pad,
+          background: pulse > 0.02 ? `linear-gradient(0deg, ${a}14, ${a}14), ${GLASS.card}` : GLASS.card,
+          border: `${BORDER.card}px solid ${a}`,
+          borderRadius: RADIUS.card,
+          boxShadow: pulse > 0.02 ? `0 8px 18px ${a}30, ${CARD_SHADOW}` : CARD_SHADOW,
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: (isLead ? 10 : 6) + pulse * 4,
+            background: `linear-gradient(180deg, ${a}, ${a}66)`,
+            opacity: 0.75 + pulse * 0.25,
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "50%",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            marginRight: isPortrait ? sp(24) : 24,
+            flexShrink: 0,
+            width: isPortrait ? sp(btn) : btn,
+            height: isPortrait ? sp(btn) : btn,
+            borderRadius: "50%",
+            background: `${a}1a`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: DOT_SHADOW,
+          }}
+        >
           <Icon name={icon} size={isPortrait ? sp(ic) : ic} color={a} />
         </div>
-        <div style={{ fontSize: fs(fsz), fontWeight: isLead ? FW.heavy : FW.regular, color: C.ink, lineHeight: scale.lineHeight }}>
+        <div
+          style={{
+            fontSize: fs(fsz),
+            fontWeight: isLead ? FW.heavy : FW.regular,
+            color: C.ink,
+            lineHeight: scale.lineHeight,
+          }}
+        >
           {highlight ? (
-            <HandHighlight color={a} progress={enter}>{text}</HandHighlight>
+            <HandHighlight color={a} progress={enter}>
+              {text}
+            </HandHighlight>
           ) : (
             text
           )}
@@ -113,9 +242,8 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   const SINGLE_COL_W = isPortrait ? contentWidth : 1240;
   const availW = SINGLE_COL_W;
-  const captionTexts = page.sentences && page.sentences.length
-    ? page.sentences.map((s) => s.text)
-    : page.captions ?? [];
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const availH = (isPortrait ? contentHeight : 1080) - padTop - captionReserve;
 
@@ -140,7 +268,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   if (twoCol) {
     const left = points.map((p, i) => ({ p, i })).filter(({ i }) => i % 2 === 0);
     const right = points.map((p, i) => ({ p, i })).filter(({ i }) => i % 2 === 1);
-    const renderCol = (items: { p: typeof points[number]; i: number }[]) =>
+    const renderCol = (items: { p: (typeof points)[number]; i: number }[]) =>
       items.map(({ p, i }) => {
         const at = resolveAnchor(timing, pointAnchor(p), i);
         return (
@@ -162,15 +290,30 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       });
     return (
       <AbsoluteFill style={{ justifyContent: "flex-start", alignItems: "center", overflow: "hidden" }}>
-        <div style={{
-          width: isPortrait ? contentWidth : CONTENT_WIDTH, maxWidth: isPortrait ? "100%" : "84%", fontFamily: FONT,
-          paddingTop: isPortrait ? sp(padTop) : padTop,
-          paddingBottom: captionReserve,
-          display: "flex", flexDirection: "row", alignItems: "flex-start", justifyContent: "center",
-          gap: isPortrait ? sp(24) : 36,
-        }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: isPortrait ? sp(scale.gap) : scale.gap, flex: 1 }}>{renderCol(left)}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: isPortrait ? sp(scale.gap) : scale.gap, flex: 1 }}>{renderCol(right)}</div>
+        <div
+          style={{
+            width: isPortrait ? contentWidth : CONTENT_WIDTH,
+            maxWidth: isPortrait ? "100%" : "84%",
+            fontFamily: FONT,
+            paddingTop: isPortrait ? sp(padTop) : padTop,
+            paddingBottom: captionReserve,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            justifyContent: "center",
+            gap: isPortrait ? sp(24) : 36,
+          }}
+        >
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: isPortrait ? sp(scale.gap) : scale.gap, flex: 1 }}
+          >
+            {renderCol(left)}
+          </div>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: isPortrait ? sp(scale.gap) : scale.gap, flex: 1 }}
+          >
+            {renderCol(right)}
+          </div>
         </div>
       </AbsoluteFill>
     );
@@ -178,12 +321,17 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   return (
     <AbsoluteFill style={{ justifyContent: "flex-start", alignItems: "center", overflow: "hidden" }}>
-      <div style={{
-        width: isPortrait ? contentWidth : SINGLE_COL_W, fontFamily: FONT,
-        paddingTop: isPortrait ? sp(padTop) : padTop,
-        paddingBottom: captionReserve,
-        display: "flex", flexDirection: "column", gap: isPortrait ? sp(scale.gap) : scale.gap,
-      }}>
+      <div
+        style={{
+          width: isPortrait ? contentWidth : SINGLE_COL_W,
+          fontFamily: FONT,
+          paddingTop: isPortrait ? sp(padTop) : padTop,
+          paddingBottom: captionReserve,
+          display: "flex",
+          flexDirection: "column",
+          gap: isPortrait ? sp(scale.gap) : scale.gap,
+        }}
+      >
         {points.map((p, i) => {
           const at = resolveAnchor(timing, pointAnchor(p), i);
           return (

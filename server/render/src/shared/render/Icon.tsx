@@ -23,7 +23,8 @@ const ICON_PATHS: Record<string, string> = {
   star: "M12 3l2.5 5.3 5.5.8-4 4 1 5.6-5-2.7-5 2.7 1-5.6-4-4 5.5-.8L12 3z",
   flag: "M5 3v18M5 4h11l-2 4 2 4H5",
   link: "M10 14a5 5 0 007 0l3-3a5 5 0 00-7-7l-1.5 1.5M14 10a5 5 0 00-7 0l-3 3a5 5 0 007 7l1.5-1.5",
-  users: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8",
+  users:
+    "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8",
   wallet: "M3 6h16a2 2 0 012 2v10a2 2 0 01-2 2H3V6zM16 12h.01M3 9h18",
   box: "M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8",
   layers: "M12 2l9 5-9 5-9-5 9-5zM3 12l9 5 9-5M3 17l9 5 9-5",
@@ -40,14 +41,48 @@ const ICON_PATHS: Record<string, string> = {
 };
 
 export const ICON_KEYS = [
-  "trend", "chart", "clock", "scale", "gear", "bulb", "question", "alert",
-  "check", "search", "target", "rocket", "heart", "shield", "db", "globe", "book",
-  "bolt", "star", "flag", "link", "users", "wallet", "box", "layers", "code",
-  "pie", "calendar", "map", "cloud", "lock", "eye", "compass", "home", "award",
+  "trend",
+  "chart",
+  "clock",
+  "scale",
+  "gear",
+  "bulb",
+  "question",
+  "alert",
+  "check",
+  "search",
+  "target",
+  "rocket",
+  "heart",
+  "shield",
+  "db",
+  "globe",
+  "book",
+  "bolt",
+  "star",
+  "flag",
+  "link",
+  "users",
+  "wallet",
+  "box",
+  "layers",
+  "code",
+  "pie",
+  "calendar",
+  "map",
+  "cloud",
+  "lock",
+  "eye",
+  "compass",
+  "home",
+  "award",
 ];
 
 export const Icon: React.FC<{ name: string; size?: number; color?: string; strokeWidth?: number }> = ({
-  name, size = 30, color = C.accent, strokeWidth = 2.1,
+  name,
+  size = 30,
+  color = C.accent,
+  strokeWidth = 2.1,
 }) => {
   const d = ICON_PATHS[name];
   if (!d) return null;

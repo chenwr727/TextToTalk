@@ -13,7 +13,7 @@ function useMeasure<T extends HTMLElement>() {
       setRect((prev) =>
         prev && Math.abs(prev.w - r.width) < 0.5 && Math.abs(prev.h - r.height) < 0.5
           ? prev
-          : { w: r.width, h: r.height }
+          : { w: r.width, h: r.height },
       );
     }
   });
@@ -61,7 +61,9 @@ export const HandHighlight: React.FC<{
           />
         </svg>
       )}
-      <span ref={ref} style={{ position: "relative" }}>{children}</span>
+      <span ref={ref} style={{ position: "relative" }}>
+        {children}
+      </span>
     </span>
   );
 };
@@ -97,13 +99,15 @@ export const HandUnderline: React.FC<{
         opacity={0.85}
         strokeDasharray={`${barW} ${barW}`}
         strokeDashoffset={barW * (1 - lineProgress)}
-      />
+      />,
     );
   }
 
   return (
     <span style={{ position: "relative", display: "inline-block", whiteSpace: "pre-wrap" }}>
-      <span ref={ref} style={{ position: "relative" }}>{children}</span>
+      <span ref={ref} style={{ position: "relative" }}>
+        {children}
+      </span>
       {rect && safeProgress > 0 && (
         <svg
           width={barW}

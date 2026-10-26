@@ -25,7 +25,9 @@ export function RenderOutput({
   const [subtitles, setSubtitles] = useState(task?.params?.subtitles !== false);
 
   const touched = useRef(false);
-  const markTouched = () => { touched.current = true; };
+  const markTouched = () => {
+    touched.current = true;
+  };
 
   const syncedTaskId = useRef<string | null>(null);
   useEffect(() => {
@@ -52,7 +54,9 @@ export function RenderOutput({
         setTtsEngines(r.engines);
       })
       .catch(() => {});
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const currentEngine = ttsEngines.find((e) => e.id === engine) ?? ttsEngines[0];
@@ -89,108 +93,139 @@ export function RenderOutput({
             <span className="dsh-render-icon">🎬</span>
             <h2 className="dsh-render-title">渲染成片</h2>
           </div>
-          <button onClick={() => onBack()} className="dsh-ghost">← 返回分镜</button>
+          <button onClick={() => onBack()} className="dsh-ghost">
+            ← 返回分镜
+          </button>
         </div>
         <p className="dsh-render-sub">先配置配音、配乐与字幕，再点击「开始渲染」合成 MP4 讲解视频。</p>
 
         <div className="dsh-render-settings">
-            <div className="dsh-render-settings-title">🎙️ 配音与字幕设置</div>
-            <div className="dsh-render-settings-body">
-              <div className="dsh-grid-2">
-                <div>
-                  <div className="dsh-param-label">配音引擎</div>
-                  <select
-                    className="dsh-field"
-                    value={engine}
-                    onChange={(e) => {
-                      const eng = ttsEngines.find((x) => x.id === e.target.value) ?? ttsEngines[0];
-                      if (!eng) return;
-                      markTouched();
-                      setEngine(eng.id);
-                      setVoice(eng.voices[0]?.id ?? "");
-                    }}
-                  >
-                    {ttsEngines.length === 0 && <option value="">（无可用引擎）</option>}
-                    {ttsEngines.map((eng) => (
-                      <option key={eng.id} value={eng.id}>{eng.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <div className="dsh-param-label">配音音色</div>
-                  <select
-                    className="dsh-field"
-                    value={voice}
-                    onChange={(e) => { markTouched(); setVoice(e.target.value); }}
-                  >
-                    {currentVoices.length === 0 && <option value="">无可用音色</option>}
-                    {currentVoices.map((v) => (
-                      <option key={v.id} value={v.id}>{v.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <div className="dsh-param-label">语速（{ttsSpeed}×）</div>
-                  <input
-                    type="range"
-                    className="dsh-range"
-                    min={0.5}
-                    max={2}
-                    step={0.1}
-                    value={ttsSpeed}
-                    onChange={(e) => { markTouched(); setTtsSpeed(Number(e.target.value)); }}
-                  />
-                </div>
-                <div>
-                  <div className="dsh-param-label">音量（{Math.round(ttsVolume * 100)}%）</div>
-                  <input
-                    type="range"
-                    className="dsh-range"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={ttsVolume}
-                    onChange={(e) => { markTouched(); setTtsVolume(Number(e.target.value)); }}
-                  />
-                </div>
-                <div>
-                  <div className="dsh-param-label">背景配乐</div>
-                  <select className="dsh-field" value={bgm} onChange={(e) => { markTouched(); setBgm(e.target.value as any); }}>
-                    <option value="default">🎵 轻快配乐</option>
-                    <option value="none">静音（无配乐）</option>
-                  </select>
-                </div>
+          <div className="dsh-render-settings-title">🎙️ 配音与字幕设置</div>
+          <div className="dsh-render-settings-body">
+            <div className="dsh-grid-2">
+              <div>
+                <div className="dsh-param-label">配音引擎</div>
+                <select
+                  className="dsh-field"
+                  value={engine}
+                  onChange={(e) => {
+                    const eng = ttsEngines.find((x) => x.id === e.target.value) ?? ttsEngines[0];
+                    if (!eng) return;
+                    markTouched();
+                    setEngine(eng.id);
+                    setVoice(eng.voices[0]?.id ?? "");
+                  }}
+                >
+                  {ttsEngines.length === 0 && <option value="">（无可用引擎）</option>}
+                  {ttsEngines.map((eng) => (
+                    <option key={eng.id} value={eng.id}>
+                      {eng.name}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="dsh-checks">
-                <label className="dsh-check">
-                  <input type="checkbox" checked={narration} onChange={() => { markTouched(); setNarration((v) => !v); }} />
-                  AI 配音
-                </label>
-                <label className="dsh-check">
-                  <input type="checkbox" checked={subtitles} onChange={() => { markTouched(); setSubtitles((v) => !v); }} />
-                  底部字幕
-                </label>
+              <div>
+                <div className="dsh-param-label">配音音色</div>
+                <select
+                  className="dsh-field"
+                  value={voice}
+                  onChange={(e) => {
+                    markTouched();
+                    setVoice(e.target.value);
+                  }}
+                >
+                  {currentVoices.length === 0 && <option value="">无可用音色</option>}
+                  {currentVoices.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <div className="dsh-param-label">语速（{ttsSpeed}×）</div>
+                <input
+                  type="range"
+                  className="dsh-range"
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  value={ttsSpeed}
+                  onChange={(e) => {
+                    markTouched();
+                    setTtsSpeed(Number(e.target.value));
+                  }}
+                />
+              </div>
+              <div>
+                <div className="dsh-param-label">音量（{Math.round(ttsVolume * 100)}%）</div>
+                <input
+                  type="range"
+                  className="dsh-range"
+                  min={0}
+                  max={2}
+                  step={0.1}
+                  value={ttsVolume}
+                  onChange={(e) => {
+                    markTouched();
+                    setTtsVolume(Number(e.target.value));
+                  }}
+                />
+              </div>
+              <div>
+                <div className="dsh-param-label">背景配乐</div>
+                <select
+                  className="dsh-field"
+                  value={bgm}
+                  onChange={(e) => {
+                    markTouched();
+                    setBgm(e.target.value as any);
+                  }}
+                >
+                  <option value="default">🎵 轻快配乐</option>
+                  <option value="none">静音（无配乐）</option>
+                </select>
               </div>
             </div>
+            <div className="dsh-checks">
+              <label className="dsh-check">
+                <input
+                  type="checkbox"
+                  checked={narration}
+                  onChange={() => {
+                    markTouched();
+                    setNarration((v) => !v);
+                  }}
+                />
+                AI 配音
+              </label>
+              <label className="dsh-check">
+                <input
+                  type="checkbox"
+                  checked={subtitles}
+                  onChange={() => {
+                    markTouched();
+                    setSubtitles((v) => !v);
+                  }}
+                />
+                底部字幕
+              </label>
+            </div>
           </div>
+        </div>
 
         {status === "DONE" && (
           <div className="dsh-media">
             <div
               className="dsh-media-main"
               style={{
-                aspectRatio: task?.params?.width && task?.params?.height
-                  ? `${task.params.width} / ${task.params.height}`
-                  : "16 / 9",
+                aspectRatio:
+                  task?.params?.width && task?.params?.height
+                    ? `${task.params.width} / ${task.params.height}`
+                    : "16 / 9",
               }}
             >
-              <video
-                src={inlineVideoUrl(taskId)}
-                controls
-                autoPlay
-                playsInline
-                preload="metadata"
-              />
+              <video src={inlineVideoUrl(taskId)} controls autoPlay playsInline preload="metadata" />
             </div>
           </div>
         )}
@@ -213,11 +248,15 @@ export function RenderOutput({
             <p className="dsh-done-title">视频渲染完成</p>
             <p className="dsh-done-sub">包含配音、配乐与字幕的 MP4 已就绪，可下载或修改上方设置后重新生成。</p>
             <div className="dsh-done-actions">
-              <a href={downloadFileUrl(taskId)} download className="dsh-btn">⬇ 下载 MP4</a>
+              <a href={downloadFileUrl(taskId)} download className="dsh-btn">
+                ⬇ 下载 MP4
+              </a>
               <button onClick={go} className="dsh-btn dsh-btn-secondary" disabled={rendering}>
                 {rendering ? "重新生成中…" : "🔄 重新生成"}
               </button>
-              <button onClick={() => onBack()} className="dsh-ghost">← 返回分镜</button>
+              <button onClick={() => onBack()} className="dsh-ghost">
+                ← 返回分镜
+              </button>
             </div>
           </div>
         ) : status === "FAILED" ? (
@@ -225,8 +264,12 @@ export function RenderOutput({
             <b className="dsh-fail-title">渲染失败</b>
             <div className="dsh-fail-msg">{task?.error}</div>
             <div className="dsh-fail-actions">
-              <button onClick={go} className="dsh-btn" disabled={rendering}>{rendering ? "重新渲染中…" : "重新渲染"}</button>
-              <button onClick={() => onBack()} className="dsh-ghost">返回分镜调整</button>
+              <button onClick={go} className="dsh-btn" disabled={rendering}>
+                {rendering ? "重新渲染中…" : "重新渲染"}
+              </button>
+              <button onClick={() => onBack()} className="dsh-ghost">
+                返回分镜调整
+              </button>
             </div>
           </div>
         ) : (

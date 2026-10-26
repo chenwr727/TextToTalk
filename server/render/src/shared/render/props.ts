@@ -14,19 +14,47 @@ export interface TableSpec {
   rows: string[][];
 }
 
-export type Layout = "title" | "section" | "points" | "three_card" | "comparison" | "chart" | "table" | "end" | "two_column" | "steps" | "stats" | "qa" | "map";
+export type Layout =
+  | "title"
+  | "section"
+  | "points"
+  | "three_card"
+  | "comparison"
+  | "chart"
+  | "table"
+  | "end"
+  | "two_column"
+  | "steps"
+  | "stats"
+  | "qa"
+  | "map";
 
 export type Art = "flow" | "loop" | "timeline" | "quadrant" | "quote";
 
 export interface SvgElement {
   type: "circle" | "rect" | "ellipse" | "line" | "path" | "polygon" | "text";
-  x?: number; y?: number; cx?: number; cy?: number; r?: number;
-  width?: number; height?: number; rx?: number; ry?: number;
-  x1?: number; y1?: number; x2?: number; y2?: number;
+  x?: number;
+  y?: number;
+  cx?: number;
+  cy?: number;
+  r?: number;
+  width?: number;
+  height?: number;
+  rx?: number;
+  ry?: number;
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
   d?: string;
   points?: string;
-  fill?: string; stroke?: string; strokeWidth?: number; opacity?: number;
-  text?: string; fontSize?: number; fontWeight?: number;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  opacity?: number;
+  text?: string;
+  fontSize?: number;
+  fontWeight?: number;
   textAnchor?: "start" | "middle" | "end";
   delay?: number;
   draw?: boolean;
@@ -77,17 +105,55 @@ export interface PageEffects {
 }
 
 export type PageRole =
-  | "hook" | "familiar" | "puzzle" | "build"
-  | "mechanism" | "scale" | "evidence" | "case"
-  | "compare" | "why" | "action" | "end";
+  | "hook"
+  | "familiar"
+  | "puzzle"
+  | "build"
+  | "mechanism"
+  | "scale"
+  | "evidence"
+  | "case"
+  | "compare"
+  | "why"
+  | "action"
+  | "end";
 
 export type IconId =
-  | "trend" | "chart" | "clock" | "scale" | "gear" | "bulb"
-  | "question" | "alert" | "check" | "search" | "target" | "rocket"
-  | "heart" | "shield" | "db" | "globe" | "book"
-  | "bolt" | "star" | "flag" | "link" | "users" | "wallet" | "box"
-  | "layers" | "code" | "pie" | "calendar" | "map" | "cloud" | "lock"
-  | "eye" | "compass" | "home" | "award";
+  | "trend"
+  | "chart"
+  | "clock"
+  | "scale"
+  | "gear"
+  | "bulb"
+  | "question"
+  | "alert"
+  | "check"
+  | "search"
+  | "target"
+  | "rocket"
+  | "heart"
+  | "shield"
+  | "db"
+  | "globe"
+  | "book"
+  | "bolt"
+  | "star"
+  | "flag"
+  | "link"
+  | "users"
+  | "wallet"
+  | "box"
+  | "layers"
+  | "code"
+  | "pie"
+  | "calendar"
+  | "map"
+  | "cloud"
+  | "lock"
+  | "eye"
+  | "compass"
+  | "home"
+  | "award";
 
 export interface StorySentence {
   text: string;

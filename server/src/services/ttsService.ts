@@ -40,7 +40,13 @@ function run(cmd: string, args: string[]): Promise<string> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function synthToFile(engine: TtsEngine, text: string, outPath: string, voice: string, options?: TtsSynthOptions): Promise<void> {
+async function synthToFile(
+  engine: TtsEngine,
+  text: string,
+  outPath: string,
+  voice: string,
+  options?: TtsSynthOptions,
+): Promise<void> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= TTS_RETRIES; attempt++) {
     try {
@@ -73,7 +79,9 @@ async function measureSeconds(wav: string): Promise<number> {
     const out = await run("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "json", wav]);
     const d = parseFloat(JSON.parse(out).format.duration);
     return Number.isFinite(d) && d > 0 ? d : 2;
-  } catch { return 2; }
+  } catch {
+    return 2;
+  }
 }
 
 export async function generateTts(
@@ -83,7 +91,7 @@ export async function generateTts(
   engineId?: string,
   options?: TtsSynthOptions,
 ): Promise<TtsResult> {
-  const eng = engineId ? ttsEngines[engineId] ?? resolveEngine() : resolveEngine();
+  const eng = engineId ? (ttsEngines[engineId] ?? resolveEngine()) : resolveEngine();
   if (!eng) {
     throw new Error("未配置可用的 TTS 引擎，请在设置中配置引擎及所需环境变量后重试");
   }
@@ -99,7 +107,9 @@ export async function generateTts(
     for (let si = 0; si < p.captions.length; si++) {
       const stem = `${taskId}_${p.pageIndex}_${si}`;
       items.push({
-        pi: p.pageIndex, si, text: p.captions[si],
+        pi: p.pageIndex,
+        si,
+        text: p.captions[si],
         src: path.join(audioDir, `._${stem}.audio`),
         wav: path.join(audioDir, `${stem}.wav`),
       });
@@ -119,7 +129,11 @@ export async function generateTts(
       try {
         await synthToFile(eng, it.text, it.src, v, options);
         await toWav(it.src, it.wav);
-        try { rmSync(it.src); } catch { /* ignore */ }
+        try {
+          rmSync(it.src);
+        } catch {
+          /* ignore */
+        }
       } catch (e) {
         failed++;
         console.error("[tts] 句失败:", it.text, e);
@@ -135,7 +149,7 @@ export async function generateTts(
   }
 
   const pages: TtsPage[] = [];
-  for (const it of items.sort((a, b) => (a.pi - b.pi) || (a.si - b.si))) {
+  for (const it of items.sort((a, b) => a.pi - b.pi || a.si - b.si)) {
     if (!existsSync(it.wav)) continue;
     const seconds = await measureSeconds(it.wav);
     let page = pages.find((pp) => pp.index === it.pi);
@@ -150,7 +164,9 @@ export async function generateTts(
     });
   }
   for (const page of pages) {
-    page.totalSeconds = Math.round(page.sentences.reduce((a, s) => a + s.seconds, 0) + SENTENCE_GAP * Math.max(0, page.sentences.length - 1));
+    page.totalSeconds = Math.round(
+      page.sentences.reduce((a, s) => a + s.seconds, 0) + SENTENCE_GAP * Math.max(0, page.sentences.length - 1),
+    );
   }
 
   return { fps: FPS, sentenceGap: SENTENCE_GAP, pages, failedCount: failed };

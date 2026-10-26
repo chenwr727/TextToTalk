@@ -33,11 +33,7 @@ function parseNdjsonStream(onChunk: (buf: Buffer) => void): (line: string) => bo
   };
 }
 
-async function synthViaFetch(
-  body: string,
-  headers: Record<string, string>,
-  outPath: string,
-): Promise<void> {
+async function synthViaFetch(body: string, headers: Record<string, string>, outPath: string): Promise<void> {
   const resp = await fetch(SEED_TTS_ENDPOINT, {
     method: "POST",
     headers,
@@ -72,11 +68,7 @@ async function synthViaFetch(
   writeFileSync(outPath, Buffer.concat(chunks));
 }
 
-function synthViaCurl(
-  body: string,
-  headers: Record<string, string>,
-  outPath: string,
-): Promise<void> {
+function synthViaCurl(body: string, headers: Record<string, string>, outPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const args = ["-sS", "-N", "-X", "POST", SEED_TTS_ENDPOINT];
     for (const [k, v] of Object.entries(headers)) args.push("-H", `${k}: ${v}`);
@@ -127,9 +119,7 @@ function synthSeedTts(config: TtsEngineConfig) {
   return async function synth(text: string, outPath: string, voice: string, options?: TtsSynthOptions): Promise<void> {
     if (!SEED_TTS_API_KEY) throw new Error("Seed-TTS: 缺少环境变量 SEED_TTS_API_KEY");
 
-    const speechRate = options?.speed != null && options.speed !== 1
-      ? Math.round((options.speed - 1) * 100)
-      : 0;
+    const speechRate = options?.speed != null && options.speed !== 1 ? Math.round((options.speed - 1) * 100) : 0;
 
     const reqParams: Record<string, unknown> = {
       text,

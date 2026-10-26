@@ -49,12 +49,31 @@ export function PageEditor({
 
   const originalLayout = page.layout ?? "points";
 
-  const LAYOUTS: Layout[] = ["title", "section", "points", "three_card", "comparison", "chart", "table", "end", "two_column", "steps", "stats", "qa"];
+  const LAYOUTS: Layout[] = [
+    "title",
+    "section",
+    "points",
+    "three_card",
+    "comparison",
+    "chart",
+    "table",
+    "end",
+    "two_column",
+    "steps",
+    "stats",
+    "qa",
+  ];
 
   const onSaveClick = async () => {
-    if (!title.trim()) { setError("标题不能为空"); return; }
+    if (!title.trim()) {
+      setError("标题不能为空");
+      return;
+    }
     const dur = Number(durationSec);
-    if (!Number.isFinite(dur) || dur <= 0 || dur > 120) { setError("时长需为 0~120 之间的秒数"); return; }
+    if (!Number.isFinite(dur) || dur <= 0 || dur > 120) {
+      setError("时长需为 0~120 之间的秒数");
+      return;
+    }
 
     if (layout !== originalLayout) {
       setShowLayoutDialog(true);
@@ -70,13 +89,25 @@ export function PageEditor({
     try {
       const patch: PagePatch = {
         title: title.trim(),
-        captions: captions.split(/[，,]/).map((s) => s.trim()).filter(Boolean),
-        points: mergePoints(page.points, points.split("\n").map((s) => s.trim()).filter(Boolean)),
+        captions: captions
+          .split(/[，,]/)
+          .map((s) => s.trim())
+          .filter(Boolean),
+        points: mergePoints(
+          page.points,
+          points
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        ),
         durationSec: dur,
         layout,
       };
       const r = await updatePage(taskId, page.pageIndex, patch);
-      if (!r.ok || !r.page) { setError("保存失败，请重试"); return; }
+      if (!r.ok || !r.page) {
+        setError("保存失败，请重试");
+        return;
+      }
 
       if (regenerate) {
         onRegenerating?.(true);
@@ -101,8 +132,14 @@ export function PageEditor({
     }
   };
 
-  const captionCount = captions.split(/[，,]/).map((s) => s.trim()).filter(Boolean).length;
-  const pointCount = points.split("\n").map((s) => s.trim()).filter(Boolean).length;
+  const captionCount = captions
+    .split(/[，,]/)
+    .map((s) => s.trim())
+    .filter(Boolean).length;
+  const pointCount = points
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean).length;
 
   return (
     <div className="dsh-editor">
@@ -140,35 +177,44 @@ export function PageEditor({
             `${pointCount} 条`,
           )}
           <div className="dsh-editor-row">
-            {field("时长（秒）", (
-              <input className="dsh-field" type="number" min={1} max={120} value={durationSec} onChange={(e) => setDurationSec(e.target.value)} />
-            ))}
-            {field("版式", (
+            {field(
+              "时长（秒）",
+              <input
+                className="dsh-field"
+                type="number"
+                min={1}
+                max={120}
+                value={durationSec}
+                onChange={(e) => setDurationSec(e.target.value)}
+              />,
+            )}
+            {field(
+              "版式",
               <select className="dsh-field" value={layout} onChange={(e) => setLayout(e.target.value as Layout)}>
-                {LAYOUTS.map((l) => <option key={l} value={l}>{LAYOUT_LABEL[l] ?? l}</option>)}
-              </select>
-            ))}
+                {LAYOUTS.map((l) => (
+                  <option key={l} value={l}>
+                    {LAYOUT_LABEL[l] ?? l}
+                  </option>
+                ))}
+              </select>,
+            )}
           </div>
         </div>
       </div>
 
       {error && <div className="dsh-editor-error">⚠️ {error}</div>}
       <div className="dsh-editor-actions">
-        <button onClick={onCancel} className="dsh-ghost" disabled={saving}>取消</button>
+        <button onClick={onCancel} className="dsh-ghost" disabled={saving}>
+          取消
+        </button>
         <button onClick={onSaveClick} className="dsh-btn" disabled={saving}>
           {saving ? "保存中…" : "保存修改"}
         </button>
       </div>
 
       {showLayoutDialog && (
-        <div
-          className="dsh-modal-mask"
-          onClick={() => !saving && setShowLayoutDialog(false)}
-        >
-          <div
-            className="dsh-card dsh-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="dsh-modal-mask" onClick={() => !saving && setShowLayoutDialog(false)}>
+          <div className="dsh-card dsh-modal" onClick={(e) => e.stopPropagation()}>
             <div className="dsh-modal-head">
               <span className="dsh-modal-icon">🔄</span>
               <div className="dsh-modal-title">版式已更改</div>
@@ -183,11 +229,27 @@ export function PageEditor({
               <div>· 仅保存：保留现有内容，只换版式</div>
             </div>
             <div className="dsh-modal-actions">
-              <button className="dsh-ghost" disabled={saving} onClick={() => setShowLayoutDialog(false)}>取消</button>
-              <button className="dsh-ghost" disabled={saving} onClick={() => { setShowLayoutDialog(false); doSave(Number(durationSec), false); }}>
+              <button className="dsh-ghost" disabled={saving} onClick={() => setShowLayoutDialog(false)}>
+                取消
+              </button>
+              <button
+                className="dsh-ghost"
+                disabled={saving}
+                onClick={() => {
+                  setShowLayoutDialog(false);
+                  doSave(Number(durationSec), false);
+                }}
+              >
                 仅保存
               </button>
-              <button className="dsh-btn" disabled={saving} onClick={() => { setShowLayoutDialog(false); doSave(Number(durationSec), true); }}>
+              <button
+                className="dsh-btn"
+                disabled={saving}
+                onClick={() => {
+                  setShowLayoutDialog(false);
+                  doSave(Number(durationSec), true);
+                }}
+              >
                 {saving ? "生成中…" : "重新生成"}
               </button>
             </div>

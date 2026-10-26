@@ -27,8 +27,9 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
   const { durationInFrames } = useVideoConfig();
   const pageDurs = pages.map((p) =>
     p.sentences && p.sentences.length
-      ? p.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * (fps || 30))), 0) + Math.round((p.sentenceGap || 0) * (fps || 30)) * Math.max(0, p.sentences.length - 1)
-      : Math.round((p.durationSec || 4) * (fps || 30))
+      ? p.sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * (fps || 30))), 0) +
+        Math.round((p.sentenceGap || 0) * (fps || 30)) * Math.max(0, p.sentences.length - 1)
+      : Math.round((p.durationSec || 4) * (fps || 30)),
   );
 
   const children: React.ReactNode[] = [];
@@ -40,7 +41,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
       <TransitionSeries.Sequence key={p.pageIndex} durationInFrames={dur}>
         <Bg variant={bg} theme={theme as any} />
         <PageBody page={p} fps={fps} subtitles={subtitles} isFirst={i === 0} Scene={Scene} />
-      </TransitionSeries.Sequence>
+      </TransitionSeries.Sequence>,
     );
     if (!isLast) {
       const next = pages[i + 1];
@@ -49,7 +50,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
           key={`t-${i}`}
           presentation={pickTransition(next?.transition)}
           timing={linearTiming({ durationInFrames: TRANSITION_FRAMES })}
-        />
+        />,
       );
     }
   });
@@ -59,7 +60,11 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
       <TransitionSeries>{children}</TransitionSeries>
       {bgm && <Spectrum src={bgm.audioUrl} />}
       {bgm && <BgmLayer url={bgm.audioUrl} totalFrames={durationInFrames} />}
-      {projectTitle && <div style={{ position: "absolute", bottom: 20, right: 24, color: C.muted, fontSize: 20, fontFamily: FONT }}>{projectTitle}</div>}
+      {projectTitle && (
+        <div style={{ position: "absolute", bottom: 20, right: 24, color: C.muted, fontSize: 20, fontFamily: FONT }}>
+          {projectTitle}
+        </div>
+      )}
     </AbsoluteFill>
   );
 };

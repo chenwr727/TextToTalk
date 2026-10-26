@@ -4,9 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
-const target = process.argv[2]
-  ? path.resolve(process.argv[2])
-  : path.join(root, "release", "win-unpacked");
+const target = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, "release", "win-unpacked");
 
 const res = path.join(target, "resources");
 

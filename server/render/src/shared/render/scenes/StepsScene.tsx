@@ -1,5 +1,20 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, FW, CARD_TYPE, pickCardFont, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import {
+  C,
+  FONT,
+  FS,
+  FW,
+  CARD_TYPE,
+  pickCardFont,
+  RADIUS,
+  HEADER_OFFSET,
+  CARD_SHADOW,
+  GLASS,
+  BORDER,
+  accentOf,
+  SOLID_SHADOW,
+  springIn,
+} from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -13,9 +28,8 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const captionTexts = page.sentences && page.sentences.length
-    ? page.sentences.map((s) => s.text)
-    : page.captions ?? [];
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const timing = useSceneTiming();
   const n = points.length;
@@ -27,7 +41,17 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`, columnGap: isPortrait ? sp(60) : 60, rowGap: isPortrait ? sp(20) : 20, marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET, marginBottom: captionReserve, width: isPortrait ? contentWidth : 1560 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`,
+          columnGap: isPortrait ? sp(60) : 60,
+          rowGap: isPortrait ? sp(20) : 20,
+          marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET,
+          marginBottom: captionReserve,
+          width: isPortrait ? contentWidth : 1560,
+        }}
+      >
         {points.map((p, i) => {
           const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
           const a = accentOf(i);
@@ -35,20 +59,96 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           const isRowEnd = (i + 1) % perRow === 0;
           const showArrow = !isLast && !isRowEnd;
           return (
-            <div key={i} style={{ position: "relative", minWidth: 0, opacity: t, transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)` }}>
-              <div style={{
-                height: "100%", padding: `${isPortrait ? sp(34) : 34}px ${isPortrait ? sp(28) : 28}px`, textAlign: "center",
-                background: GLASS.card, border: `${BORDER.card}px solid ${a}`, borderRadius: RADIUS.card, boxShadow: CARD_SHADOW,
-                position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "center",
-              }}>
-                <div style={{ width: isPortrait ? sp(64) : 64, height: isPortrait ? sp(64) : 64, borderRadius: "50%", background: a, color: "#fff", fontSize: isPortrait ? fs(FS.heading) : FS.heading, fontWeight: FW.heavy, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: isPortrait ? sp(20) : 20, boxShadow: SOLID_SHADOW, flexShrink: 0 }}>{i + 1}</div>
-                <div style={{ width: isPortrait ? sp(64) : 64, height: isPortrait ? sp(64) : 64, borderRadius: 16, background: `${a}1a`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: isPortrait ? sp(18) : 18, flexShrink: 0 }}>
+            <div
+              key={i}
+              style={{
+                position: "relative",
+                minWidth: 0,
+                opacity: t,
+                transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  padding: `${isPortrait ? sp(34) : 34}px ${isPortrait ? sp(28) : 28}px`,
+                  textAlign: "center",
+                  background: GLASS.card,
+                  border: `${BORDER.card}px solid ${a}`,
+                  borderRadius: RADIUS.card,
+                  boxShadow: CARD_SHADOW,
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "flex-start",
+                  alignItems: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: isPortrait ? sp(64) : 64,
+                    height: isPortrait ? sp(64) : 64,
+                    borderRadius: "50%",
+                    background: a,
+                    color: "#fff",
+                    fontSize: isPortrait ? fs(FS.heading) : FS.heading,
+                    fontWeight: FW.heavy,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: isPortrait ? sp(20) : 20,
+                    boxShadow: SOLID_SHADOW,
+                    flexShrink: 0,
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div
+                  style={{
+                    width: isPortrait ? sp(64) : 64,
+                    height: isPortrait ? sp(64) : 64,
+                    borderRadius: 16,
+                    background: `${a}1a`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: isPortrait ? sp(18) : 18,
+                    flexShrink: 0,
+                  }}
+                >
                   <Icon name={pointIcon(p, i)} size={isPortrait ? sp(34) : 34} color={a} />
                 </div>
-                <div style={{ fontSize: isPortrait ? fs(stepsFs) : stepsFs, fontWeight: FW.bold, color: C.ink, lineHeight: CARD_TYPE.lineHeight, fontFamily: FONT, wordBreak: "break-word" }}>{pointText(p, i)}</div>
+                <div
+                  style={{
+                    fontSize: isPortrait ? fs(stepsFs) : stepsFs,
+                    fontWeight: FW.bold,
+                    color: C.ink,
+                    lineHeight: CARD_TYPE.lineHeight,
+                    fontFamily: FONT,
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {pointText(p, i)}
+                </div>
               </div>
               {showArrow && (
-                <div style={{ position: "absolute", left: "100%", top: 0, bottom: 0, width: isPortrait ? sp(60) : 60, display: "flex", alignItems: "center", justifyContent: "center", color: a, fontSize: isPortrait ? fs(44) : 44, fontWeight: FW.heavy }}>→</div>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: "100%",
+                    top: 0,
+                    bottom: 0,
+                    width: isPortrait ? sp(60) : 60,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: a,
+                    fontSize: isPortrait ? fs(44) : 44,
+                    fontWeight: FW.heavy,
+                  }}
+                >
+                  →
+                </div>
               )}
             </div>
           );

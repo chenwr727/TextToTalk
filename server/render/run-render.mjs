@@ -100,7 +100,7 @@ async function main() {
   console.log(
     browserExecutable
       ? `[render] 使用浏览器: ${browserExecutable}`
-      : "[render] 未找到系统浏览器，将使用 Remotion 内置 Headless Shell"
+      : "[render] 未找到系统浏览器，将使用 Remotion 内置 Headless Shell",
   );
   const compositions = await getCompositions({
     serveUrl,
@@ -110,9 +110,7 @@ async function main() {
   });
   const composition = compositions.find((c) => c.id === compositionId);
   if (!composition) {
-    throw new Error(
-      `找不到 composition "${compositionId}"，可用: ${compositions.map((c) => c.id).join(", ")}`
-    );
+    throw new Error(`找不到 composition "${compositionId}"，可用: ${compositions.map((c) => c.id).join(", ")}`);
   }
 
   if (mode === "still") {
@@ -163,6 +161,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error(e instanceof Error ? (e.stack || e.message) : String(e));
+  console.error(e instanceof Error ? e.stack || e.message : String(e));
   process.exit(1);
 });

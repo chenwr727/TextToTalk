@@ -22,7 +22,9 @@ async function synthEdge(text: string, outPath: string, voice: string, options?:
   } finally {
     try {
       tts.close();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 }
 
