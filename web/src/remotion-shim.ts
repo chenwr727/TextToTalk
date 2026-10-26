@@ -57,3 +57,9 @@ export const Video = () => null;
 
 export const Composition = () => null;
 export const registerRoot = () => {};
+
+/** 字体等异步资源：web 缩略图不等它，直接当已就绪（快照式预览本来就不需要精确等待） */
+export const delayRender = (_label?: string): number => 0;
+export const continueRender = (_handle: number): void => {};
+/** public/ 下的静态资源在缩略图场景下不可达，返回原路径由 <img>/@font-face 自行失败降级 */
+export const staticFile = (p: string): string => p;

@@ -16,6 +16,11 @@
 - 新增组件测试（3 项）锁定逐页预览入口：成片就绪才请求预览帧、点第 N 页传回 1 基页码、未完成时不请求。
 - **源码级颜色令牌守护测试**：全仓库扫描「颜色变量 + hex 后缀」的写法与硬编码主题色，直接把这类静默失效变成红灯（见下方修复）。
 - `server/scripts/stills.mjs` 支持 `STILL_ONLY=<关键字>` 只渲指定静帧，便于单页回归。
+- **手绘标注 `effects.annotation` 真正生效**：`highlight` / `underline` / `circle` 三种手绘强调由 `@remotion/rough-notation` 画在页面标题上。这个字段在 prompt、`types.ts`、`normalize.ts` 里都存在，唯独渲染端从未读取过——是「AI 想表达却表达不出来」的典型。实现走上下文（`AnnotationContext`），21 个场景一行都不用改。
+- **逐词高亮字幕（karaoke）**：字幕气泡里的字按语音时长依次点亮，未读到的为半透明灰，数字/百分比读到时转琥珀色加粗。中文按字、英文与数字按词切分，标点并入前一个 token，避免行首逗号单独变色。
+- **片头 / 片尾 / 章节页的氛围光**：真实拍摄画面永远有光，纯 CSS 版面永远干净均匀——这是「像视频」与「像 PPT」的分水岭之一。光带 + 双色光晕完全由帧数驱动，无随机、无外部依赖。
+- **display 字体层**：新增 `server/scripts/fetch-fonts.mjs` 一次性下载思源黑体（Noto Sans SC 700）与 Sora 700 到 `server/render/public/fonts/`（约 2.4 MB，随仓库入库以保证离线渲染一致），渲染时用 `delayRender` 等字体就绪再出帧，字体缺失则静默回退系统字体栈。标题与大数字走 `--ttt-font-display`，`warm` 主题保持宋体以免被黑体劫持。
+- `web` 侧补齐 `delayRender` / `continueRender` / `staticFile` 桩：缩略图不等字体，也不会因为缺导出而报错。
 - `web` 新增 `typecheck` 脚本，根目录 `pnpm run typecheck` 可同时检查前后端。
 
 ### 变更
@@ -26,6 +31,8 @@
   - 5 套主题现在真的不一样：科技蓝（默认黑体 + 胶囊标题 + 24px 圆角）、商务蓝（左对齐竖线标题 + 10px 直角 + 收窄阴影）、清新绿（圆体字 + 34px 大圆角 + 更大字距）、暖橙（宋体衬线 + 纯文字标题 + 6px 直角）、深空（浅字深卡玻璃质感 + 加深阴影）。
   - 深色主题的文字、卡面、装饰色不再沿用浅色主题的硬编码白底。
 - `web` 的主题下拉框改为从 `THEME_TOKENS` 读取中文名，不再手写一份会漂移的选项列表。
+- `server/render/scripts/bundle.mjs` 支持 `publicDir`：此前打包不复制 `public/`，`staticFile("fonts/…")` 取不到字体（缺目录时自动忽略，不影响无字体的环境）。
+- `stills.mjs` 默认打开字幕，并新增手绘标注与 karaoke 中段镜头——这三项改动的观感回归都靠静帧覆盖。
 
 ### 修复
 

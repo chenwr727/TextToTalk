@@ -12,6 +12,13 @@ export const FONT_STACK = "'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei'
 /** 用于样式的字体值：读主题注入的 CSS 变量，因此主题一换、全站字体跟着换 */
 export const FONT = "var(--ttt-font)";
 
+/**
+ * 标题/大字专用字体：优先思源黑体 + Sora（由 server/scripts/fetch-fonts.mjs 下载到 public/fonts）。
+ * 字体文件缺失时浏览器会顺着栈往下回退，行为与改造前一致。
+ */
+export const FONT_DISPLAY_STACK = "'TTT Display', 'TTT CJK', " + FONT_STACK;
+export const FONT_DISPLAY = "var(--ttt-font-display)";
+
 export const fitFontSize = (
   text: string,
   withinWidth: number,
@@ -79,6 +86,8 @@ export interface ThemeTokens {
   /** 深色主题：文字色/卡面是反的，Bg 也要走暗色分支 */
   dark: boolean;
   font: string;
+  /** 标题专用字体栈；不填则用 FONT_DISPLAY_STACK（思源黑体 + Sora） */
+  displayFont?: string;
   ink: string;
   sub: string;
   muted: string;
@@ -258,6 +267,8 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     dark: false,
     // 宋体/思源宋体：编辑感的衬线主题，和默认黑体形成强的排版差异
     font: "'Songti SC', 'SimSun', 'Noto Serif CJK SC', 'Source Han Serif SC', serif",
+    // 衬线主题的标题必须继续走宋体，不能被默认的黑体 display 字体劫持
+    displayFont: "'Songti SC', 'SimSun', 'Noto Serif CJK SC', serif",
     ink: "#33231a",
     sub: "#6f5645",
     muted: "#9a8577",
@@ -406,6 +417,7 @@ export const themeVars = (id?: string | null): CSSProperties => {
   const t = THEME_TOKENS[normalizeThemeId(id)];
   return {
     "--ttt-font": t.font,
+    "--ttt-font-display": t.displayFont ?? FONT_DISPLAY_STACK,
     "--ttt-ink": t.ink,
     "--ttt-sub": t.sub,
     "--ttt-muted": t.muted,

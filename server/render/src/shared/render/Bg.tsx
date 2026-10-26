@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { DECOR, THEME_TOKENS, DEFAULT_THEME, normalizeThemeId, type ThemeId } from "./theme";
+import { LightLeak } from "./Atmosphere";
 
 export const Bg: React.FC<{
   variant: string;
@@ -127,6 +128,10 @@ export const Bg: React.FC<{
         }}
       />
       {draw ? <DrawDecor color={v.orbColor} /> : null}
+      {/* 片头 / 片尾 / 章节页给一层氛围光：真实画面永远有光，纯 CSS 版面永远均匀，这是"贵"与"廉价"的分水岭之一 */}
+      {rich && (variant === "title" || variant === "end" || variant === "section") ? (
+        <LightLeak strength={variant === "section" ? 0.7 : 1} />
+      ) : null}
     </AbsoluteFill>
   );
 };

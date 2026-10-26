@@ -59,6 +59,8 @@ const pages = [
     rhythm: "dense",
     accent: 2,
     transition: "slide-left",
+    // 手绘圈注（effects.annotation）：验证 rough-notation 真的把标题圈出来了
+    effects: { annotation: "circle" },
     durationSec: 4,
   }),
   page({
@@ -72,6 +74,7 @@ const pages = [
       { text: "100% 连锁概率", icon: "alert" },
     ],
     captions: ["量级决定处置窗口。"],
+    effects: { annotation: "highlight" },
     rhythm: "anchor",
     accent: 1,
     decor: "quiet",
@@ -132,7 +135,7 @@ const inputProps = {
   projectTitle: "",
   pages,
   fps: FPS,
-  subtitles: false,
+  subtitles: true,
   bgm: null,
   theme: process.env.STILL_THEME || "tech",
   width: 1920,
@@ -161,6 +164,8 @@ const shots = [
   { name: "10-chart-bar-settled", frame: starts[3] + 70 },
   { name: "11-section-settled", frame: starts[4] + 60 },
   { name: "12-comparison-settled", frame: starts[5] + 80 },
+  { name: "13-caption-karaoke-mid", frame: starts[1] + 22 },
+  { name: "14-caption-karaoke-late", frame: starts[1] + 46 },
 ];
 
 const run = (configPath) =>

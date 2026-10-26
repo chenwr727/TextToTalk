@@ -6,6 +6,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const renderDir = path.resolve(here, "..");
 const entryPoint = path.join(renderDir, "src", "index.ts");
 const outDir = path.join(renderDir, "out", "bundle");
+const publicDir = path.join(renderDir, "public");
 
 const { bundle } = await import("@remotion/bundler");
 
@@ -15,6 +16,8 @@ console.log("[bundle] 打包", entryPoint);
 await bundle({
   entryPoint,
   outDir,
+  // publicDir 让 staticFile("fonts/…") 能取到 display 字体（缺目录时 Remotion 会忽略）
+  publicDir: fs.existsSync(publicDir) ? publicDir : null,
   webpackOverride: (config) => config,
 });
 

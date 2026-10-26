@@ -8,6 +8,7 @@ import { TRANSITION_FRAME_MAP, transitionFramesOf } from "../../../shared/types"
 import { zoomPush } from "./shared/render/presentations";
 import { C, FONT, ThemeContext, THEME_TOKENS, normalizeThemeId, themeVars } from "./shared/render/theme";
 import { Bg } from "./shared/render/Bg";
+import { FontLoader } from "./shared/render/fonts";
 import { Spectrum } from "./shared/render/Spectrum";
 import { BgmLayer } from "./components/Caption";
 import { PageBody } from "./scenes/PageBody";
@@ -70,6 +71,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
   return (
     <ThemeContext.Provider value={THEME_TOKENS[normalizeThemeId(theme)]}>
       <AbsoluteFill style={themeVars(theme)}>
+        <FontLoader />
         <TransitionSeries>{children}</TransitionSeries>
         {bgm && <Spectrum src={bgm.audioUrl} />}
         {bgm && <BgmLayer url={bgm.audioUrl} totalFrames={durationInFrames} />}
