@@ -11,5 +11,6 @@
     "rootDir": "..",
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": [
+    "scripts/**/*.mts","src"]
 }

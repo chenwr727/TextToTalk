@@ -2,6 +2,7 @@
   "name": "texttotalk",
   "version": "0.2.0",
   "private": true,
+  "type": "module",
   "description": "TextToTalk 仓库级开发工具链（lint / format / test / typecheck）",
   "scripts": {
     "lint": "eslint .",
