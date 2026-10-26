@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { StoryPage, Task, VideoParams } from "./types";
 import { subscribeOutline, generateStoryboardFromPlan, getTask, setToken, type Outline } from "./api";
 import { ScriptInput } from "./components/ScriptInput";
@@ -52,6 +52,8 @@ export function App() {
   const [task, setTask] = useState<Task | null>(null);
 
   const [focusPage, setFocusPage] = useState<number | null>(null);
+  // 稳定引用：StoryboardPreview 会把它放进 effect 依赖，内联箭头会导致每次渲染都重跑 effect
+  const handleFocusPageHandled = useCallback(() => setFocusPage(null), []);
 
   useEffect(() => {
     if (phase !== "render" || !taskId) return;
@@ -259,7 +261,7 @@ export function App() {
             onTokensChange={setTokens}
             onStageChange={setStage}
             focusPage={focusPage}
-            onFocusPageHandled={() => setFocusPage(null)}
+            onFocusPageHandled={handleFocusPageHandled}
             theme={params.theme}
             width={params.width}
             height={params.height}

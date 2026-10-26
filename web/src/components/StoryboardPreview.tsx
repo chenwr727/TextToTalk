@@ -5,6 +5,12 @@ import { RenderThumb } from "./RenderThumb";
 import { PageEditor } from "./PageEditor";
 import { LAYOUT_LABEL, ART_LABEL, ICON_EMOJI, ROLE_LABEL, STAGES } from "./labels";
 
+const SECTION_DELIM = "════════";
+const parseSectionPage = (label: string): number | null => {
+  const m = /第\s*(\d+)\s*页展开/.exec(label ?? "");
+  return m ? Number(m[1]) : null;
+};
+
 export function StoryboardPreview({
   taskId,
   pages,
@@ -52,12 +58,6 @@ export function StoryboardPreview({
   const activePageRef = useRef<number | null>(null);
   const startTagsRef = useRef<Map<number, string>>(new Map());
 
-  const SECTION_DELIM = "════════";
-  const parseSectionPage = (label: string): number | null => {
-    const m = /第\s*(\d+)\s*页展开/.exec(label ?? "");
-    return m ? Number(m[1]) : null;
-  };
-
   const flushBuffers = () => {
     const map = pageTokensRef.current;
     const starts = startTagsRef.current;
@@ -73,10 +73,19 @@ export function StoryboardPreview({
     onTokensChange(combined);
   };
 
+  // SSE 订阅必须只建立一次（依赖 taskId）：父组件回调与 flushBuffers 每次渲染都是新函数，
+  // 若把它们写进订阅 effect 的依赖，任何一次父组件重渲染都会断流重订阅，正在流式输出的 token 直接丢。
+  // 所以订阅内部统一通过 ref 取最新实现——既拿到最新闭包，又不影响订阅的生命周期。
+  const handlersRef = useRef({ onPagesChange, onDoneChange, onTokensChange, onStageChange, flushBuffers });
+  useEffect(() => {
+    handlersRef.current = { onPagesChange, onDoneChange, onTokensChange, onStageChange, flushBuffers };
+  });
+
   const toggleSection = (page: number) =>
     setOpenSections((prev) => {
       const next = new Set(prev);
-      next.has(page) ? next.delete(page) : next.add(page);
+      if (next.has(page)) next.delete(page);
+      else next.add(page);
       return next;
     });
 
@@ -146,42 +155,53 @@ export function StoryboardPreview({
 
   useEffect(() => {
     if (highlight == null && focusPage != null) onFocusPageHandled();
-  }, [highlight, focusPage]);
+  }, [highlight, focusPage, onFocusPageHandled]);
 
   useEffect(() => {
+    // 首次进入（还没拿到任何页）时补拉一次任务，兼容刷新 / 从渲染页返回的场景。
+    // 单独成一个 effect：如果把 pages.length 塞进下面的订阅 effect，每来一页都会重订阅 SSE。
+    if (pages.length !== 0) return;
     let cancelled = false;
-    if (pages.length === 0) {
-      getTask(taskId)
-        .then((t) => {
-          if (cancelled) return;
-          if (t.storyboard?.pages?.length) {
-            onPagesChange([...t.storyboard!.pages]);
-            onDoneChange(true);
-          }
-        })
-        .catch(() => {});
-    }
+    getTask(taskId)
+      .then((t) => {
+        if (cancelled) return;
+        const sb = t.storyboard;
+        if (sb?.pages?.length) {
+          handlersRef.current.onPagesChange([...sb.pages]);
+          handlersRef.current.onDoneChange(true);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId, pages.length]);
+
+  useEffect(() => {
     const map = pageTokensRef.current;
     const starts = startTagsRef.current;
     map.clear();
     starts.clear();
     activePageRef.current = null;
-    onTokensChange("");
+    handlersRef.current.onTokensChange("");
     const unsub = subscribeStoryboard(
       taskId,
-      (p) => onPagesChange((prev) => (prev.some((x) => x.pageIndex === p.pageIndex) ? prev : [...prev, p])),
-      () => onDoneChange(true),
+      (p) =>
+        handlersRef.current.onPagesChange((prev) =>
+          prev.some((x) => x.pageIndex === p.pageIndex) ? prev : [...prev, p],
+        ),
+      () => handlersRef.current.onDoneChange(true),
       () => {},
       (tok) => {
         const ap = activePageRef.current;
         if (ap == null) return;
         map.set(ap, (map.get(ap) ?? "") + tok);
-        flushBuffers();
+        handlersRef.current.flushBuffers();
       },
-      (s) => onStageChange(s),
+      (s) => handlersRef.current.onStageChange(s),
       (sb) => {
         const s = sb as { pages?: StoryPage[] };
-        if (s?.pages?.length) onPagesChange([...s.pages]);
+        if (s?.pages?.length) handlersRef.current.onPagesChange([...s.pages]);
       },
       (label) => {
         const p = parseSectionPage(label);
@@ -191,18 +211,17 @@ export function StoryboardPreview({
           if (!map.has(p)) map.set(p, "");
           activePageRef.current = p;
         }
-        flushBuffers();
+        handlersRef.current.flushBuffers();
       },
       () => {
         const ap = activePageRef.current;
         if (ap != null) {
           map.set(ap, "");
-          flushBuffers();
+          handlersRef.current.flushBuffers();
         }
       },
     );
     return () => {
-      cancelled = true;
       unsub();
     };
   }, [taskId]);

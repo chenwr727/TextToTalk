@@ -1,6 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { Outline, OutlineBlock } from "../api";
 import { LAYOUT_LABEL, ART_LABEL, ROLE_LABEL, ICON_EMOJI, STAGES } from "./labels";
+
+const draftFromOutline = (o: Outline): Outline => ({
+  projectTitle: o.projectTitle ?? "",
+  arc: o.arc ?? "",
+  pages: (o.pages ?? []).map((p) => ({ ...p })),
+});
 
 export function OutlinePreview({
   outline,
@@ -19,13 +25,19 @@ export function OutlinePreview({
   onRegenerate: () => void;
   onBack: () => void;
 }) {
-  const [draft, setDraft] = useState<Outline>(() => ({
-    projectTitle: outline.projectTitle ?? "",
-    arc: outline.arc ?? "",
-    pages: (outline.pages ?? []).map((p) => ({ ...p })),
-  }));
+  const [draft, setDraft] = useState<Outline>(() => draftFromOutline(outline));
   const [copied, setCopied] = useState(false);
   const [rawOpen, setRawOpen] = useState(false);
+
+  // 大纲对象换了就把草稿同步过去（首次 SSE 回流、重新生成、同页数重抽都覆盖）。
+  // 这里用「渲染期同步 state」而不是 useEffect：如果用 effect 且只依赖页数，闭包里的
+  // outline/draft 就是旧值；把依赖补全则每次用户编辑都会触发，反而覆盖正在编辑的内容。
+  // 用户编辑只改 draft、不动 outline 引用，所以按引用比较不会误伤编辑中的内容。
+  const [syncedOutline, setSyncedOutline] = useState<Outline>(outline);
+  if (outline !== syncedOutline && (outline.pages ?? []).length > 0) {
+    setSyncedOutline(outline);
+    setDraft(draftFromOutline(outline));
+  }
 
   const copyTokens = async () => {
     try {
@@ -38,17 +50,6 @@ export function OutlinePreview({
   };
 
   const pages = draft.pages ?? [];
-
-  const outlinePageCount = (outline.pages ?? []).length;
-  useEffect(() => {
-    if (outlinePageCount > 0 && outlinePageCount !== (draft.pages ?? []).length) {
-      setDraft({
-        projectTitle: outline.projectTitle ?? "",
-        arc: outline.arc ?? "",
-        pages: (outline.pages ?? []).map((p) => ({ ...p })),
-      });
-    }
-  }, [outlinePageCount]);
 
   const setPage = (i: number, patch: Partial<OutlineBlock>) => {
     setDraft((d) => ({ ...d, pages: (d.pages ?? []).map((p, idx) => (idx === i ? { ...p, ...patch } : p)) }));
