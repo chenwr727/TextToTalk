@@ -1,5 +1,18 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FW, LH, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import {
+  alpha,
+  C,
+  FONT,
+  FW,
+  LH,
+  HEADER_OFFSET,
+  CARD_SHADOW,
+  GLASS,
+  BORDER,
+  accentOf,
+  SOLID_SHADOW,
+  springIn,
+} from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -117,7 +130,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     width: iconBox,
                     height: iconBox,
                     borderRadius: 16,
-                    background: `${ac}1a`,
+                    background: `${alpha(ac, 10)}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -161,8 +174,8 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 ? Math.min(sp(560), Math.round(availH * 0.6))
                 : Math.min(420, Math.round(availH * 0.82)),
               borderRadius: isPortrait ? sp(56) : 40,
-              background: `linear-gradient(150deg, ${a}22, ${a}0a)`,
-              border: `${BORDER.card}px solid ${a}55`,
+              background: `linear-gradient(150deg, ${alpha(a, 13)}, ${alpha(a, 4)})`,
+              border: `${BORDER.card}px solid ${alpha(a, 33)}`,
               boxShadow: CARD_SHADOW,
               display: "flex",
               alignItems: "center",

@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, FW, LH, RADIUS, CARD_SHADOW, GLASS, ACCENT_GRAD, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, LH, RADIUS, CARD_SHADOW, GLASS, ACCENT_GRAD, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
@@ -67,7 +67,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   const dataCellStyle = (ci: number, ry: number, zebra: boolean): React.CSSProperties => ({
     flex: `0 0 ${colWidths[ci]}px`,
     minHeight: minCellH,
-    background: ci === 0 ? "rgba(59,111,245,0.08)" : zebra ? "#f7f9fd" : "#ffffff",
+    background: ci === 0 ? alpha(C.accent, 8) : zebra ? "#f7f9fd" : "#ffffff",
     color: ci === 0 ? C.accent : C.ink,
     fontSize: isPortrait ? fs(ci === 0 ? FS.caption : FS.body) : ci === 0 ? FS.caption : FS.body,
     fontWeight: ci === 0 ? FW.heavy : FW.regular,
@@ -110,7 +110,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
           borderRadius: RADIUS.box,
           boxShadow: CARD_SHADOW,
           overflow: "hidden",
-          border: "1px solid rgba(59,111,245,0.10)",
+          border: `1px solid ${alpha(C.accent, 10)}`,
         }}
       >
         <div style={{ display: "flex", flexDirection: "row", alignItems: "stretch", background: ACCENT_GRAD }}>

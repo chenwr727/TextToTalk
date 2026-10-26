@@ -1,6 +1,20 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { makeSpark } from "@remotion/shapes";
-import { C, FONT, FS, LH, FW, RADIUS, HEADER_OFFSET, CARD_SHADOW, GLASS, BORDER, accentOf, springIn } from "../theme";
+import {
+  alpha,
+  C,
+  FONT,
+  FS,
+  LH,
+  FW,
+  RADIUS,
+  HEADER_OFFSET,
+  CARD_SHADOW,
+  GLASS,
+  BORDER,
+  accentOf,
+  springIn,
+} from "../theme";
 import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -70,7 +84,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
                   width: isPortrait ? sp(64) : 64,
                   height: isPortrait ? sp(64) : 64,
                   borderRadius: 16,
-                  background: `${a}1a`,
+                  background: `${alpha(a, 10)}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

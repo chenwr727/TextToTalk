@@ -80,6 +80,45 @@ const pages = [
   }),
   page({
     pageIndex: 3,
+    title: "隔膜一破，温升陡增",
+    layout: "chart",
+    chart: {
+      type: "bar",
+      title: "温升速率（℃/分钟）",
+      labels: ["升温", "隔膜崩溃", "产气膨胀"],
+      values: [80, 240, 380],
+    },
+    points: [{ text: "隔膜崩溃后温升陡增" }, { text: "产气阶段最快" }],
+    captions: ["隔膜一破，温升速度就是三倍起。"],
+    accent: 0,
+    transition: "fade",
+    durationSec: 4,
+  }),
+  page({
+    pageIndex: 4,
+    title: "第二步：隔膜崩溃",
+    layout: "section",
+    points: [{ text: "正负极直接短路" }],
+    captions: ["接下来是最关键的一步。"],
+    icon: "alert",
+    transition: "fade",
+    durationSec: 3,
+  }),
+  page({
+    pageIndex: 5,
+    title: "油车与电车的账",
+    layout: "comparison",
+    points: [{ text: "油费 1.28 万 vs 电费 1500 元" }, { text: "8 年总账 12 万 vs 2 万" }],
+    comparisonSides: {
+      a: { title: "燃油车", points: ["油费 1.28 万/年", "保养 2000 元/年", "8 年总账 12 万"] },
+      b: { title: "电动车", points: ["电费 1500 元/年", "保养 0 元/年", "8 年总账 2 万"] },
+    },
+    captions: ["油车一年一万二，电车一千五。"],
+    transition: "fade",
+    durationSec: 4,
+  }),
+  page({
+    pageIndex: 6,
     title: "记住这一条链",
     layout: "end",
     points: [{ text: "先控温，再断路，最后隔离" }],
@@ -117,8 +156,11 @@ const shots = [
   { name: "05-points-settled", frame: starts[1] + 70 },
   { name: "06-transition-zoom-mid", frame: starts[2] + 8 },
   { name: "07-stats-settled", frame: starts[2] + 70 },
-  { name: "08-transition-none-cut", frame: starts[3] + 1 },
-  { name: "09-end-settled", frame: starts[3] + 40 },
+  { name: "08-transition-none-cut", frame: starts[6] + 1 },
+  { name: "09-end-settled", frame: starts[6] + 40 },
+  { name: "10-chart-bar-settled", frame: starts[3] + 70 },
+  { name: "11-section-settled", frame: starts[4] + 60 },
+  { name: "12-comparison-settled", frame: starts[5] + 80 },
 ];
 
 const run = (configPath) =>
@@ -137,7 +179,9 @@ const run = (configPath) =>
 mkdirSync(outDir, { recursive: true });
 console.log(`[stills] 总帧数 ${offset}，共 ${shots.length} 张，theme=${inputProps.theme}`);
 
-for (const shot of shots) {
+const only = process.env.STILL_ONLY;
+const picked = only ? shots.filter((s) => s.name.includes(only)) : shots;
+for (const shot of picked) {
   const outPng = path.join(outDir, `${inputProps.theme}-${shot.name}.png`);
   const configPath = path.join(outDir, `${inputProps.theme}-${shot.name}.still.json`);
   writeFileSync(

@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
+  alpha,
   C,
   FONT,
   FS,
@@ -105,7 +106,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 <div
                   style={{
                     position: "relative",
-                    background: `linear-gradient(165deg, ${a} 0%, ${a}d9 60%, ${a}bf 100%)`,
+                    background: `linear-gradient(165deg, ${a} 0%, ${alpha(a, 85)} 60%, ${alpha(a, 75)} 100%)`,
                     color: "#fff",
                     borderRadius: RADIUS.box,
                     padding: `${CARD_PAD_Y}px ${CARD_PAD}px`,
@@ -251,7 +252,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
           rx={RX - 6}
           ry={RY - 6}
           fill="none"
-          stroke="rgba(59,111,245,0.7)"
+          stroke={alpha(C.accent, 70)}
           strokeWidth={4}
           strokeDasharray="14 12"
         />

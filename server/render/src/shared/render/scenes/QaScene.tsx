@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
+  alpha,
   C,
   FONT,
   FS,
@@ -43,8 +44,8 @@ export const QaScene: React.FC<SceneProps> = ({ page }) => {
             display: "flex",
             alignItems: "center",
             padding: `${isPortrait ? sp(34) : 34}px ${isPortrait ? sp(40) : 40}px`,
-            background: `linear-gradient(135deg, ${a}1f, ${a}0a)`,
-            border: `${BORDER.card}px solid ${a}66`,
+            background: `linear-gradient(135deg, ${alpha(a, 12)}, ${alpha(a, 4)})`,
+            border: `${BORDER.card}px solid ${alpha(a, 40)}`,
             borderRadius: RADIUS.card,
             boxShadow: CARD_SHADOW,
             opacity: qO,
@@ -113,7 +114,7 @@ export const QaScene: React.FC<SceneProps> = ({ page }) => {
                     width: isPortrait ? sp(56) : 56,
                     height: isPortrait ? sp(56) : 56,
                     borderRadius: 14,
-                    background: `${ac}1a`,
+                    background: `${alpha(ac, 10)}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

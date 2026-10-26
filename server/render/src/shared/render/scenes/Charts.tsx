@@ -1,10 +1,49 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, FW, accentOf, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, accentOf, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
+import { HeadingContent } from "../PageHeading";
 import type { SceneProps } from "./types";
 import type { ChartSpec } from "../props";
 
+/**
+ * 图表页标题。
+ *
+ * 页面标题（page.title）走主题的标题语言，与其它版式一致；chart.title 降为副标题，
+ * 保留"这组数据在比什么"的信息。放在内容列的流里而不是绝对定位，否则会压住图形。
+ */
+const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> = ({ page, chartTitle }) => {
+  const { isPortrait, sp } = useResponsive();
+  const head = String(page?.title ?? "").trim();
+  const sub = String(chartTitle ?? "").trim();
+  if (!head && !sub) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        marginBottom: isPortrait ? sp(30) : 30,
+      }}
+    >
+      <HeadingContent text={head || sub} inline />
+      {head && sub && sub !== head ? (
+        <div
+          style={{
+            marginTop: isPortrait ? sp(12) : 12,
+            fontSize: isPortrait ? sp(24) : FS.label,
+            fontWeight: FW.regular,
+            color: C.sub,
+            fontFamily: FONT,
+            opacity: 0.9,
+          }}
+        >
+          {sub}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const chart = page.chart!;
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
@@ -26,18 +65,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const barMaxH = isPortrait ? 520 : 300;
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.title) : FS.heading,
-          fontWeight: FW.regular,
-          color: C.sub,
-          fontFamily: FONT,
-          opacity: 0.85,
-          marginBottom: isPortrait ? sp(70) : 70,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <div
         style={{
           position: "relative",
@@ -88,8 +116,9 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
                   bottom: isPortrait ? sp(90) : 90,
                   height: `${h * g}px`,
                   borderRadius: "14px 14px 0 0",
-                  background: i === 0 ? C.muted : `linear-gradient(180deg, ${a} 0%, ${a}cc 55%, ${a}88 100%)`,
-                  boxShadow: i === 0 ? "none" : `0 8px 20px ${a}47`,
+                  background:
+                    i === 0 ? C.muted : `linear-gradient(180deg, ${a} 0%, ${alpha(a, 80)} 55%, ${alpha(a, 53)} 100%)`,
+                  boxShadow: i === 0 ? "none" : `0 8px 20px ${alpha(a, 28)}`,
                   overflow: "hidden",
                 }}
               >
@@ -149,17 +178,7 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   const line = Array.from({ length: last + 1 }, (_, i) => `${xs[i]},${ys[i]}`).join(" ");
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.heading) : FS.heading,
-          fontWeight: 700,
-          color: C.sub,
-          fontFamily: FONT,
-          marginBottom: isPortrait ? sp(22) : 22,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
         {[0.25, 0.5, 0.75, 1].map((t) => (
           <line
@@ -266,17 +285,7 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
   });
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.heading) : FS.heading,
-          fontWeight: 700,
-          color: C.sub,
-          fontFamily: FONT,
-          marginBottom: isPortrait ? sp(8) : 8,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <svg width={isPortrait ? contentWidth : 1100} height={isPortrait ? 760 : 520}>
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
@@ -371,17 +380,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   const line = Array.from({ length: last + 1 }, (_, i) => `${xs[i]},${ys[i]}`).join(" ");
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.heading) : FS.heading,
-          fontWeight: 700,
-          color: C.sub,
-          fontFamily: FONT,
-          marginBottom: isPortrait ? sp(22) : 22,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
         {[0.25, 0.5, 0.75, 1].map((t) => (
           <line
@@ -482,17 +481,7 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
   });
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.heading) : FS.heading,
-          fontWeight: 700,
-          color: C.sub,
-          fontFamily: FONT,
-          marginBottom: isPortrait ? sp(8) : 8,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <svg width={isPortrait ? contentWidth : 1100} height={isPortrait ? 760 : 520}>
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
@@ -591,17 +580,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   const barMaxH = isPortrait ? 520 : 300;
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.heading) : FS.heading,
-          fontWeight: 700,
-          color: C.sub,
-          fontFamily: FONT,
-          marginBottom: isPortrait ? sp(22) : 22,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <div
         style={{
           position: "relative",
@@ -722,17 +701,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   const py = (y: number) => H - BOTTOM - ((y - yMin) / yRange) * (H - PAD - BOTTOM);
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.heading) : FS.heading,
-          fontWeight: 700,
-          color: C.sub,
-          fontFamily: FONT,
-          marginBottom: isPortrait ? sp(22) : 22,
-        }}
-      >
-        {title}
-      </div>
+      <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
         {[0.25, 0.5, 0.75, 1].map((t) => (
           <line

@@ -4,12 +4,12 @@ import { C, FONT, FW, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD, useTheme 
 import { useResponsive } from "./responsive";
 
 /**
- * 页面标题。
+ * 标题内容本身（胶囊 / 左侧竖线 / 纯文字 + 装饰线），不带定位。
  *
- * 标题形态是主题的一部分：pill（胶囊）/ bar（左侧竖线）/ plain（纯文字 + 细下划线），
- * 三种形态的对齐、字号、字距也由主题给，所以换主题时这里是最明显的差异点之一。
+ * 抽出来是为了让图表页也能用同一套标题语言：图表把标题放在垂直居中的内容列里
+ * （走正常流），不能像其它版式那样绝对定位在页面顶部，否则会压住图形。
  */
-export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
+export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ text, inline = false }) => {
   const f = useCurrentFrame();
   const { isPortrait, fs, sp } = useResponsive();
   const t = useTheme();
@@ -19,7 +19,8 @@ export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
 
   const size = isPortrait ? fs(t.heading.size) : t.heading.size;
   const isPill = t.heading.style === "pill";
-  const center = t.heading.align === "center";
+  // 图表页的标题落在居中的内容列里，无论主题是否左对齐都居中，否则与图形错位
+  const center = inline || t.heading.align === "center";
 
   const type: CSSProperties = {
     fontSize: size,
@@ -70,14 +71,72 @@ export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
     ) : (
       <div
         style={{
-          width: t.heading.style === "bar" ? "100%" : isPortrait ? sp(160) : 160,
-          height: t.heading.style === "bar" ? 3 : 2,
+          width: t.heading.style === "bar" && !inline ? "100%" : isPortrait ? sp(160) : 160,
+          height: t.heading.style === "bar" && !inline ? 3 : 2,
           borderRadius: RADIUS.pill,
-          background: t.heading.style === "bar" ? `${ACCENT_GRAD}` : C.accentSoft,
+          background: t.heading.style === "bar" && !inline ? `${ACCENT_GRAD}` : C.accentSoft,
           opacity: 0.9,
         }}
       />
     );
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: center ? "center" : "flex-start",
+        gap: isPortrait ? sp(16) : 16,
+        maxWidth: "100%",
+        opacity: o,
+      }}
+    >
+      {isPill ? (
+        <div
+          style={{
+            ...type,
+            padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(46) : 46}px`,
+            background: GLASS.pill,
+            border: `${BORDER.card}px solid ${C.accent}`,
+            borderRadius: RADIUS.pill,
+            boxShadow: PILL_SHADOW,
+          }}
+        >
+          {text}
+        </div>
+      ) : t.heading.style === "bar" ? (
+        <div style={{ display: "flex", alignItems: "center", gap: isPortrait ? sp(18) : 18, maxWidth: "100%" }}>
+          <div
+            style={{
+              width: 8,
+              height: size * 1.1,
+              borderRadius: 4,
+              background: ACCENT_GRAD,
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ ...type }}>{text}</div>
+        </div>
+      ) : (
+        <div style={{ ...type }}>{text}</div>
+      )}
+      {rule}
+    </div>
+  );
+};
+
+/**
+ * 页面标题（页面级，绝对定位在顶部）。
+ *
+ * 标题形态是主题的一部分：pill（胶囊）/ bar（左侧竖线）/ plain（纯文字 + 细下划线），
+ * 三种形态的对齐、字号、字距也由主题给，所以换主题时这里是最明显的差异点之一。
+ */
+export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
+  const { isPortrait, sp } = useResponsive();
+  const t = useTheme();
+  const center = t.heading.align === "center";
+
+  if (!text) return null;
 
   return (
     <div
@@ -88,48 +147,10 @@ export const PageHeading: React.FC<{ text: string }> = ({ text }) => {
         right: center ? 0 : isPortrait ? sp(64) : 120,
         display: "flex",
         justifyContent: center ? "center" : "flex-start",
-        opacity: o,
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: center ? "center" : "flex-start",
-          gap: isPortrait ? sp(16) : 16,
-          maxWidth: "100%",
-        }}
-      >
-        {isPill ? (
-          <div
-            style={{
-              ...type,
-              padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(46) : 46}px`,
-              background: GLASS.pill,
-              border: `${BORDER.card}px solid ${C.accent}`,
-              borderRadius: RADIUS.pill,
-              boxShadow: PILL_SHADOW,
-            }}
-          >
-            {text}
-          </div>
-        ) : t.heading.style === "bar" ? (
-          <div style={{ display: "flex", alignItems: "center", gap: isPortrait ? sp(18) : 18, maxWidth: "100%" }}>
-            <div
-              style={{
-                width: 8,
-                height: size * 1.1,
-                borderRadius: 4,
-                background: ACCENT_GRAD,
-                flexShrink: 0,
-              }}
-            />
-            <div style={{ ...type }}>{text}</div>
-          </div>
-        ) : (
-          <div style={{ ...type }}>{text}</div>
-        )}
-        {rule}
+      <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%" }}>
+        <HeadingContent text={text} />
       </div>
     </div>
   );

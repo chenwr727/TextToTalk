@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, FW, RADIUS, CARD_SHADOW, DOT_SHADOW, TEXT_SHADOW, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, RADIUS, CARD_SHADOW, DOT_SHADOW, TEXT_SHADOW, springIn } from "../theme";
 import { pointText } from "../point";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
@@ -65,7 +65,7 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
             key={i}
             style={{
               display: "inline-block",
-              background: "rgba(59,111,245,0.10)",
+              background: alpha(C.accent, 10),
               color: C.ink,
               padding: `${sp(10)}px ${sp(22)}px`,
               borderRadius: RADIUS.pill,

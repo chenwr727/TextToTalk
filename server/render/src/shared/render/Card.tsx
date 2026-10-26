@@ -1,4 +1,4 @@
-import { C, CARD_SHADOW, RADIUS, BORDER, GLASS } from "./theme";
+import { alpha, C, CARD_SHADOW, RADIUS, BORDER, GLASS } from "./theme";
 import { Icon } from "./Icon";
 
 export const Card: React.FC<{
@@ -51,7 +51,7 @@ export const Card: React.FC<{
               left: 0,
               right: 0,
               height: 8,
-              background: `linear-gradient(90deg, ${accent}, ${accent}88)`,
+              background: `linear-gradient(90deg, ${accent}, ${alpha(accent, 53)})`,
             }}
           />
         )}
@@ -64,11 +64,11 @@ export const Card: React.FC<{
               width: 44,
               height: 44,
               borderRadius: RADIUS.chip,
-              background: `${accent}1a`,
+              background: `${alpha(accent, 10)}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: `0 2px 8px ${accent}33`,
+              boxShadow: `0 2px 8px ${alpha(accent, 20)}`,
             }}
           >
             <Icon name={icon} size={26} color={accent} />

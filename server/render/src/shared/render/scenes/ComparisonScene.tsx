@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
 import {
+  alpha,
   C,
   FONT,
   FS,
@@ -112,7 +113,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             left: 0,
             right: 0,
             height: 10,
-            background: `linear-gradient(90deg, ${accent}, ${accent}88 60%, ${accent}33)`,
+            background: `linear-gradient(90deg, ${accent}, ${alpha(accent, 53)} 60%, ${alpha(accent, 20)})`,
           }}
         />
         <div
@@ -151,11 +152,11 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 width: 56,
                 height: 56,
                 borderRadius: 16,
-                background: `${accent}1a`,
+                background: `${alpha(accent, 10)}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `0 2px 10px ${accent}33`,
+                boxShadow: `0 2px 10px ${alpha(accent, 20)}`,
                 flexShrink: 0,
               }}
             >
@@ -180,7 +181,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               width: 56,
               height: 56,
               borderRadius: "50%",
-              background: `linear-gradient(135deg, ${badgeColor}, ${badgeColor}cc)`,
+              background: `linear-gradient(135deg, ${badgeColor}, ${alpha(badgeColor, 80)})`,
               color: "#fff",
               display: "flex",
               alignItems: "center",
@@ -188,7 +189,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               fontSize: FS.label,
               fontWeight: FW.heavy,
               fontFamily: FONT,
-              boxShadow: `0 6px 18px ${badgeColor}66`,
+              boxShadow: `0 6px 18px ${alpha(badgeColor, 40)}`,
               transform: `scale(${interpolate(enterBadge(badgeDelay), [0, 1], [0.4, 1])})`,
               opacity: enterBadge(badgeDelay),
               flexShrink: 0,
@@ -202,7 +203,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           style={{
             margin: `0 ${CARD_PAD_X}px 20px ${CARD_PAD_X}px`,
             height: 1,
-            background: `linear-gradient(90deg, ${accent}55 0%, ${accent}11 50%, transparent 100%)`,
+            background: `linear-gradient(90deg, ${alpha(accent, 33)} 0%, ${alpha(accent, 7)} 50%, transparent 100%)`,
           }}
         />
 
@@ -214,7 +215,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   width: ICON_BOX,
                   height: ICON_BOX,
                   borderRadius: 12,
-                  background: `${accent}14`,
+                  background: `${alpha(accent, 8)}`,
                   color: accent,
                   display: "flex",
                   alignItems: "center",

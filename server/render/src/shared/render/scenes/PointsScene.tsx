@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
+  alpha,
   C,
   FONT,
   CONTENT_WIDTH,
@@ -158,10 +159,11 @@ const PointCard: React.FC<CardProps> = ({
           display: "flex",
           alignItems: "center",
           padding: isPortrait ? pad.replace(/(\d+)px/g, (m, n) => `${sp(Number(n))}px`) : pad,
-          background: pulse > 0.02 ? `linear-gradient(0deg, ${a}14, ${a}14), ${GLASS.card}` : GLASS.card,
+          background:
+            pulse > 0.02 ? `linear-gradient(0deg, ${alpha(a, 8)}, ${alpha(a, 8)}), ${GLASS.card}` : GLASS.card,
           border: `${BORDER.card}px solid ${a}`,
           borderRadius: RADIUS.card,
-          boxShadow: pulse > 0.02 ? `0 8px 18px ${a}30, ${CARD_SHADOW}` : CARD_SHADOW,
+          boxShadow: pulse > 0.02 ? `0 8px 18px ${alpha(a, 19)}, ${CARD_SHADOW}` : CARD_SHADOW,
           maxWidth: "100%",
           boxSizing: "border-box",
         }}
@@ -173,7 +175,7 @@ const PointCard: React.FC<CardProps> = ({
             top: 0,
             bottom: 0,
             width: (isLead ? 10 : 6) + pulse * 4,
-            background: `linear-gradient(180deg, ${a}, ${a}66)`,
+            background: `linear-gradient(180deg, ${a}, ${alpha(a, 40)})`,
             opacity: 0.75 + pulse * 0.25,
           }}
         />
@@ -195,7 +197,7 @@ const PointCard: React.FC<CardProps> = ({
             width: isPortrait ? sp(btn) : btn,
             height: isPortrait ? sp(btn) : btn,
             borderRadius: "50%",
-            background: `${a}1a`,
+            background: `${alpha(a, 10)}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

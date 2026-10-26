@@ -107,6 +107,9 @@ export interface ThemeTokens {
   bg: BgVariantMap;
 }
 
+/** 主色 / 装饰色的半透明档位。引用 var(--ttt-accent)，页面级主色一改就整体跟随 */
+const tint = (pct: number) => `color-mix(in srgb, var(--ttt-accent) ${pct}%, transparent)`;
+
 const baseOrb = "520px";
 
 export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
@@ -134,9 +137,9 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     heading: { style: "pill", align: "center", size: 48, letterSpacing: 0 },
     decor: {
       ring: "rgba(255,255,255,0.55)",
-      ringAccent: "rgba(59,111,245,0.10)",
+      ringAccent: tint(10),
       grid: "rgba(28,37,54,0.035)",
-      glow: "rgba(59,111,245,0.18)",
+      glow: tint(18),
     },
     bg: {
       title: { grad: "linear-gradient(150deg,#eef3ff 0%,#dbe7ff 55%,#cdddff 100%)", orb: baseOrb, orbColor: "#bcd2ff" },
@@ -168,7 +171,7 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     gradEnd: "#2b7a78",
     card: {
       bg: "rgba(255,255,255,0.96)",
-      border: "rgba(31,79,168,0.14)",
+      border: tint(14),
       shadow: "0 1px 2px rgba(16,26,48,0.06), 0 6px 18px rgba(16,26,48,0.08), 0 18px 40px -12px rgba(16,26,48,0.14)",
       radius: 10,
       radiusBox: 8,
@@ -180,9 +183,9 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     heading: { style: "bar", align: "left", size: 44, letterSpacing: 0.5 },
     decor: {
       ring: "rgba(255,255,255,0.5)",
-      ringAccent: "rgba(31,79,168,0.09)",
+      ringAccent: tint(9),
       grid: "rgba(16,26,48,0.05)",
-      glow: "rgba(31,79,168,0.14)",
+      glow: tint(14),
     },
     bg: {
       title: { grad: "linear-gradient(150deg,#eef2f8 0%,#dbe4f0 55%,#c9d6e8 100%)", orb: baseOrb, orbColor: "#b8c8e0" },
@@ -215,7 +218,7 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     gradEnd: "#59c9a5",
     card: {
       bg: "rgba(255,255,255,0.9)",
-      border: "rgba(34,160,107,0.16)",
+      border: tint(16),
       shadow:
         "0 2px 6px rgba(22,110,80,0.06), 0 10px 26px rgba(22,110,80,0.10), 0 28px 56px -16px rgba(22,110,80,0.14)",
       radius: 34,
@@ -228,9 +231,9 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     heading: { style: "pill", align: "center", size: 48, letterSpacing: 1 },
     decor: {
       ring: "rgba(255,255,255,0.6)",
-      ringAccent: "rgba(34,160,107,0.10)",
+      ringAccent: tint(10),
       grid: "rgba(22,110,80,0.035)",
-      glow: "rgba(34,160,107,0.16)",
+      glow: tint(16),
     },
     bg: {
       title: { grad: "linear-gradient(150deg,#eefaf3 0%,#d9f2e4 55%,#c8ecda 100%)", orb: baseOrb, orbColor: "#b8e6cd" },
@@ -263,7 +266,7 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     gradEnd: "#d99a2b",
     card: {
       bg: "rgba(255,252,247,0.95)",
-      border: "rgba(194,87,27,0.16)",
+      border: tint(16),
       shadow: "0 1px 2px rgba(90,50,20,0.06), 0 8px 20px rgba(90,50,20,0.10), 0 22px 44px -12px rgba(90,50,20,0.16)",
       radius: 6,
       radiusBox: 5,
@@ -275,9 +278,9 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     heading: { style: "plain", align: "left", size: 46, letterSpacing: 0 },
     decor: {
       ring: "rgba(255,255,255,0.5)",
-      ringAccent: "rgba(194,87,27,0.10)",
+      ringAccent: tint(10),
       grid: "rgba(90,50,20,0.04)",
-      glow: "rgba(194,87,27,0.16)",
+      glow: tint(16),
     },
     bg: {
       title: { grad: "linear-gradient(150deg,#fff6ee 0%,#ffe9d8 55%,#ffddc6 100%)", orb: baseOrb, orbColor: "#ffd0b0" },
@@ -321,9 +324,9 @@ export const THEME_TOKENS: Record<ThemeId, ThemeTokens> = {
     heading: { style: "pill", align: "center", size: 48, letterSpacing: 0 },
     decor: {
       ring: "rgba(255,255,255,0.12)",
-      ringAccent: "rgba(111,155,255,0.14)",
+      ringAccent: tint(14),
       grid: "rgba(255,255,255,0.05)",
-      glow: "rgba(111,155,255,0.24)",
+      glow: tint(24),
     },
     bg: {
       title: { grad: "linear-gradient(150deg,#1a2233 0%,#232f47 55%,#2c3a58 100%)", orb: baseOrb, orbColor: "#3a4f7a" },
@@ -370,8 +373,14 @@ export const useTheme = (): ThemeTokens => useContext(ThemeContext);
  * token -> CSS 变量
  * ------------------------------------------------------------------ */
 
+/**
+ * 颜色 + 不透明度。
+ *
+ * 颜色变量化之后，`${color}cc` 这种拼 hex 后缀的写法会得到 `var(--ttt-a1)cc` 这种非法值
+ * （浏览器直接丢弃整条声明，表现为色块/描边莫名消失），必须走 color-mix。
+ */
+export const alpha = (color: string, pct: number) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 /** 主色的半透明档位。用 color-mix 引用 var(--ttt-accent)，页面级主色一改，所有档位自动跟着变 */
-const tint = (pct: number) => `color-mix(in srgb, var(--ttt-accent) ${pct}%, transparent)`;
 
 /**
  * 页面级主色：把调色板旋转 k 位。

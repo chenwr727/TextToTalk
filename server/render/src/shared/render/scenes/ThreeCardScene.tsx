@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FW, RADIUS, CARD_TYPE, pickCardFont, accentOf, springIn } from "../theme";
+import { alpha, C, FONT, FW, RADIUS, CARD_TYPE, pickCardFont, accentOf, springIn } from "../theme";
 import { Card } from "../Card";
 import { Icon } from "../Icon";
 import { ICON_KEYS } from "../Icon";
@@ -93,12 +93,12 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
                       width: ICON_BOX,
                       height: ICON_BOX,
                       borderRadius: RADIUS.chip,
-                      background: `${a}1a`,
+                      background: `${alpha(a, 10)}`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
-                      boxShadow: `0 2px 8px ${a}33`,
+                      boxShadow: `0 2px 8px ${alpha(a, 20)}`,
                     }}
                   >
                     <Icon
@@ -128,7 +128,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
                           bottom: 4,
                           width: 5,
                           borderRadius: RADIUS.pill,
-                          background: `linear-gradient(180deg, ${a}, ${a}55)`,
+                          background: `linear-gradient(180deg, ${a}, ${alpha(a, 33)})`,
                         }}
                       />
                     )}

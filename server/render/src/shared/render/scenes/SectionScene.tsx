@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { evolvePath } from "@remotion/paths";
-import { C, FONT, FS, FW, LH, TEXT_SHADOW, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, LH, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
@@ -85,7 +85,7 @@ const CirclePath: React.FC<{ progress: number; color: string }> = ({ progress, c
       cx={960}
       cy={540}
       r={150}
-      fill={`${color}0d`}
+      fill={`${alpha(color, 5)}`}
       stroke={color}
       strokeWidth={2}
       opacity={0.4}

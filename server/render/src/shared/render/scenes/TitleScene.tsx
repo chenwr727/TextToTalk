@@ -1,6 +1,20 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { evolvePath } from "@remotion/paths";
-import { C, FONT, FS, FW, LH, RADIUS, BORDER, PILL_SHADOW, TEXT_SHADOW, GLASS, springIn, accentOf } from "../theme";
+import {
+  alpha,
+  C,
+  FONT,
+  FS,
+  FW,
+  LH,
+  RADIUS,
+  BORDER,
+  PILL_SHADOW,
+  TEXT_SHADOW,
+  GLASS,
+  springIn,
+  accentOf,
+} from "../theme";
 import { Icon } from "../Icon";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
@@ -161,7 +175,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   alignItems: "center",
                   padding: `${sp(14)}px ${sp(34)}px`,
                   background: GLASS.pill,
-                  border: `${BORDER.card}px solid ${ac}55`,
+                  border: `${BORDER.card}px solid ${alpha(ac, 33)}`,
                   borderRadius: RADIUS.pill,
                   boxShadow: PILL_SHADOW,
                   opacity: itemO,
@@ -174,7 +188,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     width: sp(30),
                     height: sp(30),
                     borderRadius: "50%",
-                    background: `${ac}1a`,
+                    background: `${alpha(ac, 10)}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",

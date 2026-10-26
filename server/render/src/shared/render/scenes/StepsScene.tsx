@@ -1,5 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
+  alpha,
   C,
   FONT,
   FS,
@@ -108,7 +109,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     width: isPortrait ? sp(64) : 64,
                     height: isPortrait ? sp(64) : 64,
                     borderRadius: 16,
-                    background: `${a}1a`,
+                    background: `${alpha(a, 10)}`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
