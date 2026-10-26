@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -29,6 +30,60 @@ const page = (o) => ({
   ...o,
 });
 
+/**
+ * 生成式版式（layout="code"）的验证页。
+ *
+ * 真实链路里这段源码由 AI 写、服务端 checkPageCode 校验并转译；这里用同样的转译口径
+ * 内置一份手写源码，验证"校验 -> 转译 -> new Function 执行 -> Kit 渲染"整条路是通的。
+ */
+const CODE_TSX = `
+const Page = ({ page }) => {
+  const f = remotion.useCurrentFrame();
+  const grow = remotion.interpolate(f, [0, 26], [0.82, 1], { extrapolateRight: "clamp" });
+  const fade = remotion.interpolate(f, [0, 20], [0, 1], { extrapolateRight: "clamp" });
+  const rings = [
+    { r: 300, i: 0, label: "结构防护：隔热层 + 泄压阀" },
+    { r: 210, i: 1, label: "电芯管理：一致性 + 温感" },
+    { r: 120, i: 2, label: "BMS 预警：提前 60 秒" },
+  ];
+  return (
+    <div style={{ position: "absolute", inset: 0 }}>
+      <div style={{ position: "absolute", left: 160, top: 130 }}>
+        <Kit.Heading text={page.title} />
+      </div>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 260, display: "flex", justifyContent: "center", opacity: fade, transform: "scale(" + grow + ")" }}>
+        <div style={{ position: "relative", width: 720, height: 660 }}>
+          {rings.map((ring) => (
+            <div key={ring.label} style={{ position: "absolute", left: "50%", top: "50%", width: ring.r * 2, height: ring.r * 2, marginLeft: -ring.r, marginTop: -ring.r, borderRadius: "50%", border: "3px solid " + Kit.accent(ring.i), background: Kit.alpha(Kit.accent(ring.i), 8) }} />
+          ))}
+          <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", textAlign: "center" }}>
+            <Kit.Text size={Kit.FS.heading} weight={800} display color={Kit.C.accent}>热失控</Kit.Text>
+            <Kit.Text size={Kit.FS.label} color={Kit.C.sub}>四层防线</Kit.Text>
+          </div>
+        </div>
+      </div>
+      <Kit.Col gap={18} style={{ position: "absolute", right: 140, top: 380, width: 560, opacity: fade }}>
+        {rings.map((ring, k) => (
+          <Kit.Row key={ring.label} gap={16}>
+            <div style={{ width: 14, height: 14, borderRadius: 999, background: Kit.accent(ring.i) }} />
+            <Kit.Text size={Kit.FS.label} color={Kit.C.ink} weight={600}>{ring.label}</Kit.Text>
+          </Kit.Row>
+        ))}
+      </Kit.Col>
+    </div>
+  );
+};
+export default Page;
+`;
+
+const codePageJs = ts.transpileModule(CODE_TSX, {
+  compilerOptions: {
+    jsx: ts.JsxEmit.React,
+    target: ts.ScriptTarget.ES2020,
+    module: ts.ModuleKind.CommonJS,
+    esModuleInterop: true,
+  },
+}).outputText;
 const pages = [
   page({
     pageIndex: 0,
@@ -122,6 +177,16 @@ const pages = [
   }),
   page({
     pageIndex: 6,
+    title: "四层防线：从结构到预警",
+    layout: "code",
+    code: codePageJs,
+    points: [{ text: "结构防护" }, { text: "电芯管理" }, { text: "BMS 预警" }],
+    captions: ["四层防线，一层比一层靠前。"],
+    transition: "fade",
+    durationSec: 4,
+  }),
+  page({
+    pageIndex: 7,
     title: "记住这一条链",
     layout: "end",
     points: [{ text: "先控温，再断路，最后隔离" }],
@@ -159,13 +224,15 @@ const shots = [
   { name: "05-points-settled", frame: starts[1] + 70 },
   { name: "06-transition-zoom-mid", frame: starts[2] + 8 },
   { name: "07-stats-settled", frame: starts[2] + 70 },
-  { name: "08-transition-none-cut", frame: starts[6] + 1 },
-  { name: "09-end-settled", frame: starts[6] + 40 },
+  { name: "08-transition-none-cut", frame: starts[7] + 1 },
+  { name: "09-end-settled", frame: starts[7] + 40 },
   { name: "10-chart-bar-settled", frame: starts[3] + 70 },
   { name: "11-section-settled", frame: starts[4] + 60 },
   { name: "12-comparison-settled", frame: starts[5] + 80 },
   { name: "13-caption-karaoke-mid", frame: starts[1] + 22 },
   { name: "14-caption-karaoke-late", frame: starts[1] + 46 },
+  { name: "15-code-page-mid", frame: starts[6] + 12 },
+  { name: "16-code-page-settled", frame: starts[6] + 90 },
 ];
 
 const run = (configPath) =>

@@ -89,6 +89,40 @@ const MAP_DESC = `map：本页是否用「地图」来可视化（可选，默�
 {"map":{"markers":[{"name":"北京","x":500,"y":300},{"name":"上海","x":900,"y":500},{"name":"广州","x":700,"y":800}],"routes":[{"from":0,"to":1},{"from":1,"to":2},{"from":0,"to":2,"dashed":true}]}}
 **要点**：markers 2~8 个、routes 0~8 条、regions 0~4 个；城市/地点名要短（≤6 字）；坐标要分散开（不要都挤在一起），让地图有空间感；用 2~4 种主题色（蓝 #3B6FF5、紫 #7C3AED、青 #06B6D4、橙 #F59E0B、绿 #10B981、红 #EF4444）区分不同路线/区域；地图会被渲染端自动缩放到安全区域（避开顶部标题和底部字幕），但**请主动把主要内容放在画面中间（y:260~700，x:200~1720），不要把城市点放在 y<220 的顶部或 y>780 的底部，避免与标题、字幕、要点条重叠**；若本页不适合画地图则 "map":null。map 与 art/chart/table/customSvg 通常互斥：用了 map 就不再给这些。`;
 
+/**
+ * 生成式版式（layout="code"）的能力说明书。
+ *
+ * 这段文字直接决定 AI 写出来的代码能不能跑：白名单、确定性约束、可用组件与示例必须写死在这里。
+ * 注意所有反引号与 ${} 都要转义——它是模板字符串内部的字面文本。
+ */
+const CODE_PAGE_DESC = `code：本页版式为「生成式版式」，由你直接写一页 React 组件来画（放在 JSON 的 "code" 字段，是**字符串**，换行写成 \\n）。规则（违反任意一条，服务端会拒绝并整页降级成 points）：
+1. 必须 \`export default\` 一个函数组件，props 是 \`{ page }\`（可用 \`page.title\` / \`page.points\` / \`page.captions\`）。
+2. 你只拿得到三个参数：\`React\`、\`remotion\`、\`Kit\`。**严禁 import / require / eval / Function / fetch / window / document / setTimeout / setInterval / Math.random / Date**。
+3. 动画必须由 \`remotion.useCurrentFrame()\` + \`remotion.interpolate()\` 或 \`remotion.spring()\` 驱动，保证同一帧永远得到同一画面。
+4. 画布 1920×1080，用绝对定位排布；内容避开顶部标题区（y<150）与底部字幕区（y>880），主内容放在 y:260~760。
+5. **颜色和字号一律用 Kit 令牌，不要写死十六进制**：\`Kit.C.ink\` / \`Kit.C.sub\` / \`Kit.C.accent\` / \`Kit.C.muted\`、\`Kit.accent(i)\`（i=0~5 调色板）、\`Kit.FS.hero|title|heading|body|label\`、\`Kit.alpha(色值, 百分比)\`。这样浅色与深色主题都能正常显示。
+6. 可直接用：\`<Kit.Heading text={...}/>\`（页面标题，与其它版式同一套样式）、\`<Kit.Card accentIndex={i}>...</Kit.Card>\`、\`<Kit.Stat value="80℃" label="起始温度" accentIndex={0}/>\`、\`<Kit.Pill text="..." icon="trend"/>\`、\`<Kit.Text size={Kit.FS.body} color={Kit.C.sub}>...</Kit.Text>\`、\`<Kit.Row gap={40}>...</Kit.Row>\`、\`<Kit.Col gap={24}>...</Kit.Col>\`、\`<Kit.Icon name="trend" size={48}/>\`。
+7. 不要把 captions 画进画面（字幕由渲染端统一叠加）；元素总数 ≤ 20 个，宁可少而清楚。
+示例结构（内容换成你的）：
+export default ({ page }) => {
+  const f = remotion.useCurrentFrame();
+  const rise = remotion.interpolate(f, [0, 24], [40, 0], { extrapolateRight: "clamp" });
+  const o = remotion.interpolate(f, [0, 18], [0, 1], { extrapolateRight: "clamp" });
+  return (
+    <div style={{ position: "absolute", inset: 0 }}>
+      <div style={{ position: "absolute", left: 160, top: 150 }}>
+        <Kit.Heading text={page.title} />
+      </div>
+      <Kit.Row gap={56} style={{ position: "absolute", left: 160, right: 160, top: 380, opacity: o, transform: \`translateY(\${rise}px)\` }}>
+        {(page.points || []).slice(0, 4).map((p, i) => (
+          <Kit.Card key={i} accentIndex={i} style={{ flex: 1 }}>
+            <Kit.Text size={Kit.FS.heading} weight={700}>{p.text}</Kit.Text>
+          </Kit.Card>
+        ))}
+      </Kit.Row>
+    </div>
+  );
+};`;
 const BEST_PRACTICE_DESC = `内容要"为视频而写"，遵循以下最佳实践：
 - 标题/要点要短而有力：标题 ≤12 字、要点 8~14 字，方便大字展示与快速阅读；避免长句、从句、堆砌修饰。
 - 第一页（封面）要抓人：用一句有冲击力/悬念的开场（hook），点出主题并勾起兴趣，不要平铺直叙。
@@ -140,7 +174,7 @@ ${contract ? `沟通契约：\n${contract}\n` : ""}${duration ? `时长约束：
 ## 字段取值规则
 - 【主动可视化】只要一页存在"对比/占比/趋势/流程/循环/层级/分类/清单/金句"等适合可视化的关系，就主动用对应的 chart/art/stats/table/three_card/two_column 来表达，**不要退化成纯文字 points**；仅当这页确实只是并列要点、无任何结构性关系时才用 points。可在一段里交错使用多种结构，让成片丰富。
 - 【忠实执行用户点名的图】用户文案若已点名要某种图（"用柱状图对比…""用折线图展示…""画个流程图…"），该页必须如实落地成对应可视化，**严禁降级为 points**，也不得擅自换图。映射：柱状对比→chart(bar)；折线/趋势→chart(line)；占比/拆解→chart(pie)；流程/步骤/因果链→art=flow 或 steps；循环/闭环→art=loop；金字塔/漏斗→chart(pyramid)；结构图/架构→customSvg（并在 visual 说明）；两方对比→comparison。
-- layout：每页版式，只能取这 13 个值之一："title"|"section"|"points"|"three_card"|"comparison"|"chart"|"table"|"end"|"two_column"|"steps"|"stats"|"qa"|"map"。按本页内容关系选：封面="title"；章节过渡="section"；并列要点="points"/"three_card"；两方对比="comparison"；有对比/占比数值="chart"；行列矩阵="table"；概念+案例="two_column"；操作步骤/流程="steps"；数据成果="stats"；问答="qa"；地理空间="map"；总结收尾="end"。第1页默认 "title"、结尾默认 "end"、其余默认 "points"；table=true 时 layout="table"。
+- layout：每页版式，只能取这 14 个值之一："title"|"section"|"points"|"three_card"|"comparison"|"chart"|"table"|"end"|"two_column"|"steps"|"stats"|"qa"|"map"|"code"。"code" 是**生成式版式**：由展开阶段直接写一页 React 组件来画，仅当本页的结构关系（如自定义立体结构、非标准的时间+空间混合关系、需要精确排布的示意装置）无法用上面 13 种版式 + 5 种 art + 8 种图表表达时才用，**全片最多 2 页**，且不得用于封面/结尾页（封面用 title、结尾用 end）。能用现有版式表达就必须用现有版式——code 页更贵也更慢。按本页内容关系选：封面="title"；章节过渡="section"；并列要点="points"/"three_card"；两方对比="comparison"；有对比/占比数值="chart"；行列矩阵="table"；概念+案例="two_column"；操作步骤/流程="steps"；数据成果="stats"；问答="qa"；地理空间="map"；总结收尾="end"。第1页默认 "title"、结尾默认 "end"、其余默认 "points"；table=true 时 layout="table"。
 - 【相邻版式不重复】相邻两页**严禁**连续用同一种强版式（尤其 "chart"/"comparison"/"stats"/"table"/"three_card"），否则视觉单调。若相邻两页撞了，说明你把同质关系重复拆了——按「核心原则」合并，或给后一页换一种版式载体 + 换一个信息角度。示例：文案"油费 1.28 万 vs 电费 1500 元，保养 2000 vs 0，8 年总账 12 万 vs 2 万"——❌ 错误是"油费 comparison + 保养 comparison + 总账 chart"三页同类；✅ 正确的是"油费+保养合成一页 comparison → 总账一页 stats 数据大屏（换载体）"，或"油费 chart → 保养 points 配要点 → 总账 stats"。
 - art：本页是否用「关系图」，只能取这 5 个值之一或 null："flow"(先后流程)|"loop"(循环反馈)|"timeline"(分期时间线)|"quadrant"(2x2 象限归类)|"quote"(金句页)。**金字塔/漏斗用 chart(type="pyramid")，不再用 art**。相邻两页也不要连续用同一种 art。
 - 【layout 与 art 互斥】一页只用一个"结构载体"：layout 已承担结构（steps/two_column/comparison/three_card/chart/table/map/stats/qa）时 art 置 null；用 art 表达结构时 layout 用 "points"（或 title/end）。二选一，绝不叠加。示例：要画流程时，❌ 不要"layout=steps 且 art=flow"两个都填，✅ 二选一——要么 layout="steps"（art=null），要么 layout="points" + art="flow"。
@@ -229,7 +263,12 @@ function pageOutputTemplate(block: PlanBlock | undefined): string {
   "table":${layout === "table" ? `{"headers":["","方案A","方案B"],"rows":[["属性1","…","…"]]}` : "null"},
   "customSvg":${layout === "points" && !block?.art ? `[{"type":"circle","cx":960,"cy":400,"r":60,"fill":"#3B6FF5"},{"type":"text","x":960,"y":400,"text":"节点","fontSize":24,"fill":"#fff","textAnchor":"middle"}]` : "null"},
   "map":${layout === "map" ? `{"markers":[{"name":"北京","x":500,"y":300},{"name":"上海","x":900,"y":500}],"routes":[{"from":0,"to":1}]}` : "null"},
-  "effects":{"annotation":"none","pathDraw":false,"threeD":false}
+  "effects":{"annotation":"none","pathDraw":false,"threeD":false}${
+    layout === "code"
+      ? `,
+  "code":"在这里放一整个 React 组件源码（字符串，换行写成 \\n）"`
+      : ""
+  }
 }`;
 }
 
@@ -253,6 +292,7 @@ function pageRules(block: PlanBlock | undefined, params: VideoParams, retryHint?
   if (layout === "chart") parts.push(chartRule());
   if (layout === "points" && !art) parts.push(CUSTOM_SVG_DESC);
   if (layout === "map") parts.push(MAP_DESC);
+  if (layout === "code") parts.push(CODE_PAGE_DESC);
   parts.push(PAGE_STYLE_DESC);
   parts.push(EFFECTS_DESC);
 
@@ -296,6 +336,8 @@ function layoutHint(layout: string): string {
       return `本页版式为 "qa" 问答：给一个核心问题 + 简洁解答。`;
     case "map":
       return `本页版式为 "map"：以地图为主、points 给地图结论。`;
+    case "code":
+      return `本页版式为 "code"（生成式版式）：由你直接写一页 React 组件来画，points 仍要给 2~4 条（既作为内容提纲，也供组件遍历渲染）。`;
     default:
       return `本页版式为 "points" 并列要点：用 2~4 条要点讲清本页 idea。`;
   }

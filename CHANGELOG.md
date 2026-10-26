@@ -21,6 +21,14 @@
 - **片头 / 片尾 / 章节页的氛围光**：真实拍摄画面永远有光，纯 CSS 版面永远干净均匀——这是「像视频」与「像 PPT」的分水岭之一。光带 + 双色光晕完全由帧数驱动，无随机、无外部依赖。
 - **display 字体层**：新增 `server/scripts/fetch-fonts.mjs` 一次性下载思源黑体（Noto Sans SC 700）与 Sora 700 到 `server/render/public/fonts/`（约 2.4 MB，随仓库入库以保证离线渲染一致），渲染时用 `delayRender` 等字体就绪再出帧，字体缺失则静默回退系统字体栈。标题与大数字走 `--ttt-font-display`，`warm` 主题保持宋体以免被黑体劫持。
 - `web` 侧补齐 `delayRender` / `continueRender` / `staticFile` 桩：缩略图不等字体，也不会因为缺导出而报错。
+- **生成式版式 `layout: "code"`（受约束的 codegen）**：AI 可以直接写一页 React 组件来画，突破"13 种版式 + 5 种 art + 8 种图表"的表达上限。安全边界是硬性的——
+  - 服务端 `services/codePage.ts` 用 TypeScript AST 校验：禁 `import` / 动态 `import()` / `require` / `eval` / `Function`，禁 `window` / `document` / `fetch` / `localStorage`，禁 `setTimeout` / `requestAnimationFrame` / `Date.now` / `Math.random`（逐帧渲染要求同一帧永远同一画面）；超长（>12000 字符）直接拒；
+  - 校验通过后转译为纯 JS 存进 `page.code`，渲染端用 `new Function` 注入 `React` / `Kit` / `remotion` 三个参数执行，**生成代码拿不到模块系统、拿不到宿主环境**；
+  - 校验失败或运行期异常一律**降级成 points 版式**，并把原因写进重试提示，不会让整条流水线因一页 AI 代码而失败；
+  - 新增 `Kit` 能力层（`Heading` / `Card` / `Stat` / `Pill` / `Text` / `Row` / `Col` / `Icon` + 主题色与字号令牌）：生成页面必须用令牌而非写死十六进制，深浅主题都能正常显示。
+- 生成式版式的 15 项测试：9 项守门（越权 API、非确定性 API、语法错误、超长、同名字段误杀）+ 3 项归一化贯通（合法保留、缺字段降级、越权降级）+ 3 项 prompt 约束。
+- 大纲阶段把 `code` 纳入 layout 枚举并限流（全片最多 2 页、不得用于封面/结尾），避免模型把它当成万能版式滥用。
+- `stills.mjs` 增加生成式版式的静帧镜头，用真实"校验 → 转译 → new Function → Kit 渲染"链路验证。
 - `web` 新增 `typecheck` 脚本，根目录 `pnpm run typecheck` 可同时检查前后端。
 
 ### 变更

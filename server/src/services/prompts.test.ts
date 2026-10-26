@@ -70,8 +70,11 @@ describe("planPrompt（Pass 1 大纲）", () => {
   test("枚举约束与校验口径写在 prompt 里", () => {
     const p = planPrompt(params());
     assert.ok(p.includes("chart(pyramid)"));
-    assert.ok(p.includes("只能取这 13 个值之一"));
+    assert.ok(p.includes("只能取这 14 个值之一"));
     assert.ok(p.includes("只能取这 5 个值之一或 null"));
+    // 生成式版式必须在大纲阶段就被约束住，否则模型会滥用 code 页
+    assert.ok(p.includes('"code"'));
+    assert.ok(p.includes("全片最多 2 页"));
   });
 
   test("无参数调用不抛错", () => {
