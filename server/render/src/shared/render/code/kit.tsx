@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { alpha, accentOf, C, CARD_SHADOW, FS, FONT, FONT_DISPLAY, FW, RADIUS, useTheme } from "../theme";
 import { HeadingContent } from "../PageHeading";
-import { IconView } from "../Icon";
+import { Icon as InlineIcon, IconView } from "../Icon";
 
 /**
  * 生成式版式的能力白名单。
@@ -113,7 +113,7 @@ const Pill: React.FC<{ text: string; icon?: string | null; accentIndex?: number;
         ...style,
       }}
     >
-      {icon ? <IconView icon={icon} size={34} /> : null}
+      {icon ? <InlineIcon name={icon} size={34} /> : null}
       <Text size={FS.label} color={C.ink} weight={FW.bold}>
         {text}
       </Text>
@@ -154,7 +154,14 @@ export const Kit = {
   Pill,
   Row,
   Col,
-  Icon: IconView,
+  /**
+   * 内联图标（跟着父容器 flow 走）。
+   * 注意别把 IconView 当内联图标用——那是页面右上角的绝对定位装饰，
+   * 塞进卡片/胶囊里会直接飘到页面另一处（端到端跑真实生成时踩过这个坑）。
+   */
+  Icon: InlineIcon,
+  /** 页面右上角的装饰性大图标（绝对定位，自带淡入） */
+  CornerIcon: IconView,
 };
 
 export type PageKit = typeof Kit;
