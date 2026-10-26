@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
 import { interpolate, useCurrentFrame } from "remotion";
-import { C, FONT, FW, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD, useTheme } from "./theme";
+import { C, FONT, FONT_DISPLAY, FW, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD, alpha, useTheme } from "./theme";
 import { useResponsive } from "./responsive";
+import { useAnnotation, type PageAnnotation } from "./annotation";
+import { Circle, Highlight, Underline } from "@remotion/rough-notation";
 
 /**
  * 标题内容本身（胶囊 / 左侧竖线 / 纯文字 + 装饰线），不带定位。
@@ -13,6 +15,8 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
   const f = useCurrentFrame();
   const { isPortrait, fs, sp } = useResponsive();
   const t = useTheme();
+  const raw = useAnnotation();
+  const annotate = raw && raw !== "none" ? raw : null;
   const o = interpolate(f, [0, 18], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   if (!text) return null;
@@ -27,7 +31,7 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
     fontWeight: FW.heavy,
     lineHeight: 1.2,
     color: isPill ? C.accent : C.ink,
-    fontFamily: FONT,
+    fontFamily: FONT_DISPLAY,
     letterSpacing: `${t.heading.letterSpacing}px`,
   };
 
@@ -80,7 +84,7 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
       />
     );
 
-  return (
+  const body = (
     <div
       style={{
         display: "flex",
@@ -122,6 +126,53 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
       )}
       {rule}
     </div>
+  );
+
+  return annotate ? <Annotated kind={annotate}>{body}</Annotated> : body;
+};
+
+/**
+ * 手绘标注层。
+ *
+ * progress 由帧驱动（12 帧内画完），没动画的路径留给 rough-notation 自己的抖动种子，
+ * seed 固定为标题长度 —— 保证同一页每次渲染的笔迹完全一致。
+ */
+const Annotated: React.FC<{ kind: Exclude<PageAnnotation, "none">; children: React.ReactNode }> = ({
+  kind,
+  children,
+}) => {
+  const f = useCurrentFrame();
+  const progress = interpolate(f, [8, 26], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const seed = 7;
+  if (kind === "circle") {
+    return (
+      <Circle
+        progress={progress}
+        color={C.accent}
+        strokeWidth={4}
+        padding={{ top: 18, right: 30, bottom: 18, left: 30 }}
+        seed={seed}
+      >
+        {children}
+      </Circle>
+    );
+  }
+  if (kind === "underline") {
+    return (
+      <Underline progress={progress} color={C.accent} strokeWidth={4} padding={{ top: 6 }} seed={seed}>
+        {children}
+      </Underline>
+    );
+  }
+  return (
+    <Highlight
+      progress={progress}
+      color={alpha(C.accent, 26)}
+      padding={{ top: 6, right: 10, bottom: 6, left: 10 }}
+      seed={seed}
+    >
+      {children}
+    </Highlight>
   );
 };
 

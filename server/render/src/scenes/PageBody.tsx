@@ -3,6 +3,7 @@ import { IconView } from "../shared/render/Icon";
 import { CaptionSentence, AudioSentence } from "../components/Caption";
 import { SceneTimingContext, type SceneTiming, type CaptionTiming } from "../shared/render/captionTiming";
 import { accentVars } from "../shared/render/theme";
+import { AnnotationContext } from "../shared/render/annotation";
 import type { PageBodyProps } from "../shared/render/scenes/types";
 
 /**
@@ -87,7 +88,9 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", ...flip }}>
           <div style={{ position: "absolute", inset: 0, transform: `scale(${rhythmScale})` }}>
             <SceneTimingContext.Provider value={timing}>
-              <Scene page={page} fps={fps} subtitles={subtitles} isFirst={isFirst} />
+              <AnnotationContext.Provider value={page.effects?.annotation}>
+                <Scene page={page} fps={fps} subtitles={subtitles} isFirst={isFirst} />
+              </AnnotationContext.Provider>
             </SceneTimingContext.Provider>
           </div>
         </div>

@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@remotion/renderer": "4.0.514",
+    "@remotion/rough-notation": "4.0.514",
     "remotion": "4.0.514"
   },
   "devDependencies": {

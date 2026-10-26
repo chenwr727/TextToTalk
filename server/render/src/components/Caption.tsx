@@ -2,11 +2,14 @@ import { Audio, Sequence, interpolate, useCurrentFrame } from "remotion";
 import type { TtsSentence } from "../shared/render/props";
 import { C, FONT, FW } from "../shared/render/theme";
 import { useResponsive, CAPTION_METRICS } from "../shared/render/responsive";
+import { tokenizeCaption } from "../shared/render/tokenize";
 
 const Aud = Audio as any;
 
 const HIGHLIGHT = "#ffd54a";
+const DIM = "rgba(255,255,255,0.42)";
 
+/** 旧的整句数字高亮（karaoke 关闭时仍用） */
 const renderHighlight = (text: string) => {
   const re = /[-+]?\d+(?:\.\d+)?\s*[%％倍xX]?|(?:[一二三四五六七八九十百千万]+倍)/g;
   const parts: React.ReactNode[] = [];
@@ -26,7 +29,18 @@ const renderHighlight = (text: string) => {
   return parts;
 };
 
-export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({ text, durFrames }) => {
+/**
+ * 字幕。
+ *
+ * karaoke：按句子时长把 token 依次"点亮"，没读到的字是半透明灰，读到的变白，
+ * 其中的数字/百分比变琥珀色加粗。口播视频的专业感基本来自这一层——
+ * 整句直接出现（原来的做法）看着就像内嵌的硬字幕文件，而逐词跟读像真人剪辑。
+ */
+export const CaptionSentence: React.FC<{ text: string; durFrames: number; karaoke?: boolean }> = ({
+  text,
+  durFrames,
+  karaoke = true,
+}) => {
   const f = useCurrentFrame();
   const { isPortrait, fs, sp } = useResponsive();
   const fade = Math.max(1, Math.min(8, Math.floor(durFrames / 4)));
@@ -39,6 +53,15 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({
       extrapolateRight: "clamp",
     },
   );
+
+  // 语速基本铺满整句：留 6% 起手、8% 收尾，中间线性推进
+  const tokens = tokenizeCaption(text);
+  const n = Math.max(1, tokens.length);
+  const p = interpolate(f, [Math.round(durFrames * 0.06), Math.round(durFrames * 0.92)], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   return (
     <div
       style={{
@@ -67,7 +90,29 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number }> = ({
             textShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.6)",
           }}
         >
-          {renderHighlight(text)}
+          {karaoke
+            ? tokens.map((tk, i) => {
+                const t0 = i / n;
+                const lit = interpolate(p, [t0, Math.min(1, t0 + 0.12)], [0, 1], {
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                });
+                const on = lit > 0.5;
+                return (
+                  <span
+                    key={i}
+                    style={{
+                      display: "inline",
+                      color: on ? (tk.num ? HIGHLIGHT : "#fff") : DIM,
+                      fontWeight: on && tk.num ? FW.heavy : FW.regular,
+                      transition: "none",
+                    }}
+                  >
+                    {tk.text}
+                  </span>
+                );
+              })
+            : renderHighlight(text)}
         </div>
       </div>
     </div>
