@@ -555,3 +555,71 @@ describe("页面视觉参数：accent / decor", () => {
     );
   });
 });
+
+describe("生成式版式（layout=code）的归一化", () => {
+  const SOURCE = `
+    const Page = ({ page }) => <div style={{ position: "absolute", inset: 0 }}>{page.title}</div>;
+    export default Page;
+  `;
+
+  test("合法源码：保留 code 并保持 code 版式", () => {
+    const page = normalizePage({ title: "结构页", captions: ["一句话"], layout: "code", code: SOURCE }, 1);
+    assert.equal(page.layout, "code");
+    assert.ok(page.code && page.code.includes("exports.default"), "应存转译后的 JS 而不是原始 TSX");
+  });
+
+  test("缺少 code 字段：降级回 points 并给出可重试的原因", () => {
+    const diagnostics: string[] = [];
+    const page = normalizePage(
+      { title: "结构页", captions: ["一句话"], layout: "code" },
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      diagnostics,
+    );
+    assert.equal(page.layout, "points");
+    assert.equal(page.code, undefined);
+    assert.ok(
+      diagnostics.some((d) => d.includes("缺少 code 字段")),
+      diagnostics.join("\n"),
+    );
+    assert.ok(
+      diagnostics.some((d) => d.includes("降级")),
+      diagnostics.join("\n"),
+    );
+  });
+
+  test("代码越界（import 模块系统）：拒绝并降级，不把问题代码带进渲染", () => {
+    const diagnostics: string[] = [];
+    const page = normalizePage(
+      {
+        title: "结构页",
+        captions: ["一句话"],
+        layout: "code",
+        code: 'import fs from "fs";\nexport default () => null;',
+      },
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      diagnostics,
+    );
+    assert.equal(page.layout, "points");
+    assert.equal(page.code, undefined);
+    assert.ok(
+      diagnostics.some((d) => d.includes("禁止 import")),
+      diagnostics.join("\n"),
+    );
+  });
+});

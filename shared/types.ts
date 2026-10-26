@@ -95,7 +95,8 @@ export type Layout =
   | "steps"
   | "stats"
   | "qa"
-  | "map";
+  | "map"
+  /** 受约束的生成式版式：AI 直接写一页 React 组件（只允许用白名单 Kit），由服务端校验后渲染 */ | "code";
 
 export type Art = "flow" | "loop" | "timeline" | "quadrant" | "quote";
 
@@ -243,6 +244,8 @@ export interface StoryPage {
   effects?: PageEffects;
   customSvg?: CustomSvgSpec;
   map?: MapSpec | null;
+  /** 生成式版式的整页源码（服务端已转译为纯 JS 并做过白名单校验） */
+  code?: string;
 }
 
 export interface Storyboard {

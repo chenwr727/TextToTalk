@@ -16,6 +16,7 @@ import { TwoColumnScene } from "./TwoColumnScene";
 import { StepsScene } from "./StepsScene";
 import { StatsScene } from "./StatsScene";
 import { QaScene } from "./QaScene";
+import { GeneratedPage } from "../code/GeneratedPage";
 
 interface SceneEntry {
   key: string;
@@ -26,6 +27,8 @@ interface SceneEntry {
 
 const REGISTRY: SceneEntry[] = [
   { key: "title", match: (_p, { isFirst }) => isFirst, render: TitleScene, bg: "title" },
+  // 生成式版式：AI 自己写的整页组件（服务端已校验），排在最前，优先级高于所有枚举版式
+  { key: "code", match: (p) => p.layout === "code" && !!p.code, render: GeneratedPage, bg: "default" },
   { key: "custom_svg", match: (p) => !!p.customSvg && !p.chart && !p.table, render: CustomSvgScene, bg: "art" },
   { key: "flow", match: (p) => p.art === "flow", render: FlowScene, bg: "art" },
   { key: "loop", match: (p) => p.art === "loop", render: LoopScene, bg: "art" },

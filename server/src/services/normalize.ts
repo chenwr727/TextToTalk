@@ -1,3 +1,4 @@
+import { checkPageCode } from "./codePage.js";
 import type {
   Storyboard,
   StoryPage,
@@ -126,6 +127,7 @@ const VALID_LAYOUTS = [
   "stats",
   "qa",
   "map",
+  "code",
 ];
 const VALID_ROLES: PageRole[] = [
   "hook",
@@ -191,7 +193,7 @@ export function validatePlan(p: Plan): string[] {
   pages.forEach((pg, i) => {
     if (pg.layout != null && !VALID_LAYOUTS.includes(pg.layout)) {
       problems.push(
-        `第${i + 1}页 layout="${pg.layout}" 非法：layout 只能取 title|section|points|three_card|comparison|chart|table|end|two_column|steps|stats|qa|map 这 13 个（"mechanism""scale" 等是 role 的取值，不是 layout）`,
+        `第${i + 1}页 layout="${pg.layout}" 非法：layout 只能取 title|section|points|three_card|comparison|chart|table|end|two_column|steps|stats|qa|map 这 14 个（"mechanism""scale" 等是 role 的取值，不是 layout）`,
       );
     }
     if (pg.role != null && !VALID_ROLES.includes(pg.role)) {
@@ -347,6 +349,7 @@ export function normalizeLayout(l: any): Layout {
     "stats",
     "qa",
     "map",
+    "code",
   ].includes(l)
     ? (l as Layout)
     : "points";
@@ -673,6 +676,8 @@ export function normalizePage(
   transition?: TransitionType,
   motion?: MotionStyle,
   effects?: PageEffects,
+  /** 归一化过程发现的问题（供重试提示使用，不进入产物） */
+  diagnostics?: string[],
 ): StoryPage {
   const chart = normalizeChart(p.chart);
   const table = normalizeTable(p.table);
@@ -682,7 +687,23 @@ export function normalizePage(
   const customSvg = rawSvg && layoutVal !== "title" && layoutVal !== "end" && !chart && !table ? rawSvg : null;
   const hasSvg = !!customSvg;
   const finalArt = hasSvg ? null : artVal;
-  const finalLayout = hasSvg && STRUCTURAL_LAYOUTS.has(layoutVal) ? "points" : layoutVal;
+
+  // 生成式版式：源码必须过 AST 白名单校验并转译成功，否则整页降级回 points
+  let code: string | undefined;
+  if (layoutVal === "code") {
+    const rawCode = typeof p.code === "string" ? p.code : "";
+    if (!rawCode) {
+      diagnostics?.push("本页版式为 code（生成式版式），但缺少 code 字段。");
+    } else {
+      const checked = checkPageCode(rawCode);
+      if (checked.ok && checked.js) code = checked.js;
+      else for (const problem of checked.problems) diagnostics?.push(`生成代码不合格：${problem}`);
+    }
+    if (!code) diagnostics?.push("已自动降级为 points 版式；请严格按 Kit 白名单重写 code，或改用常规版式。");
+  }
+
+  const finalLayout =
+    (hasSvg && STRUCTURAL_LAYOUTS.has(layoutVal)) || (layoutVal === "code" && !code) ? "points" : layoutVal;
   const rawCaptions = (Array.isArray(p.captions) ? p.captions : []).map((x: any) => String(x)).filter(Boolean);
   const rawNarration = String(p.narration ?? "").trim();
   const pointsArr = Array.isArray(p.points) ? p.points : [];
@@ -718,6 +739,7 @@ export function normalizePage(
     effects: normalizeEffects(effects ?? p.effects ?? {}),
     customSvg,
     map: normalizeMap(p.map),
+    code,
   };
 }
 

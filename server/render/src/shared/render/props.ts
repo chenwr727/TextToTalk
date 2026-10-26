@@ -27,7 +27,8 @@ export type Layout =
   | "steps"
   | "stats"
   | "qa"
-  | "map";
+  | "map"
+  | "code";
 
 export type Art = "flow" | "loop" | "timeline" | "quadrant" | "quote";
 
@@ -202,6 +203,8 @@ export interface StoryPage {
   effects?: PageEffects;
   customSvg?: CustomSvgSpec;
   map?: MapSpec | null;
+  /** 生成式版式的整页源码（服务端已转译为纯 JS 并做过白名单校验） */
+  code?: string;
   sentences?: TtsSentence[];
   sentenceGap?: number;
 }

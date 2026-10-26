@@ -173,6 +173,7 @@ async function generatePage(
         accent: (obj as { accent?: number }).accent ?? block.accent,
         decor: (obj as { decor?: "full" | "quiet" }).decor ?? block.decor,
       };
+      const codeDiagnostics: string[] = [];
       page = normalizePage(
         objForNorm,
         index,
@@ -184,6 +185,7 @@ async function generatePage(
         block.transition,
         block.motion,
         obj.effects,
+        codeDiagnostics,
       );
       const isFinalPage = index === (plan.pages?.length ?? 0) - 1;
       const dup = dedupeCheck(page.captions, pagePointTexts(page), priorPages, isFinalPage);
@@ -199,6 +201,7 @@ async function generatePage(
         hints.push(
           `本页版式为 table（表格页），但当前缺少 table 数据，页面将无法渲染表格。请补充一个合法 table（headers/rows），数据来自原文案。`,
         );
+      if (codeDiagnostics.length) hints.push(...codeDiagnostics);
       hints.push(...validatePageContent(page));
     }
     if (!hints.length) break;
@@ -326,6 +329,7 @@ async function regeneratePageRaw(
         `返回的内容不是合法的单页 JSON（缺少 captions 数组，或返回了多个对象）。请只返回【一个】合法 JSON 对象，且必须包含 "captions" 字符串数组、标题和要点。`,
       );
     } else {
+      const codeDiagnostics: string[] = [];
       let cur = normalizePage(
         { ...obj, chart: obj.chart ?? null, accent: obj.accent ?? keepAccent, decor: obj.decor ?? keepDecor },
         idx,
@@ -337,6 +341,7 @@ async function regeneratePageRaw(
         keepTransition,
         keepMotion,
         keepEffects,
+        codeDiagnostics,
       );
       if (cur && keepTable && !cur.table) cur = { ...cur, table: keepTable };
       page = cur;
@@ -345,6 +350,7 @@ async function regeneratePageRaw(
         hints.push(
           `第 ${idx + 1} 页的字幕/要点与其它页面存在重复：${dup}。删除或重写这些重叠内容，换全新角度只讲本页独有的信息点。`,
         );
+      if (codeDiagnostics.length) hints.push(...codeDiagnostics);
       hints.push(...validatePageContent(page));
     }
     if (!hints.length) break;
