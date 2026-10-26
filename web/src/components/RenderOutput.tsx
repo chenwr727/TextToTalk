@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Task, VideoParams } from "../types";
-import { inlineVideoUrl, downloadFileUrl, submitRender, getTtsEngines, type TtsEngineInfo } from "../api";
+import {
+  inlineVideoUrl,
+  downloadFileUrl,
+  frameUrl,
+  requestPreviewFrames,
+  submitRender,
+  getTtsEngines,
+  type TtsEngineInfo,
+} from "../api";
 
 export function RenderOutput({
   taskId,
@@ -14,6 +22,8 @@ export function RenderOutput({
   onBack: (focusPage?: number) => void;
 }) {
   const [rendering, setRendering] = useState(false);
+  const [framesReady, setFramesReady] = useState(false);
+  const framesRequested = useRef<string | null>(null);
   const [ttsEngines, setTtsEngines] = useState<TtsEngineInfo[]>([]);
 
   const [engine, setEngine] = useState(task?.params?.engine ?? "edge");
@@ -84,6 +94,51 @@ export function RenderOutput({
   const status = task?.status;
   const pct = Math.round((task?.progress ?? 0) * 100);
   const busy = status === "RENDERING" || rendering;
+
+  const pages = task?.storyboard?.pages ?? [];
+
+  /**
+   * 成片就绪后请服务端抽「每页一张」的静帧，抽好后在下方展示。
+   *
+   * 这是「回到分镜改这一页」的入口：拿到哪一页的图不对，就点那一页直接跳回去定位，
+   * 否则用户只能自己数页码。抽帧是异步的（服务端后台跑），所以这里轮询首张是否就绪。
+   */
+  useEffect(() => {
+    if (status !== "DONE" || pages.length === 0) {
+      framesRequested.current = null;
+      setFramesReady(false);
+      return;
+    }
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const probe = async (attempt: number) => {
+      if (!alive) return;
+      try {
+        const res = await fetch(frameUrl(taskId, 0), { cache: "no-store" });
+        if (!alive) return;
+        if (res.ok) {
+          setFramesReady(true);
+          return;
+        }
+      } catch {
+        // 预览帧只是锦上添花：抽帧失败就保持占位，不影响成片与下载
+      }
+      if (attempt < 10) timer = setTimeout(() => void probe(attempt + 1), 2000);
+    };
+
+    if (framesRequested.current !== taskId) {
+      framesRequested.current = taskId;
+      setFramesReady(false);
+      requestPreviewFrames(taskId).catch(() => {});
+    }
+    void probe(0);
+
+    return () => {
+      alive = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [status, taskId, pages.length]);
 
   return (
     <div className="dsh-render">
@@ -258,6 +313,40 @@ export function RenderOutput({
                 ← 返回分镜
               </button>
             </div>
+
+            {pages.length > 0 && (
+              <div className="dsh-frames">
+                <div className="dsh-frames-head">
+                  <span className="dsh-frames-title">🎞️ 逐页预览</span>
+                  <span className="dsh-frames-sub">哪一页不对，点它的「去改这页」可直接回到分镜并定位</span>
+                </div>
+                <div className="dsh-frames-grid">
+                  {pages.map((p, i) => (
+                    <figure className="dsh-frame" key={p.pageIndex ?? i}>
+                      {framesReady ? (
+                        <img
+                          className="dsh-frame-img"
+                          src={frameUrl(taskId, i)}
+                          alt={`第 ${i + 1} 页：${p.title ?? ""}`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="dsh-frame-skeleton">预览帧生成中…</div>
+                      )}
+                      <figcaption className="dsh-frame-cap">
+                        <span className="dsh-frame-index">第 {i + 1} 页</span>
+                        <span className="dsh-frame-name" title={p.title}>
+                          {p.title}
+                        </span>
+                        <button className="dsh-ghost dsh-frame-go" onClick={() => onBack(i + 1)}>
+                          去改这页
+                        </button>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : status === "FAILED" ? (
           <div className="dsh-fail">
