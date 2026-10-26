@@ -10,6 +10,8 @@
 - **后端单元测试（88 项）**：覆盖 `normalize` 的归一化与内容校验、`prompts` 模板拼装、渲染日志与进度解析、`web/src/*-shim.ts` 对 Remotion API 的覆盖率。
 - **前端组件测试环境（Vitest + jsdom + Testing Library，11 项）**：`web` 新增 `test` / `test:watch` 脚本，根目录 `pnpm test` 会先后跑后端与前端。用例锁定了 SSE 订阅生命周期（父组件换新回调不得重订阅）、流式回调取最新闭包、大纲同页数重生成时的草稿刷新、编辑内容不被覆盖，以及定位高亮的收尾时序。
 - **shim 覆盖率守护测试**：从 `web/src` 出发遍历真实 import 图，校验每个被前端间接用到的 `remotion` / `@remotion/*` 具名导入都在对应桩文件里有同名导出——升级 Remotion 时漏补桩会直接红灯，而不是静默把缩略图画错。
+- **页面级视觉参数 `accent` / `decor`**（AI 可选的受限视觉旋钮）：`accent` 取 0~5 指定本页主色（用于「按章节换色」），`decor` 取 `full` / `quiet` 控制背景装饰强度。prompt 两遍都给了取值规则与使用建议，`normalize` 负责越界收敛与告警，渲染端通过旋转调色板 CSS 变量实现，21 处 `accentOf(i)` 调用与所有语义色自动跟随。
+- 页面视觉参数的单测（4 项）：取值边界、非法值告警、字段贯通到 `StoryPage`。
 - `web` 新增 `typecheck` 脚本，根目录 `pnpm run typecheck` 可同时检查前后端。
 
 ### 变更

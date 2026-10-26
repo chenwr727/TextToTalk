@@ -61,6 +61,9 @@ const TRANSITION_DESC = `transition：本页进入时的转场，**必须且只�
 
 const MOTION_DESC = `motion：本页元素动画风格，**必须且只能从这 3 个值中选一个，严禁写枚举之外的值**："spring"（弹簧回弹，默认，生动有活力）|"linear"（线性平稳，适合数据/图表密集页，避免过度晃动）|"float"（柔和漂浮，适合氛围/过渡页）。默认 "spring"，数据密集页（chart/table/stats）建议 "linear"。`;
 
+const PAGE_STYLE_DESC = `accent / decor：本页的视觉主色与背景强度（可选，默认不填）。
+accent：0~5 的整数，对应主题调色板里的第几种颜色（0 主色 / 1 绿 / 2 橙 / 3 粉 / 4 紫 / 5 青）。用于「按章节换色」：**同一章节的页面沿用同一个 accent，换章节时换一个值**；风险/警示页用 2，收益/结论页用 1，中性页留空。整片不要每页都换，否则像散装模板。
+decor：背景装饰强度，只能取 "full"（默认，有装饰环与光晕）或 "quiet"（只保留渐变+网格）。**数据密集页（chart/table/stats）与文字多的页用 "quiet" 降噪**，封面/章节过渡页用 "full"。`;
 const EFFECTS_DESC = `effects：本页视觉特效（可选，默认全关）。annotation：手绘标注，**必须且只能从这 4 个值中选一个，严禁写枚举之外的值**："highlight"（高亮，适合重点句）|"underline"（下划线，适合数字/关键词）|"circle"（圆圈，适合圈出重点）|"none"（无）。threeD：整页 3D 翻转入场（绕 Y 轴翻转 + 由远推近，约 0.5 秒），只能是 true 或 false。pathDraw：背景装饰圆环/装饰线的描边动画（从无到有"画"出来），只能是 true 或 false。建议：重点/结论页用 annotation 强调；封面/章节页可用 threeD 或 pathDraw 增强开场；数据页少用特效避免干扰。`;
 
 const CUSTOM_SVG_DESC = `customSvg：本页是否用「自定义图形」来可视化（可选，默认 null）。**硬性：若本页大纲已指定 art（如 flow/loop/timeline/quadrant/quote），customSvg 必须为 null**——此时用上方 "art" 字段声明关系图类型，让渲染端用标准关系图自动绘制，不要手绘 SVG 与 art 冲突。仅当本页内容适合用"结构图/示意图"表达且现有版式（flow/loop/timeline/quadrant/chart/table）都不够直观时才用 customSvg，例如：神经网络结构、分层架构、决策树、中心辐射、矩阵归类、任意自定义示意图。**customSvg 是一个通用 SVG 元素数组，你可以自由组合任意形状，不受预设限制**。坐标基于 1920×1080 画布（x 0~1920，y 0~1080），颜色用 CSS 色值（如 "#3B6FF5"、"rgba(59,111,245,0.3)"、"#fff"）。每个元素结构：
@@ -145,6 +148,7 @@ ${contract ? `沟通契约：\n${contract}\n` : ""}${duration ? `时长约束：
 - ${RHYTHM_DESC}
 - ${TRANSITION_DESC}
 - ${MOTION_DESC}
+- ${PAGE_STYLE_DESC}
 - icon：每页可选一枚语义图标，只能取这些值之一，严禁造枚举之外的值（如 flame/warning/moon 都不在枚举中）：${ICON_ENUM}。没有合适就 null。
 - chart：仅当本页有"对比/占比/数值"时为 true。**硬性：原文案必须有具体数字才允许 chart=true**；原文案只有定性描述（无具体数值）时，严禁 chart（会逼展开阶段编数字），改用 points/stats/comparison 如实呈现。
 - table：仅当本页适合行列交叉矩阵时为 true。table 与 chart 二选一。
@@ -249,6 +253,7 @@ function pageRules(block: PlanBlock | undefined, params: VideoParams, retryHint?
   if (layout === "chart") parts.push(chartRule());
   if (layout === "points" && !art) parts.push(CUSTOM_SVG_DESC);
   if (layout === "map") parts.push(MAP_DESC);
+  parts.push(PAGE_STYLE_DESC);
   parts.push(EFFECTS_DESC);
 
   return `- ${parts.join("\n- ")}

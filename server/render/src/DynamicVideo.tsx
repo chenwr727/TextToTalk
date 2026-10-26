@@ -51,7 +51,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
     const isLast = i === pages.length - 1;
     children.push(
       <TransitionSeries.Sequence key={p.pageIndex} durationInFrames={dur}>
-        <Bg variant={bg} theme={theme as any} draw={!!p.effects?.pathDraw} />
+        <Bg variant={bg} theme={theme as any} draw={!!p.effects?.pathDraw} decor={p.decor} />
         <PageBody page={p} fps={fps} subtitles={subtitles} isFirst={i === 0} Scene={Scene} />
       </TransitionSeries.Sequence>,
     );

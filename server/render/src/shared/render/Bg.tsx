@@ -1,14 +1,17 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { DECOR, THEME_TOKENS, DEFAULT_THEME, normalizeThemeId, type ThemeId } from "./theme";
 
-export const Bg: React.FC<{ variant: string; theme?: ThemeId; draw?: boolean }> = ({
-  variant,
-  theme = DEFAULT_THEME,
-  draw = false,
-}) => {
+export const Bg: React.FC<{
+  variant: string;
+  theme?: ThemeId;
+  draw?: boolean;
+  /** 装饰强度：quiet 只留渐变 + 网格，给信息密集页降噪 */
+  decor?: "full" | "quiet";
+}> = ({ variant, theme = DEFAULT_THEME, draw = false, decor = "full" }) => {
   const tokens = THEME_TOKENS[normalizeThemeId(theme)];
   const v = tokens.bg[variant] || tokens.bg.default;
   const isDark = tokens.dark;
+  const rich = decor !== "quiet";
   const f = useCurrentFrame();
   const leakX = interpolate(f % 240, [0, 240], [-0.4, 1.4], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const leakO = 0.5 + 0.2 * Math.sin((f / 240) * Math.PI * 2);
@@ -36,79 +39,83 @@ export const Bg: React.FC<{ variant: string; theme?: ThemeId; draw?: boolean }> 
           opacity: 0.6,
         }}
       />
-      <div
-        style={{
-          position: "absolute",
-          bottom: -220,
-          left: -160,
-          width: v.orb,
-          height: v.orb,
-          borderRadius: "50%",
-          background: `radial-gradient(circle,${v.orbColor} 0%,transparent 70%)`,
-          opacity: 0.4,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: 120,
-          right: 180,
-          width: 300,
-          height: 300,
-          borderRadius: "50%",
-          border: `2px solid ${DECOR.ring}`,
-          opacity: 0.7,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: 170,
-          right: 230,
-          width: 200,
-          height: 200,
-          borderRadius: "50%",
-          border: `1.5px solid ${DECOR.ringAccent}`,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 60,
-          left: 120,
-          width: 420,
-          height: 420,
-          borderRadius: "50%",
-          border: `2px solid ${DECOR.ring}`,
-          opacity: 0.5,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          bottom: 200,
-          right: 260,
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
-          background: DECOR.glow,
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "-20%",
-          left: `${leakX * 100}%`,
-          width: "38%",
-          height: "150%",
-          transform: "rotate(18deg)",
-          pointerEvents: "none",
-          opacity: leakO,
-          background: isDark
-            ? "linear-gradient(90deg, transparent, rgba(120,160,255,0.10) 45%, rgba(255,180,120,0.08) 60%, transparent)"
-            : "linear-gradient(90deg, transparent, rgba(120,160,255,0.14) 45%, rgba(255,190,140,0.10) 60%, transparent)",
-        }}
-      />
+      {rich && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              bottom: -220,
+              left: -160,
+              width: v.orb,
+              height: v.orb,
+              borderRadius: "50%",
+              background: `radial-gradient(circle,${v.orbColor} 0%,transparent 70%)`,
+              opacity: 0.4,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 120,
+              right: 180,
+              width: 300,
+              height: 300,
+              borderRadius: "50%",
+              border: `2px solid ${DECOR.ring}`,
+              opacity: 0.7,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 170,
+              right: 230,
+              width: 200,
+              height: 200,
+              borderRadius: "50%",
+              border: `1.5px solid ${DECOR.ringAccent}`,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: 60,
+              left: 120,
+              width: 420,
+              height: 420,
+              borderRadius: "50%",
+              border: `2px solid ${DECOR.ring}`,
+              opacity: 0.5,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              bottom: 200,
+              right: 260,
+              width: 18,
+              height: 18,
+              borderRadius: "50%",
+              background: DECOR.glow,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: "-20%",
+              left: `${leakX * 100}%`,
+              width: "38%",
+              height: "150%",
+              transform: "rotate(18deg)",
+              pointerEvents: "none",
+              opacity: leakO,
+              background: isDark
+                ? "linear-gradient(90deg, transparent, rgba(120,160,255,0.10) 45%, rgba(255,180,120,0.08) 60%, transparent)"
+                : "linear-gradient(90deg, transparent, rgba(120,160,255,0.14) 45%, rgba(255,190,140,0.10) 60%, transparent)",
+            }}
+          />
+        </>
+      )}
       <div
         style={{
           position: "absolute",

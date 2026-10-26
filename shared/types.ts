@@ -23,6 +23,9 @@ export const transitionFramesOf = (t?: TransitionType | null): number =>
 
 export type MotionStyle = "spring" | "linear" | "float";
 
+/** 背景装饰强度：quiet 只保留渐变 + 网格，给信息密集页降噪 */
+export type PageDecor = "full" | "quiet";
+
 export interface PageEffects {
   annotation?: "highlight" | "underline" | "circle" | "none";
   pathDraw?: boolean;
@@ -232,6 +235,9 @@ export interface StoryPage {
   comparisonSides?: ComparisonSides | null;
   durationSec: number;
   rhythm?: PageRhythm;
+  /** 页面主色：0~5 对应主题调色板的第几色，用于「这一章换色」；不给则用默认主色 */
+  accent?: number;
+  decor?: PageDecor;
   transition?: TransitionType;
   motion?: MotionStyle;
   effects?: PageEffects;

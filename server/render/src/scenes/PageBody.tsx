@@ -2,6 +2,7 @@ import { AbsoluteFill, Sequence, interpolate, useCurrentFrame } from "remotion";
 import { IconView } from "../shared/render/Icon";
 import { CaptionSentence, AudioSentence } from "../components/Caption";
 import { SceneTimingContext, type SceneTiming, type CaptionTiming } from "../shared/render/captionTiming";
+import { accentVars } from "../shared/render/theme";
 import type { PageBodyProps } from "../shared/render/scenes/types";
 
 /**
@@ -80,7 +81,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
       : 1;
 
   return (
-    <AbsoluteFill>
+    <AbsoluteFill style={accentVars(page.accent)}>
       {!isFirst && page.icon ? <IconView icon={page.icon} /> : null}
       <div style={{ position: "absolute", inset: 0, perspective: 1600 }}>
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", ...flip }}>

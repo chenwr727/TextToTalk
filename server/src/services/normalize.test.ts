@@ -7,7 +7,9 @@ import {
   captionOverlapInfo,
   collectStoryboardWarnings,
   extractJson,
+  normalizeAccent,
   normalizeArt,
+  normalizeDecor,
   normalizeDirect,
   normalizeEffects,
   normalizeIcon,
@@ -508,5 +510,48 @@ describe("collectStoryboardWarnings：分镜与大纲的偏差汇总", () => {
       { pages: [{ layout: "chart" }] },
     );
     assert.ok(warn && warn.includes("未兑现"), String(warn));
+  });
+});
+describe("页面视觉参数：accent / decor", () => {
+  test("accent 取 0~5 的整数，越界或非法一律丢弃", () => {
+    assert.equal(normalizeAccent(0), 0);
+    assert.equal(normalizeAccent(5), 5);
+    assert.equal(normalizeAccent("3"), 3);
+    assert.equal(normalizeAccent(2.4), 2);
+    assert.equal(normalizeAccent(6), undefined);
+    assert.equal(normalizeAccent(-1), undefined);
+    assert.equal(normalizeAccent("blue"), undefined);
+    assert.equal(normalizeAccent(null), undefined);
+    assert.equal(normalizeAccent(""), undefined);
+  });
+
+  test("decor 只接受 full / quiet", () => {
+    assert.equal(normalizeDecor("full"), "full");
+    assert.equal(normalizeDecor("quiet"), "quiet");
+    assert.equal(normalizeDecor("rich"), undefined);
+    assert.equal(normalizeDecor(null), undefined);
+  });
+
+  test("accent / decor 会带进 StoryPage", () => {
+    const page = normalizePage({ title: "t", captions: ["甲"], accent: 4, decor: "quiet" }, 1);
+    assert.equal(page.accent, 4);
+    assert.equal(page.decor, "quiet");
+  });
+
+  test("非法 accent / decor 会在 validatePlan 里报出来", () => {
+    const problems = validatePlan({
+      pages: [
+        { idea: "a", accent: 9 },
+        { idea: "b", decor: "rich" as unknown as "full" },
+      ],
+    });
+    assert.ok(
+      problems.some((p) => p.includes("accent")),
+      problems.join("\n"),
+    );
+    assert.ok(
+      problems.some((p) => p.includes("decor")),
+      problems.join("\n"),
+    );
   });
 });

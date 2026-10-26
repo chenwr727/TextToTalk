@@ -370,17 +370,22 @@ export const useTheme = (): ThemeTokens => useContext(ThemeContext);
  * token -> CSS 变量
  * ------------------------------------------------------------------ */
 
-const clampByte = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+/** 主色的半透明档位。用 color-mix 引用 var(--ttt-accent)，页面级主色一改，所有档位自动跟着变 */
+const tint = (pct: number) => `color-mix(in srgb, var(--ttt-accent) ${pct}%, transparent)`;
 
-/** #rrggbb -> rgba(r,g,b,a)；令牌里都是 hex，运行期只需要这一处颜色运算 */
-export const withAlpha = (hex: string, alpha: number): string => {
-  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return hex;
-  const v = parseInt(m[1], 16);
-  const r = (v >> 16) & 255;
-  const g = (v >> 8) & 255;
-  const b = v & 255;
-  return `rgba(${clampByte(r)},${clampByte(g)},${clampByte(b)},${alpha})`;
+/**
+ * 页面级主色：把调色板旋转 k 位。
+ *
+ * 场景里 21 处 accentOf(i) 读的是 --ttt-a{i}，这里把 a0..a5 指向 p(k..k+5)，
+ * 于是「这一页用第 k 种主色」不需要改任何场景代码。
+ */
+export const accentVars = (index?: number | null): CSSProperties | undefined => {
+  if (index == null || !Number.isFinite(index)) return undefined;
+  const k = ((Math.round(index) % 6) + 6) % 6;
+  if (k === 0) return undefined;
+  const vars: Record<string, string> = { "--ttt-accent": `var(--ttt-p${k})` };
+  for (let i = 0; i < 6; i++) vars[`--ttt-a${i}`] = `var(--ttt-p${(i + k) % 6})`;
+  return vars as CSSProperties;
 };
 
 /**
@@ -396,20 +401,28 @@ export const themeVars = (id?: string | null): CSSProperties => {
     "--ttt-sub": t.sub,
     "--ttt-muted": t.muted,
     "--ttt-accent": t.accent,
-    "--ttt-a0": t.accents[0],
-    "--ttt-a1": t.accents[1],
-    "--ttt-a2": t.accents[2],
-    "--ttt-a3": t.accents[3],
-    "--ttt-a4": t.accents[4],
-    "--ttt-a5": t.accents[5],
-    "--ttt-accent-a88": withAlpha(t.accent, 0.53),
-    "--ttt-accent-a80": withAlpha(t.accent, 0.8),
-    "--ttt-accent-a66": withAlpha(t.accent, 0.4),
-    "--ttt-accent-a55": withAlpha(t.accent, 0.33),
-    "--ttt-accent-a33": withAlpha(t.accent, 0.2),
-    "--ttt-accent-a0d": withAlpha(t.accent, 0.05),
-    "--ttt-grad-accent": `linear-gradient(90deg, ${t.accent}, ${t.gradEnd})`,
-    "--ttt-grad-accent-soft": `linear-gradient(90deg, ${withAlpha(t.accent, 0.8)}, ${withAlpha(t.gradEnd, 0.8)})`,
+    "--ttt-grad-end": t.gradEnd,
+    "--ttt-p0": t.accents[0],
+    "--ttt-p1": t.accents[1],
+    "--ttt-p2": t.accents[2],
+    "--ttt-p3": t.accents[3],
+    "--ttt-p4": t.accents[4],
+    "--ttt-p5": t.accents[5],
+    "--ttt-a0": "var(--ttt-p0)",
+    "--ttt-a1": "var(--ttt-p1)",
+    "--ttt-a2": "var(--ttt-p2)",
+    "--ttt-a3": "var(--ttt-p3)",
+    "--ttt-a4": "var(--ttt-p4)",
+    "--ttt-a5": "var(--ttt-p5)",
+    "--ttt-accent-a88": tint(53),
+    "--ttt-accent-a80": tint(80),
+    "--ttt-accent-a66": tint(40),
+    "--ttt-accent-a55": tint(33),
+    "--ttt-accent-a33": tint(20),
+    "--ttt-accent-a0d": tint(5),
+    "--ttt-grad-accent": "linear-gradient(90deg, var(--ttt-accent), var(--ttt-grad-end))",
+    "--ttt-grad-accent-soft":
+      "linear-gradient(90deg, color-mix(in srgb, var(--ttt-accent) 80%, transparent), color-mix(in srgb, var(--ttt-grad-end) 80%, transparent))",
     "--ttt-card-bg": t.card.bg,
     "--ttt-card-border": t.card.border,
     "--ttt-card-shadow": t.card.shadow,

@@ -9,6 +9,7 @@ import { ResponsiveContext } from "../../../server/render/src/shared/render/resp
 import {
   ThemeContext,
   THEME_TOKENS,
+  accentVars,
   normalizeThemeId,
   themeVars,
 } from "../../../server/render/src/shared/render/theme";
@@ -63,8 +64,9 @@ export function RenderThumb({
               variant={bg}
               theme={theme as any}
               draw={!!(p as { effects?: { pathDraw?: boolean } }).effects?.pathDraw}
+              decor={rp.decor}
             />
-            <div className="dsh-thumb-layer">
+            <div className="dsh-thumb-layer" style={accentVars(rp.accent)}>
               {!isFirst && rp.icon ? <IconView icon={rp.icon} /> : null}
               <SceneView Scene={Scene} page={rp} isFirst={isFirst} />
             </div>

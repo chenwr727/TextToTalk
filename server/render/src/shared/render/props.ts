@@ -99,6 +99,7 @@ export type TransitionType = "fade" | "slide-left" | "slide-right" | "zoom" | "n
 export type MotionStyle = "spring" | "linear" | "float";
 
 export type PageRhythm = "anchor" | "dense" | "breathing";
+export type PageDecor = "full" | "quiet";
 
 export interface PageEffects {
   annotation?: "highlight" | "underline" | "circle" | "none";
@@ -196,6 +197,8 @@ export interface StoryPage {
   transition?: TransitionType;
   motion?: MotionStyle;
   rhythm?: PageRhythm;
+  accent?: number;
+  decor?: PageDecor;
   effects?: PageEffects;
   customSvg?: CustomSvgSpec;
   map?: MapSpec | null;

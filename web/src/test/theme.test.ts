@@ -3,6 +3,7 @@ import {
   DEFAULT_THEME,
   THEME_IDS,
   THEME_TOKENS,
+  accentVars,
   normalizeThemeId,
   themeVars,
 } from "../../../server/render/src/shared/render/theme";
@@ -70,10 +71,25 @@ describe("主题 token", () => {
     expect(dark.card.radius).toBeGreaterThan(0);
   });
 
-  it("主色的半透明档位由 accent 推导，不写死十六进制", () => {
+  it("主色的半透明档位引用 --ttt-accent，页面换主色时能跟着变", () => {
     const v = varsOf("warm");
     expect(v["--ttt-accent"]).toBe("#c2571b");
-    expect(v["--ttt-accent-a80"]).toBe("rgba(194,87,27,0.8)");
-    expect(v["--ttt-grad-accent"]).toContain("#c2571b");
+    expect(v["--ttt-accent-a80"]).toContain("color-mix");
+    expect(v["--ttt-accent-a80"]).toContain("var(--ttt-accent)");
+    expect(v["--ttt-grad-accent"]).toContain("var(--ttt-accent)");
+    expect(v["--ttt-grad-accent"]).toContain("var(--ttt-grad-end)");
+  });
+
+  it("页面级主色通过旋转调色板变量实现，0 号不需要覆盖", () => {
+    expect(accentVars(undefined)).toBeUndefined();
+    expect(accentVars(null)).toBeUndefined();
+    expect(accentVars(0)).toBeUndefined();
+    const v = accentVars(2) as unknown as Record<string, string>;
+    expect(v["--ttt-accent"]).toBe("var(--ttt-p2)");
+    expect(v["--ttt-a0"]).toBe("var(--ttt-p2)");
+    expect(v["--ttt-a5"]).toBe("var(--ttt-p1)");
+    // 负数与越界也要能安全取模
+    expect((accentVars(-1) as unknown as Record<string, string>)["--ttt-accent"]).toBe("var(--ttt-p5)");
+    expect((accentVars(7) as unknown as Record<string, string>)["--ttt-accent"]).toBe("var(--ttt-p1)");
   });
 });

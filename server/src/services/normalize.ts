@@ -25,6 +25,8 @@ export interface PlanBlock {
   role?: PageRole;
   icon?: IconId;
   rhythm?: PageRhythm;
+  accent?: number;
+  decor?: "full" | "quiet";
   transition?: TransitionType;
   motion?: MotionStyle;
   effects?: PageEffects;
@@ -180,6 +182,7 @@ const VALID_RHYTHMS = ["anchor", "dense", "breathing"] as PageRhythm[];
 const VALID_TRANSITIONS = ["fade", "slide-left", "slide-right", "zoom", "none"] as TransitionType[];
 const VALID_MOTIONS = ["spring", "linear", "float"] as MotionStyle[];
 const VALID_ARTS: Art[] = ["flow", "loop", "timeline", "quadrant", "quote"];
+const VALID_DECORS = ["full", "quiet"];
 
 export function validatePlan(p: Plan): string[] {
   const problems: string[] = [];
@@ -207,6 +210,17 @@ export function validatePlan(p: Plan): string[] {
     }
     if (pg.motion != null && !VALID_MOTIONS.includes(pg.motion)) {
       problems.push(`第${i + 1}页 motion="${pg.motion}" 非法：motion 只能取 spring|linear|float 之一`);
+    }
+    if (pg.accent != null) {
+      const acc = Number(pg.accent);
+      if (!Number.isInteger(acc) || acc < 0 || acc > 5) {
+        problems.push(
+          `第${i + 1}页 accent=${JSON.stringify(pg.accent)} 非法：accent 只能是 0~5 的整数（主题调色板序号）`,
+        );
+      }
+    }
+    if (pg.decor != null && !VALID_DECORS.includes(pg.decor)) {
+      problems.push(`第${i + 1}页 decor="${pg.decor}" 非法：decor 只能取 full|quiet 之一`);
     }
     if (pg.icon != null && !VALID_ICONS.includes(pg.icon)) {
       problems.push(`第${i + 1}页 icon="${pg.icon}" 非法：icon 只能取内置枚举之一，或 null`);
@@ -338,6 +352,18 @@ export function normalizeLayout(l: any): Layout {
     : "points";
 }
 
+/** 页面主色序号：非法/越界一律丢弃（回落到主题默认主色），不做猜测 */
+export function normalizeAccent(a: any): number | undefined {
+  if (a == null || a === "") return undefined;
+  const n = Number(a);
+  if (!Number.isFinite(n)) return undefined;
+  const i = Math.round(n);
+  return i >= 0 && i <= 5 ? i : undefined;
+}
+
+export function normalizeDecor(d: any): "full" | "quiet" | undefined {
+  return d === "full" || d === "quiet" ? d : undefined;
+}
 export function normalizeRhythm(r: any): PageRhythm {
   return ["anchor", "dense", "breathing"].includes(r) ? (r as PageRhythm) : "anchor";
 }
@@ -685,6 +711,8 @@ export function normalizePage(
     comparisonSides: normalizeSides(p.sides ?? p.comparisonSides),
     durationSec,
     rhythm: normalizeRhythm(rhythm ?? p.rhythm ?? "anchor"),
+    accent: normalizeAccent(p.accent),
+    decor: normalizeDecor(p.decor),
     transition: normalizeTransition(transition ?? p.transition ?? "fade"),
     motion: normalizeMotion(motion ?? p.motion ?? "spring"),
     effects: normalizeEffects(effects ?? p.effects ?? {}),

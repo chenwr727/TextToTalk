@@ -166,7 +166,13 @@ async function generatePage(
         `返回的内容不是合法的单页 JSON（缺少 captions 数组，或返回了多个对象）。请只返回【一个】合法 JSON 对象，且必须包含 "captions" 字符串数组、标题和要点。`,
       );
     } else {
-      const objForNorm = STRUCTURAL_LAYOUTS.has(block.layout ?? "") ? { ...obj, customSvg: null } : obj;
+      const objForNorm = {
+        ...obj,
+        ...(STRUCTURAL_LAYOUTS.has(block.layout ?? "") ? { customSvg: null } : {}),
+        // accent / decor 只在第一遍选，展开阶段不重复要求模型复述，这里合并进来
+        accent: (obj as { accent?: number }).accent ?? block.accent,
+        decor: (obj as { decor?: "full" | "quiet" }).decor ?? block.decor,
+      };
       page = normalizePage(
         objForNorm,
         index,
@@ -284,6 +290,8 @@ async function regeneratePageRaw(
   const keepTransition = storyboard.pages[idx]?.transition ?? "fade";
   const keepMotion = storyboard.pages[idx]?.motion ?? "spring";
   const keepEffects = storyboard.pages[idx]?.effects ?? {};
+  const keepAccent = storyboard.pages[idx]?.accent;
+  const keepDecor = storyboard.pages[idx]?.decor;
   const priorPages = storyboard.pages.filter((_, i) => i !== idx);
 
   let page: StoryPage | null = null;
@@ -319,7 +327,7 @@ async function regeneratePageRaw(
       );
     } else {
       let cur = normalizePage(
-        { ...obj, chart: obj.chart ?? null },
+        { ...obj, chart: obj.chart ?? null, accent: obj.accent ?? keepAccent, decor: obj.decor ?? keepDecor },
         idx,
         keepLayout,
         keepArt,
