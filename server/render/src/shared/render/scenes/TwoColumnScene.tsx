@@ -75,6 +75,16 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   for (let guard = 0; guard < 12 && measureH(finalFs) > availH && finalFs > 20; guard++) {
     finalFs = Math.max(20, finalFs - 2);
   }
+  /**
+   * 竖屏反向放大：这套适配原先只有"装不下就缩"，没有"太空就放"。
+   * 竖屏内容量少的页实测只占可用带的 35%（内容 504 / 可用 1440），上下各一大片空白。
+   * 这里在放得下的前提下继续加大字号，直到内容占到目标填充率，封顶 68px。
+   */
+  if (isPortrait) {
+    for (let guard = 0; guard < 16 && measureH(finalFs) < availH * 0.58 && finalFs < 68; guard++) {
+      finalFs += 2;
+    }
+  }
 
   const gap = gapOf(finalFs);
 

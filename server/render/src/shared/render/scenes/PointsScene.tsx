@@ -5,7 +5,7 @@ import { Card } from "../Card";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandHighlight } from "../rough";
-import { useResponsive, useCaptionReserve } from "../responsive";
+import { useResponsive, useCaptionReserve, portraitFill } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -213,7 +213,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const byCount = Math.min(points.length + (isPortrait ? 1 : 0), SCALES.length) - 1;
   const byLength = maxLen <= 14 ? 0 : maxLen <= 20 ? 1 : maxLen <= 30 ? 2 : 3;
   const scaleIdx = Math.min(SCALES.length - 1, Math.max(byCount, byLength));
-  const scale: Scale = SCALES[scaleIdx] ?? SCALES[3];
+  const baseScale: Scale = SCALES[scaleIdx] ?? SCALES[3];
 
   // 顶部要同时容纳 PageHeading（标题 + 装饰线，约 200px），否则首卡会压住标题
   const padTop = [360, 330, 300, 270][scaleIdx] ?? 270;
@@ -221,24 +221,62 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   // 横屏内容带此前固定 1240（画布 1920），两侧留白比正文还宽，画面显得空。
   // 但不能一味加宽：短句铺满 1680 会变成"一行只放一句"的大字报。
   // 所以按最长一条文案的长度分三档——短的保持紧凑，长的才放宽。
-  const SINGLE_COL_W = isPortrait
+  const singleColW = isPortrait
     ? contentWidth
     : Math.round(Math.min(CONTENT_WIDTH * 0.95, [1240, 1460, 1600][maxLen <= 14 ? 0 : maxLen <= 22 ? 1 : 2]));
 
-  const availW = SINGLE_COL_W;
+  const availW = singleColW;
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const availH = (isPortrait ? contentHeight : 1080) - padTop - captionReserve;
 
-  const boxW = SINGLE_COL_W;
+  const boxW = singleColW;
+  const parseX = (padStr: string) => Number(padStr.split(" ")[1]?.replace("px", "") ?? "28") * 2;
+  const leadEnabled = points.length > 1 && LEAD_ROLES.has(page.role ?? "");
+
+  /** 按给定字号阶梯估算这页要点自然占多高；竖屏放大量要靠它反推 */
+  const estHeightOf = (s: Scale) => {
+    const iconBlockS = s.btnSub + (isPortrait ? sp(24) : 24);
+    const colHS = Math.max(200, boxW - iconBlockS - parseX(s.subPad));
+    const rowGapS = (isPortrait ? sp(s.gap) : s.gap) + (isPortrait ? sp(s.rowMb) : s.rowMb);
+    return texts.reduce((sum, t, i) => {
+      const isLead = leadEnabled && i === 0;
+      const fsz = (isLead ? s.leadFs : s.subFs) * lenAdjOf([...t].length);
+      const perLine = Math.max(1, Math.floor(colHS / (fsz * 1.15)));
+      const lines = Math.ceil([...t].length / perLine);
+      const padV = Number((isLead ? s.leadPad : s.subPad).split(" ")[0].replace("px", ""));
+      return sum + lines * fsz * s.lineHeight + padV * 2 + rowGapS;
+    }, 0);
+  };
+
+  /**
+   * 竖屏稀疏页放大。
+   *
+   * 字号是按"每行放多少字"定的，但竖屏的竖向空间是横屏两倍：3 条要点的页实测只占
+   * 可用内容带的 37%，上下各一大片空白。这里按估算高度反推放大量，只放大字号与
+   * 行内间距（间距封顶 1.3，否则字大了留白更散），卡片结构不动。
+   */
+  const zoom = isPortrait ? portraitFill(estHeightOf(baseScale), availH, { max: 1.25, target: 0.5 }) : 1;
+  const scale: Scale =
+    zoom > 1.01
+      ? {
+          ...baseScale,
+          leadFs: Math.round(baseScale.leadFs * zoom),
+          subFs: Math.round(baseScale.subFs * zoom),
+          btnLead: Math.round(baseScale.btnLead * zoom),
+          btnSub: Math.round(baseScale.btnSub * zoom),
+          iconLead: Math.round(baseScale.iconLead * zoom),
+          iconSub: Math.round(baseScale.iconSub * zoom),
+          gap: Math.round(baseScale.gap * Math.min(zoom, 1.3)),
+          rowMb: Math.round(baseScale.rowMb * Math.min(zoom, 1.3)),
+        }
+      : baseScale;
 
   const iconBlock = scale.btnSub + (isPortrait ? sp(24) : 24);
-  const parseX = (padStr: string) => Number(padStr.split(" ")[1]?.replace("px", "") ?? "28") * 2;
   const padX = parseX(scale.subPad);
   const colH = Math.max(200, boxW - iconBlock - padX);
   const rowGap = (isPortrait ? sp(scale.gap) : scale.gap) + (isPortrait ? sp(scale.rowMb) : scale.rowMb);
-  const leadEnabled = points.length > 1 && LEAD_ROLES.has(page.role ?? "");
   /**
    * 单列要点统一宽度。
    *
@@ -251,16 +289,21 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     const fsz = (isLead ? scale.leadFs : scale.subFs) * lenAdjOf([...t].length);
     return [...t].length * fsz * 1.04 + scale.btnSub + 24;
   });
-  const uniformW = Math.min(SINGLE_COL_W, Math.ceil(Math.max(...needW) + 96));
+  const uniformW = Math.min(singleColW, Math.ceil(Math.max(...needW) + 96));
 
-  const estH = texts.reduce((sum, t, i) => {
-    const isLead = leadEnabled && i === 0;
-    const fsz = (isLead ? scale.leadFs : scale.subFs) * lenAdjOf([...t].length);
-    const perLine = Math.max(1, Math.floor(colH / (fsz * 1.15)));
-    const lines = Math.ceil([...t].length / perLine);
-    const padV = Number((isLead ? scale.leadPad : scale.subPad).split(" ")[0].replace("px", ""));
-    return sum + lines * fsz * scale.lineHeight + padV * 2 + rowGap;
-  }, 0);
+  const estH = estHeightOf(scale);
+  /**
+   * 竖屏剩余空间分摊到卡片间距。
+   *
+   * 纯靠放大字号填满竖向空间会让长句折行折出"孤字"（实测第一条把「人」挤到第二行），
+   * 比空着更难看。所以字号只温和放大，剩下的竖向空间交给间距，且间距最多 +120%。
+   */
+  const portraitGap = (() => {
+    if (!isPortrait || points.length < 2) return 0;
+    const want = availH * 0.62 - estH;
+    const extra = want / (points.length - 1);
+    return Math.round(Math.min(sp(scale.gap) * 1.2, Math.max(0, extra)));
+  })();
 
   const twoCol = texts.length >= 4 && estH > availH * 0.92;
 
@@ -327,7 +370,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       <PageHeading text={page.title} />
       <div
         style={{
-          width: isPortrait ? contentWidth : SINGLE_COL_W,
+          width: isPortrait ? contentWidth : singleColW,
           fontFamily: FONT,
           paddingTop: isPortrait ? SPACE.lg : padTop,
           paddingBottom: captionReserve,
@@ -335,7 +378,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           justifyContent: isPortrait ? "center" : undefined,
           display: "flex",
           flexDirection: "column",
-          gap: isPortrait ? sp(scale.gap) : scale.gap,
+          gap: isPortrait ? sp(scale.gap) + portraitGap : scale.gap,
         }}
       >
         {points.map((p, i) => {

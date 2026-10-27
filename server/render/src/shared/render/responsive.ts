@@ -1,6 +1,9 @@
 import { createContext, useContext } from "react";
 import { useVideoConfig } from "remotion";
 import { measureTextWidth } from "./theme";
+import { estLinesWith } from "./fit";
+
+export { portraitFill } from "./fit";
 
 export const DESIGN_W = 1920;
 export const DESIGN_H = 1080;
@@ -54,6 +57,15 @@ export const useResponsive = (): Responsive => {
   const sp = (designPx: number) => Math.round(designPx * spScale);
   return { width, height, isPortrait, contentWidth, contentHeight, safeX, safeY, fs, sp };
 };
+
+/**
+ * 估算一段文字在给定宽度下会折成几行。
+ *
+ * 场景里的"内容会不会溢出 / 有多空"只能靠估：渲染前拿不到真实布局。
+ * 用与字幕预留同一套 `measureTextWidth`，估偏了也只是大小差一档，不会破版。
+ * 纯逻辑在 fit.ts（那边能单测，这里只负责注入真实字体度量）。
+ */
+export const estLines = estLinesWith(measureTextWidth);
 
 export const useCaptionReserve = (subtitles: boolean, texts: string[] = []): number => {
   const { isPortrait, sp, width } = useResponsive();
