@@ -13,6 +13,7 @@ import { Spectrum } from "./shared/render/Spectrum";
 import { BgmLayer } from "./components/Caption";
 import { PageBody } from "./scenes/PageBody";
 import { matchScene } from "./shared/render/scenes/sceneRegistry";
+import { DomProbe } from "./shared/render/DomProbe";
 
 /** 默认转场帧数（fade），保留导出是因为 Root 计算总帧数要用同一套口径 */
 export const TRANSITION_FRAMES = TRANSITION_FRAME_MAP.fade;
@@ -36,7 +37,7 @@ function pickTransition(t: TransitionType | undefined): any {
   }
 }
 
-export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, subtitles, bgm, theme }) => {
+export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, subtitles, bgm, theme, probe }) => {
   const { durationInFrames } = useVideoConfig();
   const pageDurs = pages.map((p) =>
     p.sentences && p.sentences.length
@@ -73,6 +74,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
       <AbsoluteFill style={themeVars(theme)}>
         <FontLoader />
         <TransitionSeries>{children}</TransitionSeries>
+        {probe ? <DomProbe spec={probe} /> : null}
         {bgm && <Spectrum src={bgm.audioUrl} />}
         {bgm && <BgmLayer url={bgm.audioUrl} totalFrames={durationInFrames} />}
         {projectTitle && (

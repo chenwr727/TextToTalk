@@ -224,4 +224,6 @@ export type RenderProps = {
   theme?: string;
   width?: number;
   height?: number;
+  /** 仅调试用：DOM 探针（见 DomProbe.tsx），正常出片不带这个字段 */
+  probe?: { selectors: string[]; html?: boolean } | null;
 };

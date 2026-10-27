@@ -98,6 +98,8 @@ interface CardProps {
   fs: (n: number) => number;
   sp: (n: number) => number;
   icon: string;
+  /** 单列统一定宽；不给则按内容宽度 */
+  cardW?: number;
   pulse: number;
 }
 
@@ -123,6 +125,7 @@ const PointCard: React.FC<CardProps> = ({
   fs,
   sp,
   icon,
+  cardW,
   pulse,
 }) => {
   const a = accentOf(index);
@@ -148,6 +151,13 @@ const PointCard: React.FC<CardProps> = ({
         pad={sp(isLead ? SPACE.lg : SPACE.md)}
         style={{
           display: "flex",
+          // 必须写方向：只写 display:flex 时方向默认是 row，内部玻璃底会变成
+          // "按内容宽度"的 flex item，给外层设多宽的 width 都不会传导下去
+          flexDirection: "column",
+          width: cardW,
+          // 统一宽度后整块比内容带窄，左右留白居中，避免整页往左偏
+          marginLeft: cardW ? "auto" : undefined,
+          marginRight: cardW ? "auto" : undefined,
           maxWidth: "100%",
           transform: `translateY(0)`,
         }}
@@ -229,6 +239,19 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const colH = Math.max(200, boxW - iconBlock - padX);
   const rowGap = (isPortrait ? sp(scale.gap) : scale.gap) + (isPortrait ? sp(scale.rowMb) : scale.rowMb);
   const leadEnabled = points.length > 1 && LEAD_ROLES.has(page.role ?? "");
+  /**
+   * 单列要点统一宽度。
+   *
+   * 不统一时每张卡按自己文字宽度收缩，一页里三条右边缘参差不齐（952/748/911），
+   * 看着像随手摆的。取"最宽一条的估算宽度"作统一值：右边缘对齐，又不至于把
+   * 短句撑成一大片空白。
+   */
+  const needW = texts.map((t, i) => {
+    const isLead = leadEnabled && i === 0;
+    const fsz = (isLead ? scale.leadFs : scale.subFs) * lenAdjOf([...t].length);
+    return [...t].length * fsz * 1.04 + scale.btnSub + 24;
+  });
+  const uniformW = Math.min(SINGLE_COL_W, Math.ceil(Math.max(...needW) + 96));
 
   const estH = texts.reduce((sum, t, i) => {
     const isLead = leadEnabled && i === 0;
@@ -331,6 +354,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               fs={fs}
               sp={sp}
               icon={pointIcon(p, i)}
+              cardW={isPortrait ? undefined : uniformW}
             />
           );
         })}

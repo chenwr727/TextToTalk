@@ -130,6 +130,18 @@ async function main() {
   }
 
   if (mode === "still") {
+    // options.browserLogPath：把页面 console 输出落到文件，供 DOM 探针读取
+    // （浏览器里拿不到文件系统，只能靠 renderStill 的 onBrowserLog 回传）
+    const browserLogPath = options.browserLogPath;
+    const onBrowserLog = browserLogPath
+      ? (log) => {
+          try {
+            fs.appendFileSync(browserLogPath, JSON.stringify({ type: log.type, text: log.text }) + "\n");
+          } catch {
+            /* 日志写不进去不该影响渲染 */
+          }
+        }
+      : undefined;
     await renderStill({
       composition,
       serveUrl,
@@ -138,6 +150,7 @@ async function main() {
       output,
       browserExecutable,
       chromiumOptions,
+      onBrowserLog,
       ...portOption,
     });
     console.log("Rendered still 1/1");
