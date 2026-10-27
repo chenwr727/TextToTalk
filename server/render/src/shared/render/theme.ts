@@ -508,6 +508,18 @@ export const DOT_SHADOW = "var(--ttt-shadow-dot)";
 export const SOLID_SHADOW = "var(--ttt-shadow-solid)";
 export const TEXT_SHADOW = "var(--ttt-shadow-text)";
 
+/**
+ * 卡片里"小元件"的投影：图标方块、柱子、徽标。
+ *
+ * 之前这些地方各自写了 `0 2px 8px / 0 2px 10px / 0 8px 20px`，
+ * 而卡片的多层大影（CARD_SHADOW）被套在 60px 的实心圆点上，结果发灰。
+ */
+export const tileShadow = (accent: string) => `0 2px 8px ${alpha(accent, 20)}`;
+/** 焦点态：在原卡片影上叠一层主色光晕 */
+export const focusShadow = (accent: string) => `0 10px 26px ${alpha(accent, 18)}, ${CARD_SHADOW}`;
+/** 光点/标记的辉光 */
+export const glowOf = (color: string, pct = 26) => `0 0 10px ${alpha(color, pct)}`;
+
 export const GLASS = {
   card: "var(--ttt-glass-card)",
   pill: "var(--ttt-glass-pill)",
@@ -518,7 +530,22 @@ export const SAFE = { x: 120, y: 100 };
 export const CONTENT_WIDTH = 1920 - SAFE.x * 2;
 export const HEADER_OFFSET = 250;
 
-export const SPACE = { xs: 8, sm: 16, md: 24, lg: 32, xl: 48 };
+/**
+ * 间距比例（4 的倍数）。
+ *
+ * 之前各场景的 padding/gap 在 8~46 之间几乎每个偶数都用过一遍，
+ * 同一语义（卡片内边距）能出现 24/26/28/30/32/34/36 七种取值，换个版式就换一套节奏。
+ * 新增视觉一律取这里的档位。
+ */
+export const SPACE = { xs: 8, sm: 16, md: 24, lg: 32, xl: 48, xxl: 64 };
+
+/**
+ * 图标方块：卡内小元件的统一尺寸。
+ * 此前同一个"图标方块"在 6 个地方写了 44/48/52/56/64/76 六种尺寸、4 种圆角。
+ */
+export const ICON_TILE = { sm: 44, md: 56, lg: 64 } as const;
+/** 方块里图标画多大（约为方块的 0.58） */
+export const iconInTile = (size: number) => Math.round(size * 0.58);
 export const RADIUS = {
   card: "var(--ttt-r-card)",
   cardInner: "var(--ttt-r-card-inner)",
@@ -579,6 +606,18 @@ export const pickCardFont = (maxChars: number, textW: number, textH?: number): n
   return chosen ?? CARD_TYPE.fsMin;
 };
 
+/**
+ * 把动画进度吸附到"已静止"。
+ *
+ * 弹簧是渐近收敛的：damping 8 时第 60 帧还差 0.00015，换算成 translateY 是 0.0027px。
+ * 这点差值肉眼看不见，却会让浏览器**逐帧重新光栅化文字**（亚像素位置变了），
+ * 观感就是文字在轻微晃动。到站就吸附成精确的 1 / 0，后面所有帧的样式才会完全一致。
+ */
+export const settle = (v: number, eps = 5e-4): number => (v > 1 - eps ? 1 : v < eps ? 0 : v);
+
+/** 位移吸附到整像素（同一原因：文字停在 0.37px 这种位置会一直抖） */
+export const snapPx = (v: number): number => Math.round(v);
+
 export const springIn = (frame: number, fps: number, delay = 0, style: "spring" | "linear" | "float" = "spring") => {
   const cfg =
     style === "linear"
@@ -586,7 +625,7 @@ export const springIn = (frame: number, fps: number, delay = 0, style: "spring" 
       : style === "float"
         ? { damping: 15, stiffness: 60, mass: 1.2 }
         : { damping: 8, stiffness: 100, mass: 0.9 };
-  return spring({ frame: frame - delay, fps, config: cfg });
+  return settle(spring({ frame: frame - delay, fps, config: cfg }));
 };
 
 export const DECOR = {

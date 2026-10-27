@@ -1,22 +1,8 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { makeSpark } from "@remotion/shapes";
-import {
-  alpha,
-  C,
-  FONT,
-  FONT_DISPLAY,
-  FS,
-  LH,
-  FW,
-  RADIUS,
-  HEADER_OFFSET,
-  CARD_SHADOW,
-  GLASS,
-  BORDER,
-  accentOf,
-  springIn,
-} from "../theme";
-import { Icon } from "../Icon";
+import { C, FONT, FONT_DISPLAY, FS, LH, FW, HEADER_OFFSET, accentOf, SPACE, springIn } from "../theme";
+import { Card } from "../Card";
+import { IconTile } from "../IconTile";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandUnderline } from "../rough";
@@ -30,6 +16,9 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  // 竖屏每行放两个卡，3 个数据就会变成「两个 + 一个半宽」的怪排布（最后一张孤零零居中）。
+  // 3 个数据时竖屏改为一列铺满，读起来才整齐。
+  const portraitCols = points.length === 3 ? 1 : 2;
   const timing = useSceneTiming();
 
   const extractNum = (s: string): { num: string; rest: string } => {
@@ -61,39 +50,20 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
           const a = accentOf(i);
           const { num, rest } = extractNum(pointText(p, i));
           return (
-            <div
+            <Card
               key={i}
+              accent={a}
+              pad={isPortrait ? sp(32) : SPACE.lg}
               style={{
-                flex: isPortrait ? "0 1 calc(50% - 12px)" : "0 1 calc(25% - 24px)",
+                flex: isPortrait ? `0 1 calc(${100 / portraitCols}% - 12px)` : "0 1 calc(25% - 24px)",
                 minWidth: isPortrait ? 0 : 300,
-                padding: `${isPortrait ? sp(32) : 32}px ${isPortrait ? sp(28) : 28}px ${isPortrait ? sp(36) : 36}px`,
                 textAlign: "center",
-                background: GLASS.card,
-                border: `${BORDER.card}px solid ${a}`,
-                borderRadius: RADIUS.card,
-                boxShadow: CARD_SHADOW,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "flex-start",
                 opacity: t,
                 transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,
               }}
             >
-              <div
-                style={{
-                  width: isPortrait ? sp(64) : 64,
-                  height: isPortrait ? sp(64) : 64,
-                  borderRadius: 16,
-                  background: `${alpha(a, 10)}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto 20px",
-                  flexShrink: 0,
-                }}
-              >
-                <Icon name={pointIcon(p, i)} size={isPortrait ? sp(34) : 34} color={a} />
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: isPortrait ? sp(20) : SPACE.md }}>
+                <IconTile name={pointIcon(p, i)} accent={a} size="lg" />
               </div>
               <div
                 style={{
@@ -146,7 +116,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
               >
                 {rest}
               </div>
-            </div>
+            </Card>
           );
         })}
       </div>

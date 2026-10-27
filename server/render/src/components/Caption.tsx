@@ -1,14 +1,12 @@
 import { Audio, Sequence, interpolate, useCurrentFrame } from "remotion";
 import type { TtsSentence } from "../shared/render/props";
-import { C, FONT, FW } from "../shared/render/theme";
+import { C, FONT, FW, RADIUS, alpha } from "../shared/render/theme";
 import { useResponsive, CAPTION_METRICS } from "../shared/render/responsive";
 import { tokenizeCaption } from "../shared/render/tokenize";
 
 const Aud = Audio as any;
 
 const HIGHLIGHT = "#ffd54a";
-const DIM = "rgba(255,255,255,0.42)";
-
 /** 旧的整句数字高亮（karaoke 关闭时仍用） */
 const renderHighlight = (text: string) => {
   const re = /[-+]?\d+(?:\.\d+)?\s*[%％倍xX]?|(?:[一二三四五六七八九十百千万]+倍)/g;
@@ -42,7 +40,7 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number; karaok
   karaoke = true,
 }) => {
   const f = useCurrentFrame();
-  const { isPortrait, fs, sp } = useResponsive();
+  const { isPortrait, sp } = useResponsive();
   const fade = Math.max(1, Math.min(8, Math.floor(durFrames / 4)));
   const o = interpolate(
     f,
@@ -74,22 +72,36 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number; karaok
       }}
     >
       <div style={{ display: "flex", alignItems: "stretch", maxWidth: isPortrait ? "88%" : "78%" }}>
-        <div style={{ width: 10, background: C.accent, borderRadius: "999px 0 0 999px" }} />
         <div
           style={{
-            background: "rgba(20,30,45,0.88)",
+            // 字幕条：一整条胶囊，左侧强调色改成"内嵌竖条"。
+            // 原来是"外挂圆角方块 + 右侧直角"两块拼出来的，接缝处圆角对不上，看着像贴了个把手。
+            position: "relative",
+            background: "linear-gradient(180deg, rgba(17,25,38,0.90) 0%, rgba(17,25,38,0.82) 100%)",
             color: "#fff",
-            padding: `${sp(CAPTION_METRICS.padY)}px ${sp(42)}px`,
-            fontSize: fs(CAPTION_METRICS.fontSize),
+            padding: `${sp(CAPTION_METRICS.padY)}px ${sp(44)}px`,
+            // 竖屏字号按 0.92 单独缩：正文套用 0.72 后字幕会偏小，手机上看不清
+            fontSize: Math.round(CAPTION_METRICS.fontSize * (isPortrait ? 0.92 : 1)),
             fontFamily: FONT,
             fontWeight: FW.regular,
             textAlign: "center",
-            borderRadius: "0 999px 999px 0",
-            boxShadow: "0 8px 24px rgba(20,30,45,0.4)",
-            letterSpacing: 1,
-            textShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.6)",
+            borderRadius: RADIUS.pill,
+            boxShadow: "0 10px 26px rgba(10,16,28,0.38), inset 0 1px 0 rgba(255,255,255,0.14)",
+            letterSpacing: 0.6,
+            textShadow: "0 2px 6px rgba(0,0,0,0.45)",
           }}
         >
+          <div
+            style={{
+              position: "absolute",
+              left: sp(16),
+              top: sp(14),
+              bottom: sp(14),
+              width: 5,
+              borderRadius: RADIUS.pill,
+              background: `linear-gradient(180deg, ${C.accent}, ${alpha(C.accent, 40)})`,
+            }}
+          />
           {karaoke
             ? tokens.map((tk, i) => {
                 const t0 = i / n;
@@ -98,13 +110,17 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number; karaok
                   extrapolateRight: "clamp",
                 });
                 const on = lit > 0.5;
+                // 逐词扫光是连续的，但颜色曾经是硬切（lit > 0.5 才亮）：词与词之间没有过渡，
+                // 观感像字幕在"一段一段地闪"。改成按 lit 插值亮度，扫过去是一条柔和的光带。
+                // 注意这里仍然不碰 font-weight 与任何布局属性——那会让整句重排、左右跳。
+                const ink = `rgba(255,255,255,${(0.42 + 0.58 * lit).toFixed(3)})`;
                 return (
                   <span
                     key={i}
                     style={{
                       display: "inline",
-                      color: on ? (tk.num ? HIGHLIGHT : "#fff") : DIM,
-                      fontWeight: on && tk.num ? FW.heavy : FW.regular,
+                      color: tk.num ? `color-mix(in srgb, ${HIGHLIGHT} ${Math.round(lit * 100)}%, ${ink})` : ink,
+                      textShadow: on && tk.num ? `0 0 14px ${alpha(HIGHLIGHT, 55)}` : "none",
                       transition: "none",
                     }}
                   >

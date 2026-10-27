@@ -1,10 +1,20 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, FS, FW, accentOf, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, accentOf, tileShadow, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
 import { HeadingContent } from "../PageHeading";
 import type { SceneProps } from "./types";
 import type { ChartSpec } from "../props";
+
+/**
+ * 多系列配色。
+ *
+ * 曾经是写死的 `[C.accent, "#6d91ff", "#34c79f", "#f2b03f", "#e868a4", C.muted]`，
+ * 其中那四个十六进制正是 tech 主题调色板的副本 —— 于是饼图/环图/堆叠图在
+ * business、warm、dark 主题下依然是科技蓝紫，换主题只有柱子外框跟着变。
+ * 现在走 accentOf，跟随主题的 --ttt-a{i}。
+ */
+const SERIES = [accentOf(0), accentOf(1), accentOf(2), accentOf(3), accentOf(4), accentOf(5)];
 
 /**
  * 图表页标题。
@@ -44,6 +54,53 @@ const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> 
     </div>
   );
 };
+/**
+ * Y 轴刻度。
+ *
+ * 图里原先只有虚线网格、没有刻度值——观众看不出柱高对应多少，这是"像 PPT"的一处硬伤。
+ * 这里按 1/2/2.5/5×10^n 取"整数步长"，再回推一个能被 step 整除的顶值，
+ * 于是柱高与刻度是同一套数值，不会出现 38 的柱子对不上 40 的格线。
+ */
+const niceStep = (raw: number): number => {
+  if (!Number.isFinite(raw) || raw <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw / mag;
+  // 只用 1/2/2.5/5 会把 41 这种数据一路排到 80（折线被压在下面半屏），
+  // 带上 1.5/3/4 后同样的数据排到 45/60，曲线才占满绘图区
+  const set = [1, 1.5, 2, 2.5, 3, 4, 5, 10];
+  const step = set.find((s) => norm <= s + 1e-9) ?? 10;
+  return step * mag;
+};
+
+const axisScale = (dataMax: number, count = 4): { top: number; ticks: { value: number; ratio: number }[] } => {
+  const step = niceStep((dataMax || 1) / count);
+  const top = Math.max(step, Math.ceil((dataMax || 1) / step - 1e-9) * step);
+  // 刻度必须停在 top 上：此前按 count+1 生成，top=60 时还会多出 80 这条线，ratio 直接 >1 溢出绘图区
+  const n = Math.max(1, Math.round(top / step));
+  const ticks = Array.from({ length: n + 1 }, (_, i) => ({
+    value: Math.round(i * step * 1000) / 1000,
+    ratio: (i * step) / top,
+  }));
+  return { top, ticks };
+};
+
+const fmtTick = (v: number): string =>
+  Math.abs(v) >= 1000 ? `${Math.round(v / 100) / 10}k` : `${Math.round(v * 10) / 10}`;
+/**
+ * 折线/面积/散点图共用的 Y 轴：返回统一比例下的顶值，以及每条刻度线在 SVG 里的 y 坐标。
+ *
+ * 之前这三张图的网格线是「绘图区等分」，而数据用的是 dataMax×1.18 的比例——
+ * 两套比例互不相干，所以网格线没有数值含义。这里把刻度和数据绑成同一套，
+ * 并留 15% 顶部余量，避免最高点贴着上边框。
+ */
+const yAxisOf = (dataMax: number, plotH: number, baselineY: number, count = 4) => {
+  const { top, ticks } = axisScale(dataMax, count);
+  const max = top * 1.15;
+  return {
+    max,
+    ticks: ticks.map((t) => ({ value: t.value, y: baselineY - (t.value / max) * plotH })),
+  };
+};
 export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const chart = page.chart!;
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
@@ -51,7 +108,9 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const max = Math.max(...values);
+  const dataMax = Math.max(...values);
+  const { top: axisTop, ticks } = axisScale(dataMax);
+  const max = axisTop;
   const valueLabel = (v: number) => `${Math.round(v)}`;
   const n = values.length;
   const availW = isPortrait ? contentWidth : 1920 - 160;
@@ -84,25 +143,63 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
             bottom: 8,
             height: 4,
             borderRadius: 2,
-            background: "linear-gradient(90deg, rgba(28,37,54,0.10), rgba(28,37,54,0.04))",
+            background: `linear-gradient(90deg, ${alpha(C.ink, 10)}, ${alpha(C.ink, 4)})`,
           }}
         />
+        {/* Y 轴：刻度线 + 数值。柱区底边在 bottom:90，绘图高 barMaxH，与刻度同一套比例 */}
+        {ticks.map((t) => (
+          <div
+            key={`t${t.value}`}
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: (isPortrait ? sp(90) : 90) + t.ratio * barMaxH - 1,
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                height: 2,
+                background: alpha(C.ink, t.ratio === 0 ? 14 : 7),
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                right: "100%",
+                marginRight: isPortrait ? sp(12) : 12,
+                transform: "translateY(-50%)",
+                fontSize: isPortrait ? fs(FS.small) : FS.small,
+                color: C.sub,
+                fontFamily: FONT,
+                fontWeight: FW.regular,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {fmtTick(t.value)}
+            </div>
+          </div>
+        ))}
         {values.map((v, i) => {
           const g = springIn(f, fps, timing.frameAt(i, 0, 18), "spring");
           const h = (v / max) * barMaxH;
           const a = accentOf(i);
           return (
             <div key={i} style={{ position: "relative", width: barW, height: chartH }}>
+              {/* 数值标签跟着柱顶走：此前钉在列容器顶端，矮柱的数字会飘在半空中，读不出对应关系 */}
               <div
                 style={{
                   position: "absolute",
-                  top: 0,
+                  bottom: (isPortrait ? sp(90) : 90) + h * g + 12,
                   left: 0,
                   right: 0,
                   textAlign: "center",
-                  fontSize: isPortrait ? fs(30) : 30,
+                  fontSize: isPortrait ? fs(FS.caption) : FS.caption,
                   fontWeight: FW.heavy,
-                  color: i === 0 ? C.sub : a,
+                  color: a,
                   fontFamily: FONT,
                 }}
               >
@@ -116,9 +213,10 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
                   bottom: isPortrait ? sp(90) : 90,
                   height: `${h * g}px`,
                   borderRadius: "14px 14px 0 0",
-                  background:
-                    i === 0 ? C.muted : `linear-gradient(180deg, ${a} 0%, ${alpha(a, 80)} 55%, ${alpha(a, 53)} 100%)`,
-                  boxShadow: i === 0 ? "none" : `0 8px 20px ${alpha(a, 28)}`,
+                  // 此前第一根柱子被刻意画成灰色（C.muted）、不带投影，看起来像"数据缺失"。
+                  // 现在所有柱子统一走主色阶，最大值那根额外加投影做视觉锚点
+                  background: `linear-gradient(180deg, ${a} 0%, ${alpha(a, 80)} 55%, ${alpha(a, 53)} 100%)`,
+                  boxShadow: v === max ? tileShadow(a) : "none",
                   overflow: "hidden",
                 }}
               >
@@ -169,7 +267,7 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
     H = isPortrait ? 700 : 470,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-  const max = Math.max(...values) * 1.18 || 1;
+  const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
   const n = values.length;
   const xs = values.map((_, i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1));
   const ys = values.map((v) => H - BOTTOM - (v / max) * (H - PAD - BOTTOM));
@@ -180,19 +278,31 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
-        {[0.25, 0.5, 0.75, 1].map((t) => (
-          <line
-            key={`g${t}`}
-            x1={PAD}
-            y1={H - BOTTOM - (H - PAD - BOTTOM) * t}
-            x2={W - PAD}
-            y2={H - BOTTOM - (H - PAD - BOTTOM) * t}
-            stroke="#e3eaf6"
-            strokeWidth={2}
-            strokeDasharray="6 8"
-          />
+        {yTicks.map((t) => (
+          <g key={`g${t.value}`}>
+            <line
+              x1={PAD}
+              y1={t.y}
+              x2={W - PAD}
+              y2={t.y}
+              stroke={C.ink}
+              strokeOpacity={t.value === 0 ? 0.16 : 0.08}
+              strokeWidth={t.value === 0 ? 3 : 2}
+              strokeDasharray={t.value === 0 ? undefined : "6 8"}
+            />
+            <text
+              x={PAD - (isPortrait ? sp(16) : 16)}
+              y={t.y}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize={isPortrait ? fs(FS.small) : FS.small}
+              fill={C.sub}
+              fontFamily={FONT}
+            >
+              {fmtTick(t.value)}
+            </text>
+          </g>
         ))}
-        <line x1={PAD} y1={H - BOTTOM} x2={W - PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
         {values.map((_, i) => (
           <text
             key={`x${i}`}
@@ -263,7 +373,7 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const pal = [C.accent, "#6d91ff", "#34c79f", "#f2b03f", "#e868a4", C.muted];
+  const pal = SERIES;
   const total = values.reduce((a, b) => a + b, 0) || 1;
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const cx = isPortrait ? contentWidth / 2 : 470,
@@ -371,7 +481,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
     H = isPortrait ? 700 : 470,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-  const max = Math.max(...values) * 1.18 || 1;
+  const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
   const n = values.length;
   const xs = values.map((_, i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1));
   const ys = values.map((v) => H - BOTTOM - (v / max) * (H - PAD - BOTTOM));
@@ -382,19 +492,31 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
-        {[0.25, 0.5, 0.75, 1].map((t) => (
-          <line
-            key={`g${t}`}
-            x1={PAD}
-            y1={H - BOTTOM - (H - PAD - BOTTOM) * t}
-            x2={W - PAD}
-            y2={H - BOTTOM - (H - PAD - BOTTOM) * t}
-            stroke="#e3eaf6"
-            strokeWidth={2}
-            strokeDasharray="6 8"
-          />
+        {yTicks.map((t) => (
+          <g key={`g${t.value}`}>
+            <line
+              x1={PAD}
+              y1={t.y}
+              x2={W - PAD}
+              y2={t.y}
+              stroke={C.ink}
+              strokeOpacity={t.value === 0 ? 0.16 : 0.08}
+              strokeWidth={t.value === 0 ? 3 : 2}
+              strokeDasharray={t.value === 0 ? undefined : "6 8"}
+            />
+            <text
+              x={PAD - (isPortrait ? sp(16) : 16)}
+              y={t.y}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize={isPortrait ? fs(FS.small) : FS.small}
+              fill={C.sub}
+              fontFamily={FONT}
+            >
+              {fmtTick(t.value)}
+            </text>
+          </g>
         ))}
-        <line x1={PAD} y1={H - BOTTOM} x2={W - PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
         {values.map((_, i) => (
           <text
             key={`x${i}`}
@@ -458,7 +580,7 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const pal = [C.accent, "#6d91ff", "#34c79f", "#f2b03f", "#e868a4", C.muted];
+  const pal = SERIES;
   const sum = values.reduce((a, b) => a + b, 0) || 1;
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const cx = isPortrait ? contentWidth / 2 : 470,
@@ -566,7 +688,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const pal = [C.accent, "#6d91ff", "#34c79f", "#f2b03f"];
+  const pal = SERIES;
   const maxTotal = Math.max(...labels.map((_, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0))) || 1;
   const n = labels.length;
   const availW = isPortrait ? contentWidth : 1920 - 160;
@@ -578,6 +700,9 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
   const chartH = isPortrait ? 620 : 360;
   const barMaxH = isPortrait ? 520 : 300;
+  // 柱区底边：让出标签那一行，刻度才能与柱高对齐（此前标签在柱底下撑开，柱底位置不定）
+  const barBottom = Math.round(labelFs * 1.2) + (isPortrait ? sp(18) : 18);
+  const { top: stackTop, ticks: axisTicks } = axisScale(maxTotal);
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
@@ -599,26 +724,62 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
             bottom: 8,
             height: 4,
             borderRadius: 2,
-            background: "linear-gradient(90deg, rgba(28,37,54,0.10), rgba(28,37,54,0.04))",
+            background: `linear-gradient(90deg, ${alpha(C.ink, 10)}, ${alpha(C.ink, 4)})`,
           }}
         />
+        {/* Y 轴刻度：堆叠图此前连网格线都没有，柱高完全读不出来。
+            柱区底边定在 barBottom（= 标签行高 + 间距），刻度与柱高共用 maxTotal 同一套比例 */}
+        {axisTicks.map((t) => (
+          <div
+            key={`t${t.value}`}
+            style={{ position: "absolute", left: 0, right: 0, bottom: barBottom + t.ratio * barMaxH - 1 }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                height: 2,
+                background: alpha(C.ink, t.ratio === 0 ? 14 : 7),
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                right: "100%",
+                marginRight: isPortrait ? sp(12) : 12,
+                transform: "translateY(-50%)",
+                fontSize: isPortrait ? fs(FS.small) : FS.small,
+                color: C.sub,
+                fontFamily: FONT,
+                fontWeight: FW.regular,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {fmtTick(t.value)}
+            </div>
+          </div>
+        ))}
         {labels.map((label, i) => {
           const grow = springIn(f, fps, timing.frameAt(i, 0, 18), "spring");
-          const totalH = (series.reduce((a, s) => a + (s.values[i] || 0), 0) / maxTotal) * barMaxH;
+          const totalH = (series.reduce((a, s) => a + (s.values[i] || 0), 0) / stackTop) * barMaxH;
           return (
-            <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div key={i} style={{ position: "relative", width: barW, height: chartH }}>
               <div
                 style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  bottom: barBottom,
                   display: "flex",
                   flexDirection: "column-reverse",
-                  width: barW,
                   height: `${totalH * grow}px`,
                   borderRadius: "14px 14px 0 0",
                   overflow: "hidden",
                 }}
               >
                 {series.map((s, si) => {
-                  const segH = ((s.values[i] || 0) / maxTotal) * barMaxH;
+                  const segH = ((s.values[i] || 0) / stackTop) * barMaxH;
                   return (
                     <div
                       key={si}
@@ -626,7 +787,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
                         width: "100%",
                         height: `${segH}px`,
                         background: pal[si % pal.length],
-                        boxShadow: si === series.length - 1 ? `0 8px 20px ${pal[si % pal.length]}47` : "none",
+                        boxShadow: si === series.length - 1 ? tileShadow(pal[si % pal.length]) : "none",
                       }}
                     />
                   );
@@ -634,13 +795,15 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
               </div>
               <div
                 style={{
-                  marginTop: isPortrait ? sp(14) : 14,
+                  position: "absolute",
+                  left: -8,
+                  right: -8,
+                  bottom: 0,
                   fontSize: labelFs,
                   fontWeight: 700,
                   color: C.ink,
                   textAlign: "center",
                   lineHeight: 1.2,
-                  maxWidth: barW + 16,
                 }}
               >
                 {label}
@@ -699,24 +862,42 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
     yRange = yMax - yMin || 1;
   const px = (x: number) => PAD + ((x - xMin) / xRange) * (W - PAD * 2);
   const py = (y: number) => H - BOTTOM - ((y - yMin) / yRange) * (H - PAD - BOTTOM);
+  // 散点是「区间映射」（min~max 铺满绘图区），所以刻度要从区间里取整数步长，
+  // 不能套用柱状图那种从 0 起的 axisScale
+  const scatterStep = niceStep(yRange / 4);
+  const yTicks = Array.from({ length: 8 }, (_, i) => yMin + i * scatterStep)
+    .filter((v) => v <= yMax + scatterStep * 0.001 && v >= yMin - scatterStep * 0.001)
+    .map((v) => ({ value: Math.round(v * 100) / 100, y: py(v) }));
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
-        {[0.25, 0.5, 0.75, 1].map((t) => (
-          <line
-            key={`g${t}`}
-            x1={PAD}
-            y1={H - BOTTOM - (H - PAD - BOTTOM) * t}
-            x2={W - PAD}
-            y2={H - BOTTOM - (H - PAD - BOTTOM) * t}
-            stroke="#e3eaf6"
-            strokeWidth={2}
-            strokeDasharray="6 8"
-          />
+        {yTicks.map((t) => (
+          <g key={`g${t.value}`}>
+            <line
+              x1={PAD}
+              y1={t.y}
+              x2={W - PAD}
+              y2={t.y}
+              stroke={C.ink}
+              strokeOpacity={t.value === 0 ? 0.16 : 0.08}
+              strokeWidth={t.value === 0 ? 3 : 2}
+              strokeDasharray={t.value === 0 ? undefined : "6 8"}
+            />
+            <text
+              x={PAD - (isPortrait ? sp(16) : 16)}
+              y={t.y}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize={isPortrait ? fs(FS.small) : FS.small}
+              fill={C.sub}
+              fontFamily={FONT}
+            >
+              {fmtTick(t.value)}
+            </text>
+          </g>
         ))}
-        <line x1={PAD} y1={H - BOTTOM} x2={W - PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
-        <line x1={PAD} y1={PAD} x2={PAD} y2={H - BOTTOM} stroke="#cdd7e8" strokeWidth={3} />
+        <line x1={PAD} y1={PAD} x2={PAD} y2={H - BOTTOM} stroke={C.ink} strokeOpacity={0.16} strokeWidth={3} />
         {points.map((p, i) => {
           const o = springIn(f, fps, timing.frameAt(i, 20, 12), "spring");
           return (

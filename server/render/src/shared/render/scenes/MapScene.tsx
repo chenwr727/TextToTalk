@@ -48,13 +48,14 @@ function computeFitTransform(
   spec: MapSpec,
   regionPolys: [number, number][][],
   safe: { x: number; y: number; w: number; h: number },
+  maxScale = 1.35,
 ): { scale: number; tx: number; ty: number } {
   const b = computeMapBounds(spec, regionPolys);
   const contentW = Math.max(b.maxX - b.minX, 100);
   const contentH = Math.max(b.maxY - b.minY, 100);
   const scaleX = safe.w / contentW;
   const scaleY = safe.h / contentH;
-  const scale = Math.min(scaleX, scaleY, 1.35);
+  const scale = Math.min(scaleX, scaleY, maxScale);
 
   const fitW = contentW * scale;
   const fitH = contentH * scale;
@@ -245,7 +246,8 @@ const Legend: React.FC<{
         height={items.length * 30 + 20}
         rx={12}
         fill="rgba(255,255,255,0.85)"
-        stroke="rgba(28,37,54,0.10)"
+        stroke={C.ink}
+        strokeOpacity={0.1}
         strokeWidth={1}
       />
       {items.map((it, i) => (
@@ -287,8 +289,27 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
   const regions = spec?.regions ?? [];
   const regionPolys = useMemo(() => regions.map((r) => parsePolygon(r.points)), [regions]);
   const canvas = isPortrait ? { w: contentWidth, h: contentHeight } : CANVAS;
-  const safe = isPortrait ? { x: 0, y: 0, w: contentWidth, h: contentHeight } : SAFE;
-  const fit = useMemo(() => (spec ? computeFitTransform(spec, regionPolys, safe) : null), [spec, regionPolys, safe]);
+  // 竖屏把底板铺满整块安全区时会被拉成一条极窄的竖条，中间那点图缩在正中、像一张空表格。
+  // 按接近 1:1 的比例收一下高度再居中；水平也内缩一圈，给地名留位置。
+  const portraitBoardH = Math.min(contentHeight - 96, Math.round(contentWidth * 0.95));
+  const safe = isPortrait
+    ? {
+        x: 60,
+        y: Math.round((contentHeight - portraitBoardH) / 2),
+        w: contentWidth - 120,
+        h: portraitBoardH,
+      }
+    : SAFE;
+  // 地名是「以地标为锚点向外偏移」画的，如果让地标铺满整个安全区，最外侧的地名就会
+  // 正好压在遮罩边缘被切掉（竖屏实测「成都」「产品·上海」都缺字）。
+  // 因此竖屏额外给地名留出 150px 边距，并压低放大上限，让图整体收进来一点。
+  const fitBox = isPortrait
+    ? { x: safe.x + 110, y: safe.y + 90, w: Math.max(200, safe.w - 220), h: Math.max(200, safe.h - 180) }
+    : safe;
+  const fit = useMemo(
+    () => (spec ? computeFitTransform(spec, regionPolys, fitBox, isPortrait ? 1.1 : 1.35) : null),
+    [spec, regionPolys, fitBox, isPortrait],
+  );
   if (!spec || !fit) return null;
   const motion = page.motion ?? "spring";
   const { scale, tx, ty } = fit;
@@ -304,27 +325,30 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
               <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24} fill="white" />
             </mask>
           </defs>
+          {/* 地图底板：原来是纯白半透明 + 一道虚线内框，观感像"一块空画布"。
+              改成主色极淡渐变 + 点阵网格，画面才有"地图"的体积感 */}
+          <defs>
+            <pattern id="map-grid" width={36} height={36} patternUnits="userSpaceOnUse">
+              <circle cx={2} cy={2} r={1.6} fill={C.ink} fillOpacity={0.14} />
+            </pattern>
+            <linearGradient id="map-board" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor={C.accent} stopOpacity={0.07} />
+              <stop offset="55%" stopColor="rgba(255,255,255,0.62)" />
+              <stop offset="100%" stopColor={C.accent} stopOpacity={0.05} />
+            </linearGradient>
+          </defs>
           <rect
             x={safe.x}
             y={safe.y}
             width={safe.w}
             height={safe.h}
             rx={24}
-            fill="rgba(255,255,255,0.55)"
-            stroke="rgba(28,37,54,0.10)"
+            fill="url(#map-board)"
+            stroke={C.ink}
+            strokeOpacity={0.1}
             strokeWidth={1.5}
           />
-          <rect
-            x={safe.x + 10}
-            y={safe.y + 10}
-            width={safe.w - 20}
-            height={safe.h - 20}
-            rx={18}
-            fill="none"
-            stroke="rgba(28,37,54,0.08)"
-            strokeWidth={1.5}
-            strokeDasharray="8 8"
-          />
+          <rect x={safe.x} y={safe.y} width={safe.w} height={safe.h} rx={24} fill="url(#map-grid)" stroke="none" />
           <g mask="url(#map-safe-mask)">
             <g transform={`translate(${tx}, ${ty}) scale(${scale})`}>
               {regions.map((rg, i) => (

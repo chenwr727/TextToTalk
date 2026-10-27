@@ -252,7 +252,8 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
           rx={RX - 6}
           ry={RY - 6}
           fill="none"
-          stroke={alpha(C.accent, 70)}
+          stroke={C.accent}
+          strokeOpacity={0.7}
           strokeWidth={4}
           strokeDasharray="14 12"
         />

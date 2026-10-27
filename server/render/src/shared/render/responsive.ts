@@ -37,7 +37,12 @@ export const useResponsive = (): Responsive => {
   const height = injected?.height ?? video.height;
   const isPortrait = height > width;
 
-  const fsScale = 1;
+  // 竖屏画布宽 1080、可用宽只有 952，而所有版式的字号是按 1920 宽设计的。
+  // 这里长期写死 fsScale = 1，导致竖屏直接套用横屏字号：正文占宽度比例翻倍，
+  // 卡片里的文字会溢出（three_card 实测溢出卡片底边）、表格列宽挤成一团。
+  // 0.82 让"每行容纳的字数"接近横屏水平，同时不至于在手机上偏小；字幕单独处理（见 Caption.tsx），
+  // 因为手机上字幕要保持大字号，不跟着正文一起缩。
+  const fsScale = isPortrait ? 0.82 : 1;
   const spScale = isPortrait ? 0.85 : 1;
 
   const safeX = isPortrait ? 64 : 120;
@@ -51,10 +56,10 @@ export const useResponsive = (): Responsive => {
 };
 
 export const useCaptionReserve = (subtitles: boolean, texts: string[] = []): number => {
-  const { isPortrait, fs, sp, width } = useResponsive();
+  const { isPortrait, sp, width } = useResponsive();
   if (!subtitles) return 0;
   const m = CAPTION_METRICS;
-  const fSize = fs(m.fontSize);
+  const fSize = Math.round(m.fontSize * (isPortrait ? 0.92 : 1));
   const padX = sp(m.padX);
   const barMaxW = width * (isPortrait ? m.maxWidthPortrait : m.maxWidthLandscape);
   const textW = Math.max(80, barMaxW - 10 - padX * 2);

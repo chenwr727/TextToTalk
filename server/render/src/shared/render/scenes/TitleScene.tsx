@@ -123,7 +123,8 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             }}
           >
             {title.slice(0, typedChars)}
-            <span style={{ opacity: caretOpacity, color: C.accent }}>▌</span>
+            {/* 光标只在"还在打字"时出现：此前它一直渲染，成片里标题后面永远挂着一个小方块 */}
+            {typedChars < title.length ? <span style={{ opacity: caretOpacity, color: C.accent }}>▌</span> : null}
           </div>
         )}
         <svg

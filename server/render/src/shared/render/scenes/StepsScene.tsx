@@ -1,22 +1,7 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import {
-  alpha,
-  C,
-  FONT,
-  FS,
-  FW,
-  CARD_TYPE,
-  pickCardFont,
-  RADIUS,
-  HEADER_OFFSET,
-  CARD_SHADOW,
-  GLASS,
-  BORDER,
-  accentOf,
-  SOLID_SHADOW,
-  springIn,
-} from "../theme";
-import { Icon } from "../Icon";
+import { C, FONT, FS, FW, CARD_TYPE, pickCardFont, HEADER_OFFSET, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import { IconTile } from "../IconTile";
+import { Card } from "../Card";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
@@ -69,55 +54,32 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,
               }}
             >
-              <div
-                style={{
-                  height: "100%",
-                  padding: `${isPortrait ? sp(34) : 34}px ${isPortrait ? sp(28) : 28}px`,
-                  textAlign: "center",
-                  background: GLASS.card,
-                  border: `${BORDER.card}px solid ${a}`,
-                  borderRadius: RADIUS.card,
-                  boxShadow: CARD_SHADOW,
-                  position: "relative",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "flex-start",
-                  alignItems: "center",
-                }}
-              >
+              <Card pad={isPortrait ? sp(34) : 34} style={{ height: "100%", textAlign: "center" }}>
+                {/* 序号原来是"64px 实心圆 + 64px 图标方块"竖向堆两个，把卡片撑满、正文被挤成窄条。
+                    现在序号缩成右上角 40px 徽标，主视觉只留一个图标方块，正文多出约 84px 高度 */}
                 <div
                   style={{
-                    width: isPortrait ? sp(64) : 64,
-                    height: isPortrait ? sp(64) : 64,
+                    position: "absolute",
+                    top: isPortrait ? sp(16) : 16,
+                    right: isPortrait ? sp(16) : 16,
+                    width: isPortrait ? sp(44) : 44,
+                    height: isPortrait ? sp(44) : 44,
                     borderRadius: "50%",
                     background: a,
                     color: "#fff",
-                    fontSize: isPortrait ? fs(FS.heading) : FS.heading,
+                    fontSize: isPortrait ? fs(FS.label) : FS.label,
                     fontWeight: FW.heavy,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    marginBottom: isPortrait ? sp(20) : 20,
                     boxShadow: SOLID_SHADOW,
-                    flexShrink: 0,
+                    zIndex: 2,
                   }}
                 >
                   {i + 1}
                 </div>
-                <div
-                  style={{
-                    width: isPortrait ? sp(64) : 64,
-                    height: isPortrait ? sp(64) : 64,
-                    borderRadius: 16,
-                    background: `${alpha(a, 10)}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: isPortrait ? sp(18) : 18,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name={pointIcon(p, i)} size={isPortrait ? sp(34) : 34} color={a} />
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: isPortrait ? sp(18) : 18 }}>
+                  <IconTile name={pointIcon(p, i)} accent={a} size="lg" />
                 </div>
                 <div
                   style={{
@@ -131,7 +93,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 >
                   {pointText(p, i)}
                 </div>
-              </div>
+              </Card>
               {showArrow && (
                 <div
                   style={{

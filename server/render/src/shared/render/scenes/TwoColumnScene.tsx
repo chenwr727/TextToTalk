@@ -7,13 +7,15 @@ import {
   LH,
   HEADER_OFFSET,
   CARD_SHADOW,
-  GLASS,
   BORDER,
   accentOf,
+  SPACE,
   SOLID_SHADOW,
   springIn,
 } from "../theme";
 import { Icon } from "../Icon";
+import { Card } from "../Card";
+import { IconTile } from "../IconTile";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
@@ -75,7 +77,6 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   }
 
   const gap = gapOf(finalFs);
-  const padY = padYOf(finalFs);
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
@@ -110,48 +111,37 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             const ac = accentOf(i);
             const iconBox = Math.round(finalFs * 1.75);
             return (
-              <div
+              <Card
                 key={i}
+                accent={ac}
+                leftBar
+                pad={isPortrait ? sp(24) : SPACE.md}
                 style={{
-                  display: "flex",
-                  alignItems: "center",
                   flexShrink: 0,
-                  padding: `${padY}px ${isPortrait ? sp(30) : 30}px`,
-                  background: GLASS.card,
-                  border: `${BORDER.card}px solid ${ac}`,
-                  borderRadius: 20,
-                  boxShadow: CARD_SHADOW,
                   opacity: t,
                   transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px)`,
                 }}
               >
-                <div
-                  style={{
-                    width: iconBox,
-                    height: iconBox,
-                    borderRadius: 16,
-                    background: `${alpha(ac, 10)}`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginRight: isPortrait ? sp(24) : 24,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Icon name={pointIcon(p, i)} size={Math.round(iconBox * 0.53)} color={ac} />
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  <IconTile
+                    name={pointIcon(p, i)}
+                    accent={ac}
+                    size={iconBox > 60 ? "lg" : iconBox > 48 ? "md" : "sm"}
+                    style={{ marginRight: isPortrait ? sp(24) : SPACE.md }}
+                  />
+                  <div
+                    style={{
+                      fontSize: finalFs,
+                      fontWeight: FW.bold,
+                      color: C.ink,
+                      lineHeight: LH.body,
+                      fontFamily: FONT,
+                    }}
+                  >
+                    {pointText(p, i)}
+                  </div>
                 </div>
-                <div
-                  style={{
-                    fontSize: finalFs,
-                    fontWeight: FW.bold,
-                    color: C.ink,
-                    lineHeight: LH.body,
-                    fontFamily: FONT,
-                  }}
-                >
-                  {pointText(p, i)}
-                </div>
-              </div>
+              </Card>
             );
           })}
         </div>

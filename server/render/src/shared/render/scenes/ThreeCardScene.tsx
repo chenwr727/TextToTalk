@@ -1,7 +1,7 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, FW, RADIUS, CARD_TYPE, pickCardFont, accentOf, springIn } from "../theme";
+import { alpha, C, FONT, FW, RADIUS, SPACE, CARD_TYPE, pickCardFont, accentOf, springIn } from "../theme";
 import { Card } from "../Card";
-import { Icon } from "../Icon";
+import { IconTile } from "../IconTile";
 import { ICON_KEYS } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -70,10 +70,13 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
               <Card
                 accent={a}
                 topBar
+                pad={{ x: padX, y: padY }}
                 style={{
                   width: isPortrait ? contentWidth : CARD_W,
-                  height: isPortrait ? sp(CARD_H) : CARD_H,
-                  padding: `${padY}px ${padX}px`,
+                  // 竖屏改由内容撑高：固定套用横屏卡高会在高画布里留下大片空白，
+                  // 而且一旦文案变长就溢出卡片（改字号缩放的实测就是这个现象）
+                  height: isPortrait ? undefined : CARD_H,
+                  minHeight: isPortrait ? sp(150) : undefined,
                   boxSizing: "border-box",
                 }}
               >
@@ -82,31 +85,17 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
                     flex: 1,
                     width: "100%",
                     display: "flex",
-                    flexDirection: "column",
-                    alignItems: "flex-start",
-                    justifyContent: "center",
-                    gap: ICON_GAP,
+                    flexDirection: isPortrait ? "row" : "column",
+                    alignItems: isPortrait ? "center" : "flex-start",
+                    justifyContent: isPortrait ? "flex-start" : "center",
+                    gap: isPortrait ? SPACE.md : ICON_GAP,
                   }}
                 >
-                  <div
-                    style={{
-                      width: ICON_BOX,
-                      height: ICON_BOX,
-                      borderRadius: RADIUS.chip,
-                      background: `${alpha(a, 10)}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      boxShadow: `0 2px 8px ${alpha(a, 20)}`,
-                    }}
-                  >
-                    <Icon
-                      name={items[i] ? pointIcon(items[i], i) : ICON_KEYS[(i + 6) % ICON_KEYS.length]}
-                      size={isPortrait ? sp(CARD_TYPE.iconSize) : CARD_TYPE.iconSize}
-                      color={a}
-                    />
-                  </div>
+                  <IconTile
+                    name={items[i] ? pointIcon(items[i], i) : ICON_KEYS[(i + 6) % ICON_KEYS.length]}
+                    accent={a}
+                    size={isPortrait ? "md" : "lg"}
+                  />
                   <div
                     style={{
                       fontSize: sc.fs,

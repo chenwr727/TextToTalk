@@ -1,21 +1,7 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import {
-  alpha,
-  C,
-  FONT,
-  CONTENT_WIDTH,
-  SPACE,
-  RADIUS,
-  BORDER,
-  CARD_SHADOW,
-  DOT_SHADOW,
-  accentOf,
-  FS,
-  FW,
-  GLASS,
-  springIn,
-} from "../theme";
+import { alpha, C, FONT, CONTENT_WIDTH, SPACE, DOT_SHADOW, accentOf, FW, springIn } from "../theme";
 import { Icon } from "../Icon";
+import { Card } from "../Card";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandHighlight } from "../rough";
@@ -142,7 +128,6 @@ const PointCard: React.FC<CardProps> = ({
   const a = accentOf(index);
   const len = [...text].length;
   const fsz = Math.round((isLead ? scale.leadFs : scale.subFs) * lenAdjOf(len));
-  const pad = isLead ? scale.leadPad : scale.subPad;
   const btn = isLead ? scale.btnLead : scale.btnSub;
   const ic = isLead ? scale.iconLead : scale.iconSub;
   return (
@@ -153,76 +138,55 @@ const PointCard: React.FC<CardProps> = ({
         transform: `translateY(${interpolate(enter, [0, 1], [40, 0])}px)`,
       }}
     >
-      <div
+      {/* 要点行：原先自己拼了玻璃底 + 左侧竖条 + 顶部高光，唯独漏了 Card 的内描边，
+          同一页里卡片质感比 three_card 差一档。现在统一走 <Card leftBar focus>。
+          padding 也从"字符串 + 正则反解析缩放"改成结构化数值，间距可追 */}
+      <Card
+        accent={a}
+        leftBar
+        focus={pulse > 0.02}
+        pad={sp(isLead ? SPACE.lg : SPACE.md)}
         style={{
-          position: "relative",
           display: "flex",
-          alignItems: "center",
-          padding: isPortrait ? pad.replace(/(\d+)px/g, (m, n) => `${sp(Number(n))}px`) : pad,
-          background:
-            pulse > 0.02 ? `linear-gradient(0deg, ${alpha(a, 8)}, ${alpha(a, 8)}), ${GLASS.card}` : GLASS.card,
-          border: `${BORDER.card}px solid ${a}`,
-          borderRadius: RADIUS.card,
-          boxShadow: pulse > 0.02 ? `0 8px 18px ${alpha(a, 19)}, ${CARD_SHADOW}` : CARD_SHADOW,
           maxWidth: "100%",
-          boxSizing: "border-box",
+          transform: `translateY(0)`,
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: (isLead ? 10 : 6) + pulse * 4,
-            background: `linear-gradient(180deg, ${a}, ${alpha(a, 40)})`,
-            opacity: 0.75 + pulse * 0.25,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "50%",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            marginRight: isPortrait ? sp(24) : 24,
-            flexShrink: 0,
-            width: isPortrait ? sp(btn) : btn,
-            height: isPortrait ? sp(btn) : btn,
-            borderRadius: "50%",
-            background: `${alpha(a, 10)}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: DOT_SHADOW,
-          }}
-        >
-          <Icon name={icon} size={isPortrait ? sp(ic) : ic} color={a} />
+        <div style={{ display: "flex", alignItems: "center", maxWidth: "100%" }}>
+          <div
+            style={{
+              marginRight: isPortrait ? sp(24) : 24,
+              flexShrink: 0,
+              width: isPortrait ? sp(btn) : btn,
+              height: isPortrait ? sp(btn) : btn,
+              borderRadius: "50%",
+              background: `${alpha(a, 10)}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: DOT_SHADOW,
+            }}
+          >
+            <Icon name={icon} size={isPortrait ? sp(ic) : ic} color={a} />
+          </div>
+          <div
+            style={{
+              fontSize: fs(fsz),
+              fontWeight: isLead ? FW.heavy : FW.regular,
+              color: C.ink,
+              lineHeight: scale.lineHeight,
+            }}
+          >
+            {highlight ? (
+              <HandHighlight color={a} progress={enter}>
+                {text}
+              </HandHighlight>
+            ) : (
+              text
+            )}
+          </div>
         </div>
-        <div
-          style={{
-            fontSize: fs(fsz),
-            fontWeight: isLead ? FW.heavy : FW.regular,
-            color: C.ink,
-            lineHeight: scale.lineHeight,
-          }}
-        >
-          {highlight ? (
-            <HandHighlight color={a} progress={enter}>
-              {text}
-            </HandHighlight>
-          ) : (
-            text
-          )}
-        </div>
-      </div>
+      </Card>
     </div>
   );
 };
@@ -300,11 +264,14 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             width: isPortrait ? contentWidth : CONTENT_WIDTH,
             maxWidth: isPortrait ? "100%" : "84%",
             fontFamily: FONT,
-            paddingTop: isPortrait ? sp(padTop) : padTop,
+            // 竖屏画布高达 1920，内容却只有三四行：沿用横屏"顶部留 300 多"的写法，
+            // 结果内容全挤在上半屏、下半屏一片空白。竖屏改为在标题与字幕之间垂直居中
+            paddingTop: isPortrait ? SPACE.lg : padTop,
             paddingBottom: captionReserve,
+            flex: isPortrait ? 1 : undefined,
             display: "flex",
             flexDirection: "row",
-            alignItems: "flex-start",
+            alignItems: isPortrait ? "center" : "flex-start",
             justifyContent: "center",
             gap: isPortrait ? sp(24) : 36,
           }}
@@ -331,8 +298,10 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         style={{
           width: isPortrait ? contentWidth : SINGLE_COL_W,
           fontFamily: FONT,
-          paddingTop: isPortrait ? sp(padTop) : padTop,
+          paddingTop: isPortrait ? SPACE.lg : padTop,
           paddingBottom: captionReserve,
+          flex: isPortrait ? 1 : undefined,
+          justifyContent: isPortrait ? "center" : undefined,
           display: "flex",
           flexDirection: "column",
           gap: isPortrait ? sp(scale.gap) : scale.gap,

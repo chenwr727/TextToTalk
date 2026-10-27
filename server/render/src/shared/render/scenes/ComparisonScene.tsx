@@ -9,15 +9,14 @@ import {
   RADIUS,
   HEADER_OFFSET,
   accentOf,
+  SPACE,
+  tileShadow,
   springIn,
-  BORDER,
-  GLASS,
-  CARD_SHADOW,
-  SOLID_SHADOW,
   pickCardFont,
 } from "../theme";
-import { Icon } from "../Icon";
 import { PageHeading } from "../PageHeading";
+import { Card } from "../Card";
+import { IconTile } from "../IconTile";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
@@ -71,9 +70,8 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const tB = resolveAnchor(timing, rightItems[0] ? pointAnchor(rightItems[0]) : undefined, 1, 22);
   const enterA = springIn(f, fps, tA, page.motion);
   const enterB = springIn(f, fps, tB, page.motion);
-  const enterVs = spring({ frame: f - (tB - 16), fps, config: { damping: 9, stiffness: 110, mass: 0.8 } });
-  const enterBadge = (delay: number) =>
-    spring({ frame: f - delay, fps, config: { damping: 10, stiffness: 130, mass: 0.7 } });
+  const enterVs = springIn(f, fps, tB - 16, page.motion);
+  const enterBadge = (delay: number) => springIn(f, fps, delay, page.motion);
 
   const panel = (
     op: number,
@@ -92,76 +90,20 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         transform: `translateY(${interpolate(op, [0, 1], [72, 0])}px)`,
       }}
     >
-      <div
-        style={{
-          position: "relative",
-          width: isPortrait ? contentWidth : CARD_W,
-          height: cardH,
-          background: GLASS.card,
-          border: `${BORDER.card}px solid ${accent}`,
-          borderRadius: RADIUS.card,
-          boxShadow: CARD_SHADOW,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 10,
-            background: `linear-gradient(90deg, ${accent}, ${alpha(accent, 53)} 60%, ${alpha(accent, 20)})`,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "48%",
-            background: "linear-gradient(180deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 100%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 3,
-            borderRadius: RADIUS.cardInner,
-            border: "1px solid rgba(255,255,255,0.6)",
-            pointerEvents: "none",
-          }}
-        />
-
+      {/* 这张卡原来是 Card.tsx 的 1:1 复制品（只是 topBar 高 10、高光 48%），
+          改一处就得改两处。现在统一用 <Card topBar>，材质与其它版式一致 */}
+      <Card accent={accent} topBar pad={0} style={{ width: isPortrait ? contentWidth : CARD_W, height: cardH }}>
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: `36px ${CARD_PAD_X}px 18px ${CARD_PAD_X}px`,
+            padding: `${SPACE.lg}px ${CARD_PAD_X}px ${SPACE.md}px ${CARD_PAD_X}px`,
             position: "relative",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 16,
-                background: `${alpha(accent, 10)}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: `0 2px 10px ${alpha(accent, 20)}`,
-                flexShrink: 0,
-              }}
-            >
-              <Icon name={icon} size={32} color={accent} />
-            </div>
+            <IconTile name={icon} accent={accent} size="md" />
             <div
               style={{
                 fontSize: FS.body,
@@ -189,7 +131,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               fontSize: FS.label,
               fontWeight: FW.heavy,
               fontFamily: FONT,
-              boxShadow: `0 6px 18px ${alpha(badgeColor, 40)}`,
+              boxShadow: tileShadow(badgeColor),
               transform: `scale(${interpolate(enterBadge(badgeDelay), [0, 1], [0.4, 1])})`,
               opacity: enterBadge(badgeDelay),
               flexShrink: 0,
@@ -209,13 +151,13 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
         <div style={{ display: "flex", flexDirection: "column", gap: ITEM_GAP, padding: `0 ${CARD_PAD_X}px` }}>
           {list.slice(skipFirst).map((p, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: SPACE.sm }}>
               <div
                 style={{
                   width: ICON_BOX,
                   height: ICON_BOX,
-                  borderRadius: 12,
-                  background: `${alpha(accent, 8)}`,
+                  borderRadius: RADIUS.chip,
+                  background: alpha(accent, 10),
                   color: accent,
                   display: "flex",
                   alignItems: "center",
@@ -237,14 +179,15 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             </div>
           ))}
         </div>
-      </div>
+      </Card>
     </div>
   );
 
   const accentLeft = accentOf(0);
   const accentRight = accentOf(1);
-  const badgeLeft = "#2fc6a1";
-  const badgeRight = "#f2a93b";
+  // 徽标色曾是 "#2fc6a1"/"#f2a93b"（tech 主题 accents[1]/[2] 的副本），换主题不跟随
+  const badgeLeft = accentOf(1);
+  const badgeRight = accentOf(2);
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
