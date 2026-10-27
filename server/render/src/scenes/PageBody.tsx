@@ -75,18 +75,17 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
       }
     : {};
 
-  // rhythm="anchor"：整页极缓推近，让重点页在停留时保持"还在动"的呼吸感
-  const rhythmScale =
-    rhythm === "anchor"
-      ? interpolate(f, [0, Math.max(1, pageFrames)], [1, 1.03], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
-      : 1;
+  // 曾经这里给 rhythm="anchor" 的页面加了"整页从 1 缓推到 1.03"的呼吸感。
+  // 已移除：anchor 是默认节奏，等于让全片每一页的文字都在逐帧重新光栅化——
+  // 每帧只挪 0.1px，看着不像运动，只像文字在轻微晃动（从成片里抽帧做差分可以量出来）。
+  // 文字要"稳"，呼吸感交给背景层与转场去做。
 
   return (
     <AbsoluteFill style={accentVars(page.accent)}>
       {!isFirst && page.icon ? <IconView icon={page.icon} /> : null}
       <div style={{ position: "absolute", inset: 0, perspective: 1600 }}>
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", ...flip }}>
-          <div style={{ position: "absolute", inset: 0, transform: `scale(${rhythmScale})` }}>
+          <div style={{ position: "absolute", inset: 0 }}>
             <SceneTimingContext.Provider value={timing}>
               <AnnotationContext.Provider value={page.effects?.annotation}>
                 <Scene page={page} fps={fps} subtitles={subtitles} isFirst={isFirst} />

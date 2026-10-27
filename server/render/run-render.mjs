@@ -165,6 +165,8 @@ async function main() {
     concurrency: Number.isFinite(conc) && conc > 0 ? conc : undefined,
     scale: Number.isFinite(scale) && scale > 0 ? scale : undefined,
     x264Preset: options.x264Preset || undefined,
+    crf: Number.isFinite(options.crf) ? options.crf : undefined,
+    frameRange: Array.isArray(options.frameRange) ? options.frameRange : undefined,
     hardwareAcceleration: options.hardwareAcceleration || undefined,
     onProgress: ({ renderedFrames }) => {
       const totalFrames = composition.durationInFrames;

@@ -92,8 +92,14 @@ export async function renderTaskSync(
   if (process.env.RENDER_HW_ACCEL === "1") {
     videoOptions.hardwareAcceleration = "if-possible";
   } else {
-    videoOptions.x264Preset = process.env.RENDER_X264_PRESET || "veryfast";
+    // 默认 veryfast 时，静态画面的文字边缘会有可见的逐帧"蚊式噪声"——
+    // 从成片抽帧做差分能测出来（边缘像素差中位数约 1.9），观感像文字在轻微晃动。
+    // medium 的编码耗时约为 veryfast 的 2-3 倍，但边缘干净得多。
+    videoOptions.x264Preset = process.env.RENDER_X264_PRESET || "medium";
   }
+  // 画质：Remotion 默认 crf 18，讲稿类视频文字多、渐变多，压到 16 更稳（体积约 +30%）
+  const crf = Number(process.env.RENDER_CRF);
+  videoOptions.crf = Number.isFinite(crf) && crf >= 0 && crf <= 51 ? crf : 16;
   const systemBrowser = process.env.CHROME_PATH || null;
   if (systemBrowser) {
     console.log("[render] 使用 CHROME_PATH 指定的浏览器:", systemBrowser);
