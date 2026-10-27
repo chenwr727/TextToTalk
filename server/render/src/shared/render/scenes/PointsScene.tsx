@@ -185,6 +185,7 @@ const PointCard: React.FC<CardProps> = ({
               fontWeight: isLead ? FW.heavy : FW.regular,
               color: C.ink,
               lineHeight: scale.lineHeight,
+              textWrap: "balance",
             }}
           >
             {highlight ? (

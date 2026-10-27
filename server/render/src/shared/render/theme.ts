@@ -595,8 +595,19 @@ export const CARD_TYPE = {
   gapY: 28,
 };
 
-export const pickCardFont = (maxChars: number, textW: number, textH?: number): number => {
-  const chosen = CARD_TYPE.fsCandidates.find((fSize) => {
+/**
+ * 从字号阶梯里挑第一个"放得下"的。
+ *
+ * `candidates` 可覆盖：三卡版式把卡片加宽后，全局阶梯顶格 34 反而偏小，
+ * 局部换成更大的阶梯即可，不必动全局（别的版式靠同一阶梯保持节奏）。
+ */
+export const pickCardFont = (
+  maxChars: number,
+  textW: number,
+  textH?: number,
+  candidates: readonly number[] = CARD_TYPE.fsCandidates,
+): number => {
+  const chosen = candidates.find((fSize) => {
     const perLine = Math.max(1, Math.floor((textW * 0.95) / fSize));
     const lines = Math.ceil(maxChars / perLine);
     if (lines > CARD_TYPE.maxLines) return false;

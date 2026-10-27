@@ -4,13 +4,19 @@ import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { ICON_KEYS } from "../Icon";
 import { PageHeading } from "../PageHeading";
+import { linesByPunct } from "../cjk";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
-const CARD_W = 440;
-const CARD_H = 340;
+/**
+ * 横屏三卡：原先 440×340、间距 64，整组只占 1416（画布 1920 的 74%），
+ * 两侧各留 250 的白，画面像"没铺满"。加宽到 520、间距收到 48，整组 1656，
+ * 更接近 1680 的内容带；卡片变宽后 pickCardFont 会自然选到大一号的字。
+ */
+const CARD_W = 520;
+const CARD_H = 356;
 const CARD_GAP = CARD_TYPE.gapX;
 
 export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
@@ -28,8 +34,10 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
   const ICON_GAP = 18;
   const textAreaH = isPortrait ? sp(240) : CARD_H - padY * 2 - ICON_BOX - ICON_GAP;
 
+  /** 横屏卡加宽到 520 后，全局阶梯顶格 34 偏小；本版式单独延到 40 */
+  const FS_STEPS = isPortrait ? CARD_TYPE.fsCandidates : ([40, 36, 32, 28, 24] as const);
   const pickFs = (s: string) => {
-    const chosen = pickCardFont(Array.from(s).length, textW, textAreaH);
+    const chosen = pickCardFont(Array.from(s).length, textW, textAreaH, FS_STEPS);
     return { fs: chosen, lh: CARD_TYPE.lineHeight, align: "left" as const, justify: "flex-start" as const };
   };
   const longest = items.length
@@ -45,7 +53,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
           position: "relative",
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
-          gap: isPortrait ? sp(CARD_GAP) : CARD_GAP,
+          gap: isPortrait ? sp(CARD_GAP) : 48,
           marginTop: isPortrait ? sp(170) : 170,
         }}
       >
@@ -121,7 +129,15 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
                         }}
                       />
                     )}
-                    <div style={{ paddingLeft: 16, paddingRight: 8 }}>{t}</div>
+                    <div style={{ paddingLeft: 16, paddingRight: 8 }}>
+                      {/*
+                        按标点断行：浏览器 balance 均分宽度会把「决策」劈成「决 / 策被反复上推」。
+                        perLine 用与 pickCardFont 同一口径（textW*0.95/字号）估算。
+                      */}
+                      {(linesByPunct(t, Math.floor((textW * 0.95) / sc.fs), 2) ?? [t]).map((line, li) => (
+                        <div key={li}>{line}</div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </Card>

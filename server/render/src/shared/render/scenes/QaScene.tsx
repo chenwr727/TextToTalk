@@ -90,6 +90,7 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 fontWeight: FW.heavy,
                 color: C.ink,
                 lineHeight: LH.tight,
+                textWrap: "balance",
                 fontFamily: FONT,
               }}
             >
@@ -129,6 +130,7 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                       fontWeight: FW.regular,
                       color: C.ink,
                       lineHeight: LH.body,
+                      textWrap: "balance",
                       fontFamily: FONT,
                     }}
                   >

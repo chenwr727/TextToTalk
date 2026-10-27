@@ -145,6 +145,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                       fontWeight: FW.bold,
                       color: C.ink,
                       lineHeight: LH.body,
+                      textWrap: "balance",
                       fontFamily: FONT,
                     }}
                   >
@@ -167,11 +168,13 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         >
           <div
             style={{
+              position: "relative",
+              overflow: "hidden",
               width: isPortrait
-                ? Math.min(sp(560), Math.round(availH * 0.6))
+                ? Math.min(sp(470), Math.round(availH * 0.52))
                 : Math.min(420, Math.round(availH * 0.82)),
               height: isPortrait
-                ? Math.min(sp(560), Math.round(availH * 0.6))
+                ? Math.min(sp(470), Math.round(availH * 0.52))
                 : Math.min(420, Math.round(availH * 0.82)),
               borderRadius: isPortrait ? sp(56) : 40,
               background: `linear-gradient(150deg, ${alpha(a, 13)}, ${alpha(a, 4)})`,
@@ -182,10 +185,38 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               justifyContent: "center",
             }}
           >
+            {/*
+              原先这块只是个淡色空方块加一个居中小图标，大片空着像占位符。
+              加两层同心描边环 + 斜向细纹，让它读成"有意画的色彩面板"而不是空盒子。
+            */}
             <div
               style={{
-                width: "48%",
-                height: "48%",
+                position: "absolute",
+                inset: isPortrait ? sp(30) : 24,
+                borderRadius: "50%",
+                border: `2px solid ${alpha(a, 20)}`,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: isPortrait ? sp(62) : 52,
+                borderRadius: "50%",
+                border: `1.5px solid ${alpha(a, 14)}`,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: `repeating-linear-gradient(-45deg, ${alpha(a, 5)} 0, ${alpha(a, 5)} 2px, transparent 2px, transparent 14px)`,
+              }}
+            />
+            <div
+              style={{
+                position: "relative",
+                width: "46%",
+                height: "46%",
                 borderRadius: isPortrait ? 60 : 50,
                 background: a,
                 display: "flex",
@@ -194,7 +225,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 boxShadow: SOLID_SHADOW,
               }}
             >
-              <Icon name={pointIcon(points[0] ?? "", 0)} size={isPortrait ? sp(150) : 110} color="#fff" />
+              <Icon name={pointIcon(points[0] ?? "", 0)} size={isPortrait ? sp(130) : 110} color="#fff" />
             </div>
           </div>
         </div>
