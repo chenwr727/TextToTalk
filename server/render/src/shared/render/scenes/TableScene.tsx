@@ -79,6 +79,18 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     lineHeight: LH.tight,
     opacity: o,
   });
+  /**
+   * 数值列：整列（除表头）都像数字时右对齐 + 等宽数字。
+   * 表格里「1.5 天 / 40% / 12 分」左对齐会参差不齐，右对齐后小数点能对上，
+   * 这是排版上最能一眼看出"做过"的细节之一。
+   */
+  const numericCol = (ci: number): boolean =>
+    ci > 0 &&
+    rows.length > 0 &&
+    rows.every((r) => {
+      const v = String(r[ci] ?? "").trim();
+      return v !== "" && /^[-+]?[\d,.]+\s*[%‰]?$|^[-+]?[\d,.]+\s*[^\d\s]{1,2}$/.test(v);
+    });
   const dataCellStyle = (ci: number, ry: number, zebra: boolean): React.CSSProperties => ({
     flex: `0 0 ${colWidths[ci]}px`,
     minHeight: minCellH,
@@ -89,8 +101,9 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
     fontFamily: FONT,
     display: "flex",
     alignItems: "center",
-    justifyContent: ci === 0 ? "center" : "flex-start",
-    textAlign: ci === 0 ? "center" : "left",
+    justifyContent: ci === 0 ? "center" : numericCol(ci) ? "flex-end" : "flex-start",
+    textAlign: ci === 0 ? "center" : numericCol(ci) ? "right" : "left",
+    fontVariantNumeric: numericCol(ci) ? "tabular-nums" : undefined,
     padding: `${isPortrait ? sp(10) : 10}px ${isPortrait ? sp(14) : 14}px`,
     boxSizing: "border-box",
     whiteSpace: "pre-wrap",

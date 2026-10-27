@@ -155,6 +155,20 @@ const PAGES = [
     accent: 2,
   }),
   page({
+    layout: "table",
+    _name: "numeric",
+    title: "三种方案的成本对比",
+    table: {
+      headers: ["方案", "月成本", "人力投入", "上线周期"],
+      rows: [
+        ["自建", "12000 元", "3 人", "4 个月"],
+        ["采购", "38000 元", "1 人", "1 个月"],
+        ["外包", "25000 元", "0.5 人", "2 个月"],
+      ],
+    },
+    accent: 3,
+  }),
+  page({
     layout: "two_column",
     title: "两种改法的代价",
     points: [
@@ -249,7 +263,7 @@ for (const p of targets) {
   const idx = i++;
   const frame = starts[idx] + Math.round(p.durationSec * FPS * 0.6);
   // 同一版式可能有多个样本（如四种图表），文件名带上图表类型避免互相覆盖
-  const name = p.chart?.type ? `${p.layout}-${p.chart.type}` : p.layout;
+  const name = p.chart?.type ? `${p.layout}-${p.chart.type}` : p.table && p._name ? `${p.layout}-${p._name}` : p.layout;
   const output = path.join(outDir, `${name}.png`);
   const configPath = path.join(outDir, `${name}.still.json`);
   writeFileSync(

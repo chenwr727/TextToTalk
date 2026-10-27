@@ -1,6 +1,7 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { alpha, C, FONT, FS, FW, accentOf, tileShadow, springIn } from "../theme";
 import { useResponsive } from "../responsive";
+import { axisScale, fmtTick, niceStep, unitOf, yAxisOf } from "../chartScale";
 import { useSceneTiming } from "../captionTiming";
 import { HeadingContent } from "../PageHeading";
 import type { SceneProps } from "./types";
@@ -26,6 +27,9 @@ const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> 
   const { isPortrait, sp } = useResponsive();
   const head = String(page?.title ?? "").trim();
   const sub = String(chartTitle ?? "").trim();
+  // 单位：规格里没有独立字段，只能从标题里认（见 unitOf）。认出来就标在副标题后面，
+  // 让刻度不是裸数字；认不出（括号里是"2021-2023"这类说明）就什么都不加
+  const unit = unitOf(sub) ?? unitOf(head);
   if (!head && !sub) return null;
   return (
     <div
@@ -49,57 +53,11 @@ const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> 
           }}
         >
           {sub}
+          {unit && !sub.includes(unit) ? <span style={{ opacity: 0.75 }}>{` ｜ 单位：${unit}`}</span> : null}
         </div>
       ) : null}
     </div>
   );
-};
-/**
- * Y 轴刻度。
- *
- * 图里原先只有虚线网格、没有刻度值——观众看不出柱高对应多少，这是"像 PPT"的一处硬伤。
- * 这里按 1/2/2.5/5×10^n 取"整数步长"，再回推一个能被 step 整除的顶值，
- * 于是柱高与刻度是同一套数值，不会出现 38 的柱子对不上 40 的格线。
- */
-const niceStep = (raw: number): number => {
-  if (!Number.isFinite(raw) || raw <= 0) return 1;
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const norm = raw / mag;
-  // 只用 1/2/2.5/5 会把 41 这种数据一路排到 80（折线被压在下面半屏），
-  // 带上 1.5/3/4 后同样的数据排到 45/60，曲线才占满绘图区
-  const set = [1, 1.5, 2, 2.5, 3, 4, 5, 10];
-  const step = set.find((s) => norm <= s + 1e-9) ?? 10;
-  return step * mag;
-};
-
-const axisScale = (dataMax: number, count = 4): { top: number; ticks: { value: number; ratio: number }[] } => {
-  const step = niceStep((dataMax || 1) / count);
-  const top = Math.max(step, Math.ceil((dataMax || 1) / step - 1e-9) * step);
-  // 刻度必须停在 top 上：此前按 count+1 生成，top=60 时还会多出 80 这条线，ratio 直接 >1 溢出绘图区
-  const n = Math.max(1, Math.round(top / step));
-  const ticks = Array.from({ length: n + 1 }, (_, i) => ({
-    value: Math.round(i * step * 1000) / 1000,
-    ratio: (i * step) / top,
-  }));
-  return { top, ticks };
-};
-
-const fmtTick = (v: number): string =>
-  Math.abs(v) >= 1000 ? `${Math.round(v / 100) / 10}k` : `${Math.round(v * 10) / 10}`;
-/**
- * 折线/面积/散点图共用的 Y 轴：返回统一比例下的顶值，以及每条刻度线在 SVG 里的 y 坐标。
- *
- * 之前这三张图的网格线是「绘图区等分」，而数据用的是 dataMax×1.18 的比例——
- * 两套比例互不相干，所以网格线没有数值含义。这里把刻度和数据绑成同一套，
- * 并留 15% 顶部余量，避免最高点贴着上边框。
- */
-const yAxisOf = (dataMax: number, plotH: number, baselineY: number, count = 4) => {
-  const { top, ticks } = axisScale(dataMax, count);
-  const max = top * 1.15;
-  return {
-    max,
-    ticks: ticks.map((t) => ({ value: t.value, y: baselineY - (t.value / max) * plotH })),
-  };
 };
 export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const chart = page.chart!;
