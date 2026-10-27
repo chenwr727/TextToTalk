@@ -208,7 +208,13 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   // 顶部要同时容纳 PageHeading（标题 + 装饰线，约 200px），否则首卡会压住标题
   const padTop = [360, 330, 300, 270][scaleIdx] ?? 270;
 
-  const SINGLE_COL_W = isPortrait ? contentWidth : 1240;
+  // 横屏内容带此前固定 1240（画布 1920），两侧留白比正文还宽，画面显得空。
+  // 但不能一味加宽：短句铺满 1680 会变成"一行只放一句"的大字报。
+  // 所以按最长一条文案的长度分三档——短的保持紧凑，长的才放宽。
+  const SINGLE_COL_W = isPortrait
+    ? contentWidth
+    : Math.round(Math.min(CONTENT_WIDTH * 0.95, [1240, 1460, 1600][maxLen <= 14 ? 0 : maxLen <= 22 ? 1 : 2]));
+
   const availW = SINGLE_COL_W;
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
@@ -216,12 +222,14 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const availH = (isPortrait ? contentHeight : 1080) - padTop - captionReserve;
 
   const boxW = SINGLE_COL_W;
+
   const iconBlock = scale.btnSub + (isPortrait ? sp(24) : 24);
   const parseX = (padStr: string) => Number(padStr.split(" ")[1]?.replace("px", "") ?? "28") * 2;
   const padX = parseX(scale.subPad);
   const colH = Math.max(200, boxW - iconBlock - padX);
   const rowGap = (isPortrait ? sp(scale.gap) : scale.gap) + (isPortrait ? sp(scale.rowMb) : scale.rowMb);
   const leadEnabled = points.length > 1 && LEAD_ROLES.has(page.role ?? "");
+
   const estH = texts.reduce((sum, t, i) => {
     const isLead = leadEnabled && i === 0;
     const fsz = (isLead ? scale.leadFs : scale.subFs) * lenAdjOf([...t].length);

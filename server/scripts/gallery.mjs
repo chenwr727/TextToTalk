@@ -48,6 +48,18 @@ const PAGES = [
   page({ layout: "section", role: "transition", title: "第一部分 · 症状", accent: 1 }),
   page({
     layout: "points",
+    _name: "long",
+    title: "流程改造先改这三处",
+    points: [
+      "把审批链路上每个环节的等待时间单独统计出来，而不是只记总时长，否则永远找不到真正的瓶颈",
+      "跨部门协作的第一反应往往是拉个会把人凑齐，而不是先确认对方到底需要什么信息",
+      "同一件事被三个人重复审批，说明流程里缺的是信任而不是层级，加人会越走越慢",
+      "把决策点前移到离客户最近的人手上，中间层只保留知情权与申诉权",
+    ],
+    accent: 1,
+  }),
+  page({
+    layout: "points",
     title: "流程反噬效率的三个信号",
     points: [
       { text: "同一件事要过三道审批，每道都在等上一个人" },
@@ -263,7 +275,11 @@ for (const p of targets) {
   const idx = i++;
   const frame = starts[idx] + Math.round(p.durationSec * FPS * 0.6);
   // 同一版式可能有多个样本（如四种图表），文件名带上图表类型避免互相覆盖
-  const name = p.chart?.type ? `${p.layout}-${p.chart.type}` : p.table && p._name ? `${p.layout}-${p._name}` : p.layout;
+  const name = p.chart?.type
+    ? `${p.layout}-${p.chart.type}`
+    : p._name && (p.table || p.layout === "points")
+      ? `${p.layout}-${p._name}`
+      : p.layout;
   const output = path.join(outDir, `${name}.png`);
   const configPath = path.join(outDir, `${name}.still.json`);
   writeFileSync(
