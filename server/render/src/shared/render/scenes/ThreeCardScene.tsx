@@ -6,7 +6,7 @@ import { ICON_KEYS } from "../Icon";
 import { PageHeading } from "../PageHeading";
 import { linesByPunct } from "../cjk";
 import { pointText, pointIcon, pointAnchor } from "../point";
-import { useResponsive } from "../responsive";
+import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -19,12 +19,15 @@ const CARD_W = 520;
 const CARD_H = 356;
 const CARD_GAP = CARD_TYPE.gapX;
 
-export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
+export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
+  const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const timing = useSceneTiming();
 
   const padX = isPortrait ? sp(CARD_TYPE.padX) : CARD_TYPE.padX;
@@ -40,10 +43,48 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
     const chosen = pickCardFont(Array.from(s).length, textW, textAreaH, FS_STEPS);
     return { fs: chosen, lh: CARD_TYPE.lineHeight, align: "left" as const, justify: "flex-start" as const };
   };
-  const longest = items.length
-    ? items.map((it, i) => pointText(it, i)).reduce((a, b) => (Array.from(a).length >= Array.from(b).length ? a : b))
-    : "…";
-  const sc = pickFs(longest);
+  const texts = [0, 1, 2].map((i) => (items[i] ? pointText(items[i], i) : "…"));
+  const longest = texts.reduce((a, b) => (Array.from(a).length >= Array.from(b).length ? a : b), "…");
+  const base = pickFs(longest);
+
+  const portraitGap = sp(CARD_GAP);
+
+  /** 给定字号，估算三张卡加上间距一共多高（竖屏放大要用它判断还放不放得下） */
+  const measureCards = (fontSize: number, gap: number) => {
+    const perCard = texts.reduce((sum, t) => {
+      const perLine = Math.max(1, Math.floor((textW * 0.95) / fontSize));
+      const lines = Math.max(1, Math.ceil(Array.from(t).length / perLine));
+      return sum + padY * 2 + Math.max(ICON_BOX, lines * fontSize * CARD_TYPE.lineHeight);
+    }, 0);
+    return perCard + gap * (texts.length - 1);
+  };
+
+  /**
+   * 竖屏放大。
+   *
+   * 三卡在竖屏里是三张单行卡横铺，实测内容只占竖向 23%，上下各空一大片。
+   * 这里在"放得下"的前提下逐步加大字号（连带间距一起涨），直到占满目标高度，
+   * 封顶 56px；卡宽已由 contentWidth 决定，字变大只会让长句折成两行，不会溢出。
+   * 字号到顶后剩下的竖向空间分给卡间距——三卡本来就是一条流程，长一点的箭头站得住。
+   */
+  const { cardFs, gapPortrait } = (() => {
+    if (!isPortrait) return { cardFs: base.fs, gapPortrait: 0 };
+    const band = contentHeight - 240 - captionReserve;
+    let font = base.fs;
+    let gap = portraitGap;
+    for (let guard = 0; guard < 16; guard++) {
+      const nextFont = font + 2;
+      const nextGap = Math.round(portraitGap * (1 + (nextFont - base.fs) / base.fs / 2));
+      if (nextFont > 56) break;
+      if (measureCards(nextFont, nextGap) > band * 0.9) break;
+      font = nextFont;
+      gap = nextGap;
+    }
+    const leftover = band * 0.82 - measureCards(font, gap);
+    if (leftover > 0) gap = Math.round(Math.min(gap + leftover / 2, portraitGap * 2.4));
+    return { cardFs: font, gapPortrait: gap };
+  })();
+  const sc = { ...base, fs: cardFs };
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
@@ -53,8 +94,10 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page }) => {
           position: "relative",
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
-          gap: isPortrait ? sp(CARD_GAP) : 48,
-          marginTop: isPortrait ? sp(170) : 170,
+          gap: isPortrait ? gapPortrait || portraitGap : 48,
+          // 竖屏的 PageHeading 是绝对定位在顶部，这里再往下推 170 会把整组压到偏下，
+          // 实测上方空 550px、下方只剩 330px；交给居中即可，marginTop 归零
+          marginTop: isPortrait ? 0 : 170,
         }}
       >
         {[0, 1, 2].map((i) => {
