@@ -192,7 +192,16 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     right: isPortrait ? "50%" : -(CARD_GAP / 2),
                     width: 40,
                     height: 40,
-                    transform: isPortrait ? "translate(50%, -50%)" : "translate(50%, -50%)",
+                    /*
+                     * 原来是一个 34×22 的裸 chevron：在 1920 画布上只有 1.8% 宽，
+                     * 看着像误加上去的杂点。改成带底色的小圆章（直径 40 = 卡间距 48
+                     * 刚好塞得下），有了底色和描边才读得出"流向"。
+                     * 注意别额外横向平移：往右偏会让圆章盖进下一张卡，被后绘制的卡片压掉半边。
+                     */
+                    borderRadius: "50%",
+                    background: alpha(a, 16),
+                    border: `1.5px solid ${alpha(a, 34)}`,
+                    transform: "translate(50%, -50%)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -205,17 +214,17 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   }}
                 >
                   <svg
-                    width={34}
-                    height={22}
-                    viewBox="0 0 34 22"
+                    width={22}
+                    height={18}
+                    viewBox="0 0 22 18"
                     fill="none"
                     style={{ transform: isPortrait ? "rotate(90deg)" : "none" }}
                   >
-                    <path d="M2 11 H24" stroke={a} strokeWidth={4} strokeLinecap="round" />
+                    <path d="M1 9 H14" stroke={a} strokeWidth={3.5} strokeLinecap="round" />
                     <path
-                      d="M18 4 L28 11 L18 18"
+                      d="M10 3 L17 9 L10 15"
                       stroke={a}
-                      strokeWidth={4}
+                      strokeWidth={3.5}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />

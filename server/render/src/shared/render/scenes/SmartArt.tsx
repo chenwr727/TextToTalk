@@ -70,7 +70,14 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const perLine = Math.max(1, Math.floor((TEXT_W * 0.95) / nodeFs));
   const lines = Math.ceil(maxChars / perLine);
   const textH = Math.ceil(lines * nodeFs * LINE_H);
-  const cardH = isPortrait ? maxCardH : Math.min(Math.max(150, Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
+  /*
+   * 横屏卡片高度原来有个 150px 下限，于是 4 张卡被钉在 150 高，
+   * 只占可用带（760px）的 26%：上面空 256px、下面空 304px，一页四片"贴着说明文字的色块"。
+   * 改成按可用高度的 62% 兜底（≈300px），文字也跟着放大，卡片才有内容感。
+   */
+  const cardH = isPortrait
+    ? maxCardH
+    : Math.min(Math.max(Math.round(maxCardH * 0.62), Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
   const iconSize = isPortrait ? sp(CARD_TYPE.iconSize) : CARD_TYPE.iconSize;
   const ICON_GAP = isPortrait ? sp(16) : 16;
 
@@ -400,10 +407,20 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
   const titleLines = titleChars > 14 ? 2 : 1;
   const HEADER_BOTTOM = 90 + (titleLines === 2 ? 170 : 110);
 
-  const MAX_W = isPortrait ? contentWidth : 1920 - 120 * 2;
+  // 底层不放满画布：留 210px 边距，金字塔两侧有呼吸，也不至于像一根通栏横条
+  const MAX_W = isPortrait ? contentWidth : 1920 - 210 * 2;
   const MIN_W = isPortrait ? sp(420) : 420;
+  /**
+   * 层级宽度 = 数值占最大值的比例，但要**软化**，否则画出来不像金字塔。
+   *
+   * 线性比例在真实数据下会被 MIN_W 夹死：样本 [3,12,85] 得到 420 / 420 / 1680，
+   * 前两层变成两根一模一样的短条、底层是通栏横条——观众看到的不是"金字塔"，
+   * 而是"两根小条 + 一根大条"。用 0.32 次幂压缩差距（→ 515 / 801 / 1500），
+   * 既保留"越往下人越多"的语义，又让层与层的宽度差看得见。
+   */
+  const WIDTH_EXP = 0.32;
   const widths = vals.map((v) => {
-    const ratio = v / maxVal;
+    const ratio = Math.pow(v / maxVal, WIDTH_EXP);
     return Math.max(MIN_W, Math.round(MAX_W * ratio));
   });
 
@@ -463,7 +480,11 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
                 minWidth: MIN_W,
                 minHeight: tierMinH,
                 padding: `${isPortrait ? sp(14) : 14}px ${isPortrait ? sp(32) : 32}px`,
-                marginBottom: i === N - 1 ? 0 : Math.min(SPACE.md, Math.max(8, SPACE.md - (N - 4) * 4)),
+                /*
+                 * 层间距 24 -> 8：24px 的缝让三层读成"三根独立的条"，
+                 * 缩小后层与层连成一片，金字塔的收窄关系才立得起来。
+                 */
+                marginBottom: i === N - 1 ? 0 : Math.min(10, Math.max(6, 10 - (N - 4) * 2)),
                 background: cols[i],
                 color: onDark ? "#fff" : "#1a2b4a",
                 borderRadius: RADIUS.box,
@@ -787,9 +808,17 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
                     borderRadius: RADIUS.box,
                     border: `${BORDER.card}px solid ${cells[i].a}`,
                     display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "flex-start",
-                    padding: isPortrait ? sp(24) : 24,
+                    /*
+                     * 内容居中。
+                     *
+                     * 原来 align/justify 都是 flex-start，而格子里唯一的子元素是那块标签，
+                     * 于是横屏每格 480×224、竖屏每格 460×464，标签下面分别空出 63% / 78%
+                     * 的纯白——四格看起来像"四块贴了标签的白板"，象限关系完全读不出来。
+                     * 标签居中后空白均分到上下两侧，格子才像一个完整的象限单元。
+                     */
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: isPortrait ? sp(28) : 28,
                     boxShadow: CARD_SHADOW,
                   }}
                 >
@@ -801,14 +830,15 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
                       background: cells[i].a,
                       color: "#fff",
                       borderRadius: RADIUS.chip,
-                      padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(22) : 22}px`,
+                      padding: `${isPortrait ? sp(20) : 20}px ${isPortrait ? sp(26) : 26}px`,
                       fontSize: nodeFs,
                       fontWeight: FW.bold,
                       fontFamily: FONT,
                       textAlign: "center",
                       lineHeight: 1.4,
                       boxShadow: SOLID_SHADOW,
-                      width: "100%",
+                      // 不再拉满整宽：标签自己多宽就多宽，居中后四周留白均匀
+                      maxWidth: "100%",
                       whiteSpace: "normal",
                       overflow: "hidden",
                       boxSizing: "border-box",

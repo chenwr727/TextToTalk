@@ -6,11 +6,11 @@ import { IconTile } from "../IconTile";
 import { PageHeading } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandUnderline } from "../rough";
-import { useResponsive } from "../responsive";
+import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
-export const StatsScene: React.FC<SceneProps> = ({ page }) => {
+export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const points = page.points;
   const f = useCurrentFrame();
@@ -20,6 +20,9 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
   // 3 个数据时竖屏改为一列铺满，读起来才整齐。
   const portraitCols = points.length === 3 ? 1 : 2;
   const timing = useSceneTiming();
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
+  const captionReserve = useCaptionReserve(subtitles, captionTexts);
 
   const extractNum = (s: string): { num: string; rest: string } => {
     const m = s.match(/[-+]?\d+(?:\.\d+)?\s*[%％倍xX]?/);
@@ -40,6 +43,8 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
           flexWrap: isPortrait ? "wrap" : "nowrap",
           gap: isPortrait ? sp(24) : 24,
           marginTop: isPortrait ? 0 : HEADER_OFFSET,
+          // 本场景此前完全没消费字幕预留，三张卡直接顶到字幕条上（实测只剩 52px）
+          marginBottom: isPortrait ? captionReserve : 0,
           width: isPortrait ? contentWidth : 1560,
           justifyContent: "center",
           alignItems: "stretch",
@@ -55,7 +60,13 @@ export const StatsScene: React.FC<SceneProps> = ({ page }) => {
               accent={a}
               pad={isPortrait ? sp(32) : SPACE.lg}
               style={{
-                flex: isPortrait ? `0 1 calc(${100 / portraitCols}% - 12px)` : "0 1 calc(25% - 24px)",
+                /*
+                 * 横屏原来写死 `calc(25% - 24px)`——那是按 4 张卡算的，3 个数据只填满 1560 的
+                 * 75%（1170px），两侧各空 377px。改成按实际张数平分。
+                 */
+                flex: isPortrait
+                  ? `0 1 calc(${100 / portraitCols}% - 12px)`
+                  : `0 1 calc(${100 / Math.max(1, points.length)}% - 24px)`,
                 minWidth: isPortrait ? 0 : 300,
                 textAlign: "center",
                 opacity: t,

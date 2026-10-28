@@ -98,7 +98,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: 8,
+            bottom: isPortrait ? sp(90) : 90,
             height: 4,
             borderRadius: 2,
             background: `linear-gradient(90deg, ${alpha(C.ink, 10)}, ${alpha(C.ink, 4)})`,
@@ -130,7 +130,8 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
                 right: "100%",
                 marginRight: isPortrait ? sp(12) : 12,
                 transform: "translateY(-50%)",
-                fontSize: isPortrait ? PORTRAIT_TICK_FS : FS.small,
+                // 横屏原来是 FS.small=20（画布宽 1%），同图分类标签却 36px，差 2.3 倍
+                fontSize: isPortrait ? PORTRAIT_TICK_FS : 26,
                 color: C.sub,
                 fontFamily: FONT,
                 fontWeight: FW.regular,
@@ -198,6 +199,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
                   fontSize: labelFs,
                   fontWeight: 700,
                   color: C.ink,
+                  fontFamily: FONT,
                   textAlign: "center",
                   lineHeight: 1.2,
                   whiteSpace: barW < 60 ? "normal" : "nowrap",
@@ -222,18 +224,33 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1500,
-    H = isPortrait ? 900 : 505,
+    // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
+    H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-  const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
+    /*
+     * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
+     * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
+     * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
+     */
+  const PAD_T = isPortrait ? sp(60) : 40;
+  const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD_T - BOTTOM, H - BOTTOM);
   const n = values.length;
   const xs = values.map((_, i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1));
-  const ys = values.map((v) => H - BOTTOM - (v / max) * (H - PAD - BOTTOM));
+  const ys = values.map((v) => H - BOTTOM - (v / max) * (H - PAD_T - BOTTOM));
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const last = Math.max(1, Math.round(grow * (n - 1)));
   const line = Array.from({ length: last + 1 }, (_, i) => `${xs[i]},${ys[i]}`).join(" ");
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        // 整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
+        paddingBottom: isPortrait ? 0 : 88,
+      }}
+    >
       <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
         {yTicks.map((t) => (
@@ -253,7 +270,7 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={isPortrait ? PORTRAIT_TICK_FS : FS.small}
+              fontSize={isPortrait ? PORTRAIT_TICK_FS : LAND_TICK_FS}
               fill={C.sub}
               fontFamily={FONT}
             >
@@ -322,6 +339,14 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
  * 两边一乘，刻度标签只剩 16px（占画布宽 1.5%），手机全屏看根本读不出来。
  * 图表里的刻度/数值/图例按"占画布宽的比例"重新给一套。
  */
+/**
+ * 横屏图表刻度字号。
+ *
+ * 原来用 FS.small(=20)，占画布宽 1%：同一张图里分类标签是 36px，两者差 2.3 倍，
+ * 手机上根本读不出刻度值。提到 26 之后与标签的比例回到 1.4 倍以内。
+ */
+const LAND_TICK_FS = 26;
+
 const PORTRAIT_TICK_FS = 26;
 const PORTRAIT_VALUE_FS = 34;
 const PORTRAIT_LABEL_FS = 32;
@@ -360,9 +385,10 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
       color: pal[i % pal.length],
       pct: Math.round(pct * 100),
       label: labels[i],
+      mid: (a0 + a1) / 2,
     };
   });
-  const top = slices.reduce((best, s) => (s.pct > best.pct ? s : best), slices[0] ?? { pct: 0, label: "" });
+
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
@@ -370,33 +396,29 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
         )}
-        <circle cx={cx} cy={cy} r={r * 0.42} fill="#fff" />
         {/*
-          中心原先写死 "100% / 占比"：饼图里百分比之和恒为 100%，这句话没有任何信息量，
-          而且这个版式其实画的是环形（带中心洞），写"占比 100%"更莫名其妙。
-          改为显示占比最大的那一块，观众一眼能拿到结论。
+          真饼图：原来这里有一块 `r * 0.42` 的白色中心圆 + 两行中心文字，
+          于是"饼图"其实也是个环形（孔洞直径 42%，与 donut 的 55% 几乎分不出来）。
+          去掉中心圆，百分比直接标在扇区内 0.62r 处，两个版式才各司其职。
         */}
-        <text
-          x={cx}
-          y={cy - 6}
-          textAnchor="middle"
-          fontSize={isPortrait ? fs(44) : 44}
-          fontWeight={FW.heavy}
-          fill={C.ink}
-          fontFamily={FONT}
-        >
-          {top.pct}%
-        </text>
-        <text
-          x={cx}
-          y={cy + (isPortrait ? sp(34) : 34)}
-          textAnchor="middle"
-          fontSize={isPortrait ? PORTRAIT_LEGEND_FS : 26}
-          fill={C.sub}
-          fontFamily={FONT}
-        >
-          {fitLabel(top.label ?? "")}
-        </text>
+        {slices.map((s, i) =>
+          s.pct >= 8 ? (
+            <text
+              key={`p${i}`}
+              x={cx + r * 0.62 * Math.cos(s.mid)}
+              y={cy + r * 0.62 * Math.sin(s.mid)}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize={isPortrait ? fs(32) : 30}
+              fontWeight={FW.heavy}
+              fill="#fff"
+              fontFamily={FONT}
+              opacity={0.95}
+            >
+              {s.pct}%
+            </text>
+          ) : null,
+        )}
         {!isPortrait &&
           slices.map((s, i) => {
             const legendTop = Math.max(8, 280 - (values.length * 84) / 2);
@@ -453,18 +475,33 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1500,
-    H = isPortrait ? 900 : 505,
+    // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
+    H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-  const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
+    /*
+     * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
+     * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
+     * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
+     */
+  const PAD_T = isPortrait ? sp(60) : 40;
+  const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD_T - BOTTOM, H - BOTTOM);
   const n = values.length;
   const xs = values.map((_, i) => PAD + (i * (W - PAD * 2)) / Math.max(1, n - 1));
-  const ys = values.map((v) => H - BOTTOM - (v / max) * (H - PAD - BOTTOM));
+  const ys = values.map((v) => H - BOTTOM - (v / max) * (H - PAD_T - BOTTOM));
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const last = Math.max(1, Math.round(grow * (n - 1)));
   const line = Array.from({ length: last + 1 }, (_, i) => `${xs[i]},${ys[i]}`).join(" ");
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        // 整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
+        paddingBottom: isPortrait ? 0 : 88,
+      }}
+    >
       <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
         {yTicks.map((t) => (
@@ -484,7 +521,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={isPortrait ? PORTRAIT_TICK_FS : FS.small}
+              fontSize={isPortrait ? PORTRAIT_TICK_FS : LAND_TICK_FS}
               fill={C.sub}
               fontFamily={FONT}
             >
@@ -705,7 +742,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
             position: "absolute",
             left: 0,
             right: 0,
-            bottom: 8,
+            bottom: isPortrait ? sp(barBottom) : barBottom,
             height: 4,
             borderRadius: 2,
             background: `linear-gradient(90deg, ${alpha(C.ink, 10)}, ${alpha(C.ink, 4)})`,
@@ -733,7 +770,8 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
                 right: "100%",
                 marginRight: isPortrait ? sp(12) : 12,
                 transform: "translateY(-50%)",
-                fontSize: isPortrait ? PORTRAIT_TICK_FS : FS.small,
+                // 横屏原来是 FS.small=20（画布宽 1%），同图分类标签却 36px，差 2.3 倍
+                fontSize: isPortrait ? PORTRAIT_TICK_FS : 26,
                 color: C.sub,
                 fontFamily: FONT,
                 fontWeight: FW.regular,
@@ -764,6 +802,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
               >
                 {series.map((s, si) => {
                   const segH = ((s.values[i] || 0) / stackTop) * barMaxH;
+                  const segV = s.values[i] || 0;
                   return (
                     <div
                       key={si}
@@ -771,11 +810,42 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
                         width: "100%",
                         height: `${segH}px`,
                         background: pal[si % pal.length],
+                        // 段与段之间加一道浅色分隔线：调色板旋转后相邻两段可能是同一色相，
+                        // 光靠 6px 色差根本分不出边界
+                        borderTop: si === 0 ? "none" : "3px solid rgba(255,255,255,0.85)",
+                        boxSizing: "border-box",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontFamily: FONT,
+                        fontWeight: FW.heavy,
+                        fontSize: isPortrait ? sp(26) : 24,
                         boxShadow: si === series.length - 1 ? tileShadow(pal[si % pal.length]) : "none",
                       }}
-                    />
+                    >
+                      {/* 只有段够高才标数字，否则会溢出到相邻段 */}
+                      {segH * grow > 42 ? fmtTick(segV) : ""}
+                    </div>
                   );
                 })}
+              </div>
+              {/* 柱顶合计：标题写着"成本结构（万元）"，不标合计观众读不出一年花了多少 */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: -8,
+                  right: -8,
+                  bottom: barBottom + totalH * grow + 10,
+                  textAlign: "center",
+                  fontSize: isPortrait ? PORTRAIT_VALUE_FS : FS.caption,
+                  fontWeight: FW.heavy,
+                  color: C.ink,
+                  fontFamily: FONT,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {fmtTick(series.reduce((a, s) => a + (s.values[i] || 0), 0))}
               </div>
               <div
                 style={{
@@ -786,6 +856,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
                   fontSize: labelFs,
                   fontWeight: 700,
                   color: C.ink,
+                  fontFamily: FONT,
                   textAlign: "center",
                   lineHeight: 1.2,
                 }}
@@ -833,9 +904,16 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1500,
+    // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
     H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
+    /*
+     * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
+     * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
+     * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
+     */
+  const PAD_T = isPortrait ? sp(60) : 40;
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
   const xMin = Math.min(...xs),
@@ -844,8 +922,9 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
     yMax = Math.max(...ys);
   const xRange = xMax - xMin || 1,
     yRange = yMax - yMin || 1;
-  const px = (x: number) => PAD + ((x - xMin) / xRange) * (W - PAD * 2);
-  const py = (y: number) => H - BOTTOM - ((y - yMin) / yRange) * (H - PAD - BOTTOM);
+  // 横向内缩 6%：xMin 正好落在竖轴上时，最左边的点会被轴线劈成两半
+  const px = (x: number) => PAD + 0.06 * (W - PAD * 2) + ((x - xMin) / xRange) * 0.88 * (W - PAD * 2);
+  const py = (y: number) => H - BOTTOM - ((y - yMin) / yRange) * (H - PAD_T - BOTTOM);
   // 散点是「区间映射」（min~max 铺满绘图区），所以刻度要从区间里取整数步长，
   // 不能套用柱状图那种从 0 起的 axisScale
   const scatterStep = niceStep(yRange / 4);
@@ -853,7 +932,15 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
     .filter((v) => v <= yMax + scatterStep * 0.001 && v >= yMin - scatterStep * 0.001)
     .map((v) => ({ value: Math.round(v * 100) / 100, y: py(v) }));
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        // 整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
+        paddingBottom: isPortrait ? 0 : 88,
+      }}
+    >
       <ChartHeading page={page} chartTitle={title} />
       <svg width={W} height={H + (isPortrait ? sp(44) : 44)}>
         {yTicks.map((t) => (
@@ -873,7 +960,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={isPortrait ? PORTRAIT_TICK_FS : FS.small}
+              fontSize={isPortrait ? PORTRAIT_TICK_FS : LAND_TICK_FS}
               fill={C.sub}
               fontFamily={FONT}
             >

@@ -403,7 +403,20 @@ export const accentVars = (index?: number | null): CSSProperties | undefined => 
   if (index == null || !Number.isFinite(index)) return undefined;
   const k = ((Math.round(index) % 6) + 6) % 6;
   if (k === 0) return undefined;
-  const vars: Record<string, string> = { "--ttt-accent": `var(--ttt-p${k})` };
+  /*
+   * 渐变也必须在这里重算。
+   *
+   * `--ttt-grad-accent` 原来只在 `:root` 定义一次，取值时把 `--ttt-accent` 解析成了
+   * **基础蓝**（accent 0）。于是粉页、橙页上，标题下面那根装饰线仍然是"蓝 → 青"，
+   * 右端还会接一个跟随本页主色的圆点 —— 看着就是"一根蓝线 + 一颗粉色端点"的脏配色。
+   * 在被 accent 覆盖的子树里重新声明同一个变量，渐变才会跟着本页主色走。
+   */
+  const vars: Record<string, string> = {
+    "--ttt-accent": `var(--ttt-p${k})`,
+    "--ttt-grad-accent": "linear-gradient(90deg, var(--ttt-accent), var(--ttt-grad-end))",
+    "--ttt-grad-header":
+      "linear-gradient(90deg, var(--ttt-accent), color-mix(in srgb, var(--ttt-accent) 62%, #0b1220))",
+  };
   for (let i = 0; i < 6; i++) vars[`--ttt-a${i}`] = `var(--ttt-p${(i + k) % 6})`;
   return vars as CSSProperties;
 };
@@ -442,6 +455,14 @@ export const themeVars = (id?: string | null): CSSProperties => {
     "--ttt-accent-a33": tint(20),
     "--ttt-accent-a0d": tint(5),
     "--ttt-grad-accent": "linear-gradient(90deg, var(--ttt-accent), var(--ttt-grad-end))",
+  /*
+   * 表头专用渐变：终点不是浅色 gradEnd，而是 accent 压深。
+   *
+   * 表头上是白字，用 grad-accent 时右半边底色接近薄荷绿（实测 rgb(166,225,220)），
+   * 白字对比度只有 1.45:1——等于把右侧几列的表头抹掉了。
+   */
+  "--ttt-grad-header":
+    "linear-gradient(90deg, var(--ttt-accent), color-mix(in srgb, var(--ttt-accent) 62%, #0b1220))",
     "--ttt-grad-accent-soft":
       "linear-gradient(90deg, color-mix(in srgb, var(--ttt-accent) 80%, transparent), color-mix(in srgb, var(--ttt-grad-end) 80%, transparent))",
     "--ttt-card-bg": t.card.bg,
@@ -647,6 +668,8 @@ export const DECOR = {
 };
 
 export const ACCENT_GRAD = "var(--ttt-grad-accent)";
+/** 表头渐变：两端都足够深，白字可读（对比度 ≥ 4.5:1） */
+export const ACCENT_HEADER_GRAD = "var(--ttt-grad-header)";
 export const ACCENT_GRAD_SOFT = "var(--ttt-grad-accent-soft)";
 
 export const PAPER = { base: "22", mid: "33", top: "40", deep: "55" };

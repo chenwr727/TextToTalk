@@ -290,7 +290,17 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     const fsz = (isLead ? scale.leadFs : scale.subFs) * lenAdjOf([...t].length);
     return [...t].length * fsz * 1.04 + scale.btnSub + 24;
   });
-  const uniformW = Math.min(singleColW, Math.ceil(Math.max(...needW) + 96));
+  /*
+   * 统一宽度还得有个下限。
+   *
+   * `min(singleColW, 最宽一条的估算宽 + 96)` 会让短句页退化：三张卡只有 1047px
+   * （画布 54%），两侧各空 436px，文字右边还留 94px 死区。给内容带的 90% 兜底，
+   * 卡宽就只在一个窄区间里浮动，整页看起来是"铺满的一条"，而不是居中的小票条。
+   */
+  const uniformW = Math.max(
+    Math.min(singleColW, Math.ceil(Math.max(...needW) + 96)),
+    Math.round(singleColW * 0.9),
+  );
 
   const estH = estHeightOf(scale);
   /**
@@ -375,8 +385,10 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           fontFamily: FONT,
           paddingTop: isPortrait ? SPACE.lg : padTop,
           paddingBottom: captionReserve,
-          flex: isPortrait ? 1 : undefined,
-          justifyContent: isPortrait ? "center" : undefined,
+          // 两个方向都在"标题底 ~ 字幕条顶"之间居中：横屏原来是 flex-start 顶上去，
+          // 结果卡片上面只隔 81px、下面空 206px
+          flex: 1,
+          justifyContent: "center",
           display: "flex",
           flexDirection: "column",
           gap: isPortrait ? sp(scale.gap) + portraitGap : scale.gap,

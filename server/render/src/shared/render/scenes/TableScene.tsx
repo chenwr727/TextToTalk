@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, FS, FW, HEADER_OFFSET, LH, ACCENT_GRAD, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, HEADER_OFFSET, LH, ACCENT_HEADER_GRAD, springIn } from "../theme";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
 import { PageHeading } from "../PageHeading";
@@ -52,8 +52,10 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   const fitW = Math.max(1, Math.min(1.9, availW / rawTotal));
   const colWidths = baseWidths.map((w) => Math.round(w * fitW));
   const totalW = colWidths.reduce((a, b) => a + b, 0);
-  const fitFs = Math.min(1.3, fitW);
-  const minCellH = Math.round((isPortrait ? sp(80) : 66) * Math.min(1.22, fitW));
+  // 竖屏整张表只有 265px 高（占画布 14%），像贴了张邮票：允许更大的放大系数
+  const fitFs = Math.min(isPortrait ? 1.6 : 1.3, fitW);
+  // 竖屏行高下限 80 -> 120：1920 高的画布里 67px 的行高等于一条细缝
+  const minCellH = Math.round((isPortrait ? sp(120) : 66) * Math.min(1.22, fitW));
   const startX = (DESIGN_WIDTH - totalW) / 2;
   // 表格垂直位置：竖屏在画布正中；横屏在「标题下沿」与「字幕带」之间居中，
   // 此前一律顶到 HEADER_OFFSET，两行表的内容会全挤在上半屏
@@ -94,7 +96,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   const dataCellStyle = (ci: number, ry: number, zebra: boolean): React.CSSProperties => ({
     flex: `0 0 ${colWidths[ci]}px`,
     minHeight: minCellH,
-    background: ci === 0 ? alpha(C.accent, 8) : zebra ? alpha(C.ink, 4) : "transparent",
+    background: ci === 0 ? alpha(C.accent, 8) : zebra ? alpha(C.ink, 7) : "transparent",
     color: ci === 0 ? C.accent : C.ink,
     fontSize: Math.round((isPortrait ? fs(ci === 0 ? FS.caption : FS.body) : ci === 0 ? FS.caption : FS.body) * fitFs),
     fontWeight: ci === 0 ? FW.heavy : FW.regular,
@@ -120,7 +122,7 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
           于是永远没有主题的胶囊/竖线/纯文字形态、没有装饰线、也没有手绘标注 */}
       <PageHeading text={title} />
       <Card pad={0} style={{ position: "absolute", top: startY, left: startX, width: totalW }}>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "stretch", background: ACCENT_GRAD }}>
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "stretch", background: ACCENT_HEADER_GRAD }}>
           {headers.map((h, i) => (
             <div key={`h${i}`} style={headerCellStyle(i)}>
               {h || ""}
