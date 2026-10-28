@@ -104,6 +104,30 @@ export const PAGES = [
     chart: { type: "area", title: "月均返工单", labels: ["1 层", "2 层", "3 层", "4 层"], values: [8, 17, 29, 46] },
     accent: 5,
   }),
+  // pie / donut 在渲染器与 normalize 里都存在，但此前 gallery 里一个样本都没有——
+  // 等于这两个版式从来没被看过一眼。补上样本，横竖两版都要能渲。
+  page({
+    layout: "chart",
+    title: "时间花在哪了",
+    chart: {
+      type: "pie",
+      title: "一周工时分布",
+      labels: ["开会", "写文档", "救火", "真做事"],
+      values: [26, 18, 22, 34],
+    },
+    accent: 2,
+  }),
+  page({
+    layout: "chart",
+    title: "审批总时长拆解",
+    chart: {
+      type: "donut",
+      title: "一次审批 4.2 天",
+      labels: ["等人回", "等开会", "实际处理"],
+      values: [58, 27, 15],
+    },
+    accent: 4,
+  }),
   page({
     layout: "chart",
     title: "三块成本逐年变化",

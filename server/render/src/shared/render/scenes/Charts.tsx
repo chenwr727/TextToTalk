@@ -334,9 +334,9 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
   const pal = SERIES;
   const total = values.reduce((a, b) => a + b, 0) || 1;
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
-  const cx = isPortrait ? contentWidth / 2 : 470,
+  const cx = isPortrait ? contentWidth / 2 : 430,
     cy = isPortrait ? 360 : 300,
-    r = isPortrait ? 260 : 200;
+    r = isPortrait ? 300 : 250;
   const fitLabel = (s: string) => (Array.from(s).length > 5 ? Array.from(s).slice(0, 5).join("") + "…" : s);
   let cumulative = 0;
   const slices = values.map((v, i) => {
@@ -351,24 +351,30 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
       label: labels[i],
     };
   });
+  const top = slices.reduce((best, s) => (s.pct > best.pct ? s : best), slices[0] ?? { pct: 0, label: "" });
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
-      <svg width={isPortrait ? contentWidth : 1100} height={isPortrait ? 760 : 520}>
+      <svg width={isPortrait ? contentWidth : 1150} height={isPortrait ? 760 : 560}>
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
         )}
         <circle cx={cx} cy={cy} r={r * 0.42} fill="#fff" />
+        {/*
+          中心原先写死 "100% / 占比"：饼图里百分比之和恒为 100%，这句话没有任何信息量，
+          而且这个版式其实画的是环形（带中心洞），写"占比 100%"更莫名其妙。
+          改为显示占比最大的那一块，观众一眼能拿到结论。
+        */}
         <text
           x={cx}
           y={cy - 6}
           textAnchor="middle"
-          fontSize={isPortrait ? fs(40) : 40}
+          fontSize={isPortrait ? fs(44) : 44}
           fontWeight={FW.heavy}
           fill={C.ink}
           fontFamily={FONT}
         >
-          100%
+          {top.pct}%
         </text>
         <text
           x={cx}
@@ -378,16 +384,16 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
           fill={C.sub}
           fontFamily={FONT}
         >
-          占比
+          {fitLabel(top.label ?? "")}
         </text>
         {!isPortrait &&
           slices.map((s, i) => {
-            const legendTop = Math.max(8, 260 - (values.length * 84) / 2);
+            const legendTop = Math.max(8, 280 - (values.length * 84) / 2);
             return (
               <g key={`l${i}`}>
-                <rect x={880} y={legendTop + i * 84} width={26} height={26} rx={6} fill={s.color} />
+                <rect x={740} y={legendTop + i * 84} width={26} height={26} rx={6} fill={s.color} />
                 <text
-                  x={918}
+                  x={778}
                   y={legendTop + 20 + i * 84}
                   fontSize={32}
                   fontWeight={FW.bold}
@@ -396,7 +402,7 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
                 >
                   {fitLabel(s.label)}
                 </text>
-                <text x={918} y={legendTop + 52 + i * 84} fontSize={30} fill={C.sub} fontFamily={FONT}>
+                <text x={778} y={legendTop + 52 + i * 84} fontSize={30} fill={C.sub} fontFamily={FONT}>
                   {s.pct}%
                 </text>
               </g>
@@ -541,9 +547,9 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
   const pal = SERIES;
   const sum = values.reduce((a, b) => a + b, 0) || 1;
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
-  const cx = isPortrait ? contentWidth / 2 : 470,
+  const cx = isPortrait ? contentWidth / 2 : 430,
     cy = isPortrait ? 360 : 300,
-    r = isPortrait ? 260 : 200,
+    r = isPortrait ? 300 : 250,
     hole = 0.55;
   const fitLabel = (s: string) => (Array.from(s).length > 5 ? Array.from(s).slice(0, 5).join("") + "…" : s);
   let cumulative = 0;
@@ -559,10 +565,19 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
       label: labels[i],
     };
   });
+  /*
+   * 中心文案：给了 total 就显示它（"一次审批 4.2 天"这类），否则看数据本身——
+   * 若各值加起来正好是 100，说明它们本来就是百分比，此时显示"总量 100"是废话，
+   * 改为显示占比最大的那一项；只有真是绝对量（加起来不是 100）才写"总量"。
+   */
+  const sumIsShares = Math.abs(sum - 100) < 0.5;
+  const topSlice = slices.reduce((best, s) => (s.pct > best.pct ? s : best), slices[0] ?? { pct: 0, label: "" });
+  const centerMain = total !== undefined ? String(total) : sumIsShares ? `${topSlice.pct}%` : String(sum);
+  const centerSub = total !== undefined || !sumIsShares ? "总量" : fitLabel(topSlice.label ?? "");
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
-      <svg width={isPortrait ? contentWidth : 1100} height={isPortrait ? 760 : 520}>
+      <svg width={isPortrait ? contentWidth : 1150} height={isPortrait ? 760 : 560}>
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
         )}
@@ -576,7 +591,7 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
           fill={C.ink}
           fontFamily={FONT}
         >
-          {total ?? sum}
+          {centerMain}
         </text>
         <text
           x={cx}
@@ -586,16 +601,16 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
           fill={C.sub}
           fontFamily={FONT}
         >
-          总量
+          {centerSub}
         </text>
         {!isPortrait &&
           slices.map((s, i) => {
-            const legendTop = Math.max(8, 260 - (values.length * 84) / 2);
+            const legendTop = Math.max(8, 280 - (values.length * 84) / 2);
             return (
               <g key={`l${i}`}>
-                <rect x={880} y={legendTop + i * 84} width={26} height={26} rx={6} fill={s.color} />
+                <rect x={740} y={legendTop + i * 84} width={26} height={26} rx={6} fill={s.color} />
                 <text
-                  x={918}
+                  x={778}
                   y={legendTop + 20 + i * 84}
                   fontSize={32}
                   fontWeight={FW.bold}
@@ -604,7 +619,7 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
                 >
                   {fitLabel(s.label)}
                 </text>
-                <text x={918} y={legendTop + 52 + i * 84} fontSize={30} fill={C.sub} fontFamily={FONT}>
+                <text x={778} y={legendTop + 52 + i * 84} fontSize={30} fill={C.sub} fontFamily={FONT}>
                   {s.pct}%
                 </text>
               </g>
