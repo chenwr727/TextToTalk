@@ -78,8 +78,8 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   );
   const barW = Math.min(isPortrait ? 220 : 120, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
-  const chartH = isPortrait ? 680 : 450;
-  const barMaxH = isPortrait ? 520 : 300;
+  const chartH = isPortrait ? 880 : 450;
+  const barMaxH = isPortrait ? 700 : 300;
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
@@ -130,7 +130,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
                 right: "100%",
                 marginRight: isPortrait ? sp(12) : 12,
                 transform: "translateY(-50%)",
-                fontSize: isPortrait ? fs(FS.small) : FS.small,
+                fontSize: isPortrait ? PORTRAIT_TICK_FS : FS.small,
                 color: C.sub,
                 fontFamily: FONT,
                 fontWeight: FW.regular,
@@ -155,7 +155,7 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
                   left: 0,
                   right: 0,
                   textAlign: "center",
-                  fontSize: isPortrait ? fs(FS.caption) : FS.caption,
+                  fontSize: isPortrait ? PORTRAIT_VALUE_FS : FS.caption,
                   fontWeight: FW.heavy,
                   color: a,
                   fontFamily: FONT,
@@ -219,10 +219,10 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1180,
-    H = isPortrait ? 700 : 470,
+    H = isPortrait ? 900 : 470,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
@@ -253,7 +253,7 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={isPortrait ? fs(FS.small) : FS.small}
+              fontSize={isPortrait ? PORTRAIT_TICK_FS : FS.small}
               fill={C.sub}
               fontFamily={FONT}
             >
@@ -267,7 +267,7 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
             x={xs[i]}
             y={H + (isPortrait ? sp(32) : 32)}
             textAnchor="middle"
-            fontSize={isPortrait ? fs(30) : 30}
+            fontSize={isPortrait ? PORTRAIT_LABEL_FS : 30}
             fontWeight={FW.bold}
             fill={C.ink}
             fontFamily={FONT}
@@ -315,6 +315,17 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
+/**
+ * 竖屏图表的字号不走 `fs()` 的整体缩放。
+ *
+ * `fs(n)` 在竖屏是 ×0.82——那是为"卡片里的正文"定的，但画布宽度也从 1920 掉到 1080，
+ * 两边一乘，刻度标签只剩 16px（占画布宽 1.5%），手机全屏看根本读不出来。
+ * 图表里的刻度/数值/图例按"占画布宽的比例"重新给一套。
+ */
+const PORTRAIT_TICK_FS = 26;
+const PORTRAIT_VALUE_FS = 34;
+const PORTRAIT_LABEL_FS = 32;
+const PORTRAIT_LEGEND_FS = 30;
 const pieSlicePath = (cx: number, cy: number, r: number, a0: number, a1: number) => {
   const x0 = cx + r * Math.cos(a0),
     y0 = cy + r * Math.sin(a0);
@@ -380,7 +391,7 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
           x={cx}
           y={cy + (isPortrait ? sp(34) : 34)}
           textAnchor="middle"
-          fontSize={isPortrait ? fs(26) : 26}
+          fontSize={isPortrait ? PORTRAIT_LEGEND_FS : 26}
           fill={C.sub}
           fontFamily={FONT}
         >
@@ -439,10 +450,10 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1180,
-    H = isPortrait ? 700 : 470,
+    H = isPortrait ? 900 : 470,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
@@ -473,7 +484,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={isPortrait ? fs(FS.small) : FS.small}
+              fontSize={isPortrait ? PORTRAIT_TICK_FS : FS.small}
               fill={C.sub}
               fontFamily={FONT}
             >
@@ -487,7 +498,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
             x={xs[i]}
             y={H + (isPortrait ? sp(32) : 32)}
             textAnchor="middle"
-            fontSize={isPortrait ? fs(30) : 30}
+            fontSize={isPortrait ? PORTRAIT_LABEL_FS : 30}
             fontWeight={FW.bold}
             fill={C.ink}
             fontFamily={FONT}
@@ -597,7 +608,7 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
           x={cx}
           y={cy + (isPortrait ? sp(34) : 34)}
           textAnchor="middle"
-          fontSize={isPortrait ? fs(26) : 26}
+          fontSize={isPortrait ? PORTRAIT_LEGEND_FS : 26}
           fill={C.sub}
           fontFamily={FONT}
         >
@@ -669,10 +680,10 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
     isPortrait ? sp(24) : 24,
     Math.min(isPortrait ? sp(90) : 90, (availW - n * (isPortrait ? sp(60) : 60)) / Math.max(1, n - 1)),
   );
-  const barW = Math.min(isPortrait ? sp(120) : 120, (availW - (n - 1) * barGap) / n);
+  const barW = Math.min(isPortrait ? 210 : 120, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
-  const chartH = isPortrait ? 620 : 360;
-  const barMaxH = isPortrait ? 520 : 300;
+  const chartH = isPortrait ? 840 : 360;
+  const barMaxH = isPortrait ? 660 : 300;
   // 柱区底边：让出标签那一行，刻度才能与柱高对齐（此前标签在柱底下撑开，柱底位置不定）
   const barBottom = Math.round(labelFs * 1.2) + (isPortrait ? sp(18) : 18);
   const { top: stackTop, ticks: axisTicks } = axisScale(maxTotal);
@@ -722,7 +733,7 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
                 right: "100%",
                 marginRight: isPortrait ? sp(12) : 12,
                 transform: "translateY(-50%)",
-                fontSize: isPortrait ? fs(FS.small) : FS.small,
+                fontSize: isPortrait ? PORTRAIT_TICK_FS : FS.small,
                 color: C.sub,
                 fontFamily: FONT,
                 fontWeight: FW.regular,
@@ -819,10 +830,10 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   const { title, points } = chart as Extract<ChartSpec, { points: { x: number; y: number; label?: string }[] }>;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1180,
-    H = isPortrait ? 700 : 520,
+    H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   const xs = points.map((p) => p.x);
@@ -862,7 +873,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
               y={t.y}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={isPortrait ? fs(FS.small) : FS.small}
+              fontSize={isPortrait ? PORTRAIT_TICK_FS : FS.small}
               fill={C.sub}
               fontFamily={FONT}
             >
@@ -889,7 +900,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
                   x={px(p.x)}
                   y={py(p.y) - (isPortrait ? sp(24) : 24)}
                   textAnchor="middle"
-                  fontSize={isPortrait ? fs(26) : 26}
+                  fontSize={isPortrait ? PORTRAIT_LEGEND_FS : 26}
                   fontWeight={FW.bold}
                   fill={C.ink}
                   fontFamily={FONT}
