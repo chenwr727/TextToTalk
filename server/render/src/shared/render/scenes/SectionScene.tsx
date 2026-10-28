@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { evolvePath } from "@remotion/paths";
-import { alpha, C, FONT, FS, FW, LH, TEXT_SHADOW, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
 import { useResponsive } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
@@ -16,22 +16,44 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
   const t0 = timing.frameAt(0, 5);
   const o = springIn(f, fps, t0, page.motion);
   const g = interpolate(f, [t0, t0 + 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+
+  /*
+   * 同心圆按真实画布比例排。
+   *
+   * 原来 viewBox 固定 16:9、竖屏用 `slice` 放大 1.78 倍，左右两条弧被画布直接切断
+   * （实测左弧 x=5~31、右弧 x=1048~1074），最外圈只剩一小段弧，看着像脏点；
+   * 横屏最外圈 r=540、cy=540 又正好与上下边相切。现在 viewBox 跟随画布方向，
+   * 半径按短边的 0.46 封顶，三圈都完整落在画面内。
+   */
+  const vb = isPortrait ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
+  const cx = vb.w / 2;
+  const cy = vb.h / 2;
+  const rMax = Math.min(vb.w, vb.h) * 0.46;
+  const rings = [0.55, 0.78, 1].map((k) => Math.round(rMax * k));
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <svg
         width="100%"
         height="100%"
-        viewBox="0 0 1920 1080"
-        preserveAspectRatio={isPortrait ? "xMidYMid slice" : "xMidYMid meet"}
-        style={{ position: "absolute", inset: 0, opacity: 0.5 * g }}
+        viewBox={`0 0 ${vb.w} ${vb.h}`}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ position: "absolute", inset: 0, opacity: 0.34 * g, overflow: "hidden" }}
       >
-        <circle cx={960} cy={540} r={300} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.5} />
-        <circle cx={960} cy={540} r={420} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.3} />
-        <circle cx={960} cy={540} r={540} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.18} />
+        <circle cx={cx} cy={cy} r={rings[0]} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.6} />
+        <circle cx={cx} cy={cy} r={rings[1]} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.4} />
+        <circle cx={cx} cy={cy} r={rings[2]} fill="none" stroke={C.accent} strokeWidth={2} opacity={0.26} />
         {page.effects?.pathDraw ? (
-          <CirclePath progress={springIn(f, fps, t0 + 8, page.motion)} color={C.accent} />
+          <CirclePath cx={cx} cy={cy} r={rings[0]} progress={springIn(f, fps, t0 + 8, page.motion)} color={C.accent} />
         ) : (
-          <circle cx={960} cy={540} r={150} fill={`${C.accentWash}`} stroke={C.accent} strokeWidth={2} opacity={0.4} />
+          <circle
+            cx={cx}
+            cy={cy}
+            r={Math.round(rings[0] * 0.5)}
+            fill={`${C.accentWash}`}
+            stroke={C.accent}
+            strokeWidth={2}
+            opacity={0.4}
+          />
         )}
       </svg>
       <div
@@ -56,6 +78,7 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
           fontFamily: FONT,
           opacity: o,
           textShadow: TEXT_SHADOW,
+          textWrap: "balance",
         }}
       >
         {title}
@@ -68,6 +91,7 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
             color: C.sub,
             fontFamily: FONT,
             opacity: o,
+            textWrap: "balance",
           }}
         >
           {sub}
@@ -77,14 +101,21 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-const CirclePath: React.FC<{ progress: number; color: string }> = ({ progress, color }) => {
-  const d = "M 960 390 A 150 150 0 1 1 959.9 390";
+const CirclePath: React.FC<{ cx: number; cy: number; r: number; progress: number; color: string }> = ({
+  cx,
+  cy,
+  r,
+  progress,
+  color,
+}) => {
+  // 用半径算路径起点，避免把 960/540/150 写死（竖屏 viewBox 变了就会画错位置）
+  const d = `M ${cx} ${cy - r} A ${r} ${r} 0 1 1 ${cx - 0.1} ${cy - r}`;
   const { strokeDasharray, strokeDashoffset } = evolvePath(progress, d);
   return (
     <circle
-      cx={960}
-      cy={540}
-      r={150}
+      cx={cx}
+      cy={cy}
+      r={r}
       fill={`${alpha(color, 5)}`}
       stroke={color}
       strokeWidth={2}

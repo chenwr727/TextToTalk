@@ -63,6 +63,28 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   const startY = isPortrait
     ? (height - tableH) / 2
     : Math.max(HEADER_OFFSET, HEADER_OFFSET + (height - 240 - HEADER_OFFSET - tableH) / 2);
+  /**
+   * 数值格子拆成「数字 + 单位」两段。
+   *
+   * 整格右对齐时单位也跟着右贴，于是「3 人 / 1 人 / 0.5 人」里只有字对得上、
+   * 数字本身参差；单位长度不一时（元 / 万元）更乱。把单位放进定宽尾部小字号，
+   * 数字就能在一列里对齐。顺手补千分位（12000 -> 12,000）。
+   */
+  const splitNumUnit = (raw: string): { num: string; unit: string } => {
+    const s = String(raw ?? "").trim();
+    const m = s.match(/^([-+]?[\d,.]+)\s*(.*)$/);
+    if (!m) return { num: s, unit: "" };
+    const digits = Number(m[1].replace(/,/g, ""));
+    const num = Number.isFinite(digits)
+      ? new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 }).format(digits)
+      : m[1];
+    return { num, unit: m[2] ?? "" };
+  };
+  /** 同一列的单位统一定宽（按最长单位算），数字才能对齐 */
+  const unitWidthOf = (ci: number): number => {
+    const units = rows.map((r) => splitNumUnit(String(r[ci] ?? "")).unit);
+    return Math.max(0, ...units.map((u) => Array.from(u).length));
+  };
   const headerCellStyle = (i: number): React.CSSProperties => ({
     flex: `0 0 ${colWidths[i]}px`,
     minHeight: minCellH,
@@ -140,7 +162,34 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
             <div key={`r${ri}`} style={{ display: "flex", flexDirection: "row", alignItems: "stretch" }}>
               {r.map((cell, ci) => (
                 <div key={`c${ri}-${ci}`} style={dataCellStyle(ci, ry, zebra)}>
-                  {cell}
+                  {numericCol(ci) ? (
+                    (() => {
+                      const { num, unit } = splitNumUnit(String(cell ?? ""));
+                      const uw = unitWidthOf(ci);
+                      return (
+                        <>
+                          <span>{num}</span>
+                          {unit ? (
+                            <span
+                              style={{
+                                // 定宽尾部单位：不参与数字的右对齐，但能把整列数字推成一条线
+                                display: "inline-block",
+                                minWidth: `${uw}ch`,
+                                marginLeft: isPortrait ? sp(8) : 8,
+                                fontSize: "0.72em",
+                                fontWeight: FW.regular,
+                                color: C.sub,
+                              }}
+                            >
+                              {unit}
+                            </span>
+                          ) : null}
+                        </>
+                      );
+                    })()
+                  ) : (
+                    cell
+                  )}
                 </div>
               ))}
             </div>

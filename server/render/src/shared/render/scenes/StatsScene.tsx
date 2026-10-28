@@ -144,8 +144,13 @@ const SparkBadge: React.FC<{ color: string; progress: number }> = ({ color, prog
       viewBox="0 0 40 40"
       style={{
         position: "absolute",
-        top: -18,
-        right: -14,
+        /*
+         * 星形徽标贴到数字右上角。
+         * 卡片改成按张数平分后宽度有 520px，原来的 right:-14 直接贴在卡片外边缘，
+         * 跟居中的数字隔了 200px，看起来像漂在空中。改用百分比定位跟着文字块走。
+         */
+        top: -14,
+        right: "18%",
         opacity: progress,
         transform: `scale(${interpolate(progress, [0, 1], [0.3, 1], { output: "perceptual-scale" })}) rotate(${interpolate(progress, [0, 1], [-30, 0])}deg)`,
       }}

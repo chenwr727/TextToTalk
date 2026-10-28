@@ -1,19 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import {
-  alpha,
-  C,
-  FONT,
-  FW,
-  LH,
-  HEADER_OFFSET,
-  CARD_SHADOW,
-  BORDER,
-  accentOf,
-  SPACE,
-  SOLID_SHADOW,
-  springIn,
-} from "../theme";
-import { Icon } from "../Icon";
+import { alpha, C, FONT, FW, LH, HEADER_OFFSET, accentOf, SPACE, springIn } from "../theme";
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { PageHeading } from "../PageHeading";
@@ -27,30 +13,33 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const points = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const timing = useSceneTiming();
-  const a = accentOf(0);
 
-  const leftO = springIn(f, fps, resolveAnchor(timing, points[0] ? pointAnchor(points[0]) : undefined, 0), page.motion);
-  const rightO = springIn(
-    f,
-    fps,
-    resolveAnchor(timing, points[1] ? pointAnchor(points[1]) : undefined, 1),
-    page.motion,
-  );
+  /*
+   * 真的分两列。
+   *
+   * 原先 `points.map` 把**所有**条目都塞进左列，右列拿一块 420×420 的渐变方块 +
+   * 一个居中小图标当填充：一页 4 条要点读不出"这是两组对照"，那块方块也只是占位符
+   * （实测方块里 46% 是图标，周围是两层描边环 + 斜纹）。现在按条目数对半分，
+   * 两列都渲染同样的卡片，一列一个强调色 —— "两种改法 / 前后对照"才立得住。
+   */
+  const half = Math.ceil(points.length / 2);
+  const columns = [points.slice(0, half), points.slice(half)].filter((list) => list.length > 0);
 
   const availH = isPortrait
     ? contentHeight - captionReserve
     : Math.max(360, 1080 - HEADER_OFFSET - captionReserve - 40);
 
   const boxW = isPortrait ? contentWidth : 1560;
-  const leftW = isPortrait ? boxW : boxW * (1.2 / 2.2);
+  const colGap = isPortrait ? sp(36) : 48;
+  const colW = (boxW - colGap * (columns.length - 1)) / Math.max(1, columns.length);
 
   const maxLen = points.reduce((m, p, i) => Math.max(m, [...pointText(p, i)].length), 0);
-  const cardW = leftW - (isPortrait ? sp(30) : 30) * 2 - (isPortrait ? sp(64) : 64) - (isPortrait ? sp(24) : 24);
+  const cardW = colW - (isPortrait ? sp(30) : 30) * 2 - (isPortrait ? sp(64) : 64) - (isPortrait ? sp(24) : 24);
   const byCountFs = points.length <= 2 ? 44 : points.length === 3 ? 40 : points.length === 4 ? 36 : 32;
   const estLines = Math.max(1, Math.ceil(maxLen / Math.max(6, Math.floor(cardW / (byCountFs * 1.05)))));
   const lenFactor = estLines <= 1 ? 1 : estLines === 2 ? 0.9 : estLines === 3 ? 0.8 : 0.72;
@@ -58,35 +47,42 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   const gapOf = (fSize: number) => Math.max(12, Math.round(fSize * (isPortrait ? 0.62 : 0.66)));
   const padYOf = (fSize: number) => Math.max(14, Math.round(fSize * 0.66));
-  const measureH = (fSize: number) => {
+  /** 单列高度：一列只放它自己那几条，两列取较高的一列决定字号 */
+  const colH = (list: typeof points, fSize: number) => {
     const innerW = cardW - Math.round(fSize * 1.75) - (isPortrait ? sp(24) : 24);
     return (
-      points.reduce((sum, p, i) => {
+      list.reduce((sum, p, i) => {
         const lines = Math.max(
           1,
           Math.ceil([...pointText(p, i)].length / Math.max(4, Math.floor(innerW / (fSize * 1.05)))),
         );
         return sum + lines * fSize * 1.4 + padYOf(fSize) * 2;
       }, 0) +
-      gapOf(fSize) * Math.max(0, points.length - 1)
+      gapOf(fSize) * Math.max(0, list.length - 1)
     );
   };
+  const measureH = (fSize: number) => Math.max(...columns.map((list) => colH(list, fSize)));
+
   let finalFs = bodyFs;
   for (let guard = 0; guard < 12 && measureH(finalFs) > availH && finalFs > 20; guard++) {
     finalFs = Math.max(20, finalFs - 2);
   }
-  /**
-   * 竖屏反向放大：这套适配原先只有"装不下就缩"，没有"太空就放"。
-   * 竖屏内容量少的页实测只占可用带的 35%（内容 504 / 可用 1440），上下各一大片空白。
-   * 这里在放得下的前提下继续加大字号，直到内容占到目标填充率，封顶 68px。
+  /*
+   * 反向放大：这套适配原先只有"装不下就缩"，没有"太空就放"。
+   * 竖屏实测只占可用带 35%（内容 504 / 可用 1440）；分两列之后每列只剩两张卡，
+   * 横屏也只占 34%——两个方向都需要往上放。上限分开（竖屏 68 / 横屏 56），
+   * 避免横屏把卡片撑成比标题还大。
    */
-  if (isPortrait) {
-    for (let guard = 0; guard < 16 && measureH(finalFs) < availH * 0.58 && finalFs < 68; guard++) {
-      finalFs += 2;
-    }
+  const fsCap = isPortrait ? 80 : 56;
+  // guard 原来是 16：每轮 +2 只能从 34 长到 64，连上面的 fsCap 都没碰到。
+  for (let guard = 0; guard < 40 && measureH(finalFs) < availH * 0.58 && finalFs < fsCap; guard++) {
+    finalFs += 2;
   }
 
   const gap = gapOf(finalFs);
+  /** 一列作为一个整体入场：用该列第一条的时间锚点，避免两列逐个飞入显得散 */
+  const enterOf = (list: typeof points, index: number) =>
+    springIn(f, fps, resolveAnchor(timing, list[0] ? pointAnchor(list[0]) : undefined, index), page.motion);
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
@@ -95,140 +91,80 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         style={{
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
-          gap: isPortrait ? sp(64) : 64,
+          gap: colGap,
           marginTop: isPortrait ? 0 : HEADER_OFFSET,
           marginBottom: isPortrait ? captionReserve : 0,
           width: boxW,
-          alignItems: "center",
+          alignItems: isPortrait ? "stretch" : "center",
+          justifyContent: "center",
           maxHeight: isPortrait ? undefined : availH,
         }}
       >
-        <div
-          style={{
-            flex: isPortrait ? undefined : 1.2,
-            width: isPortrait ? boxW : undefined,
-            maxHeight: isPortrait ? availH : undefined,
-            display: "flex",
-            flexDirection: "column",
-            gap,
-            justifyContent: "center",
-            opacity: leftO,
-            transform: `translateX(${interpolate(leftO, [0, 1], [-40, 0])}px)`,
-          }}
-        >
-          {points.map((p, i) => {
-            const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
-            const ac = accentOf(i);
-            const iconBox = Math.round(finalFs * 1.75);
-            return (
-              <Card
-                key={i}
-                accent={ac}
-                leftBar
-                pad={isPortrait ? sp(24) : SPACE.md}
-                style={{
-                  flexShrink: 0,
-                  opacity: t,
-                  transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px)`,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center" }}>
-                  <IconTile
-                    name={pointIcon(p, i)}
-                    accent={ac}
-                    size={iconBox > 60 ? "lg" : iconBox > 48 ? "md" : "sm"}
-                    style={{ marginRight: isPortrait ? sp(24) : SPACE.md }}
-                  />
-                  <div
-                    style={{
-                      fontSize: finalFs,
-                      fontWeight: FW.bold,
-                      color: C.ink,
-                      lineHeight: LH.body,
-                      textWrap: "balance",
-                      fontFamily: FONT,
-                    }}
-                  >
-                    {pointText(p, i)}
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-        <div
-          style={{
-            flex: isPortrait ? undefined : 1,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            opacity: rightO,
-            transform: `translateX(${interpolate(rightO, [0, 1], [40, 0])}px)`,
-          }}
-        >
-          <div
-            style={{
-              position: "relative",
-              overflow: "hidden",
-              width: isPortrait
-                ? Math.min(sp(470), Math.round(availH * 0.52))
-                : Math.min(420, Math.round(availH * 0.82)),
-              height: isPortrait
-                ? Math.min(sp(470), Math.round(availH * 0.52))
-                : Math.min(420, Math.round(availH * 0.82)),
-              borderRadius: isPortrait ? sp(56) : 40,
-              background: `linear-gradient(150deg, ${alpha(a, 13)}, ${alpha(a, 4)})`,
-              border: `${BORDER.card}px solid ${alpha(a, 33)}`,
-              boxShadow: CARD_SHADOW,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {/*
-              原先这块只是个淡色空方块加一个居中小图标，大片空着像占位符。
-              加两层同心描边环 + 斜向细纹，让它读成"有意画的色彩面板"而不是空盒子。
-            */}
+        {columns.map((list, ci) => {
+          const ac = accentOf(ci);
+          const o = enterOf(list, 0);
+          return (
             <div
+              key={ci}
               style={{
-                position: "absolute",
-                inset: isPortrait ? sp(30) : 24,
-                borderRadius: "50%",
-                border: `2px solid ${alpha(a, 20)}`,
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                inset: isPortrait ? sp(62) : 52,
-                borderRadius: "50%",
-                border: `1.5px solid ${alpha(a, 14)}`,
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: `repeating-linear-gradient(-45deg, ${alpha(a, 5)} 0, ${alpha(a, 5)} 2px, transparent 2px, transparent 14px)`,
-              }}
-            />
-            <div
-              style={{
-                position: "relative",
-                width: "46%",
-                height: "46%",
-                borderRadius: isPortrait ? 60 : 50,
-                background: a,
                 display: "flex",
-                alignItems: "center",
+                flexDirection: "column",
+                gap,
                 justifyContent: "center",
-                boxShadow: SOLID_SHADOW,
+                /*
+                 * 分界：横屏画一条竖向虚线，竖屏改成横向。
+                 * 两列卡片本身长得一样，没有这条分隔线，观众只会看到"两列卡片"，
+                 * 而这一页想说的是"两种做法/前后对照"。
+                 */
+                borderLeft: !isPortrait && ci > 0 ? `2px dashed ${alpha(ac, 26)}` : undefined,
+                borderTop: isPortrait && ci > 0 ? `2px dashed ${alpha(ac, 26)}` : undefined,
+                paddingLeft: !isPortrait && ci > 0 ? colGap / 2 : undefined,
+                paddingTop: isPortrait && ci > 0 ? sp(28) : undefined,
+                opacity: o,
+                transform: isPortrait ? `translateY(${interpolate(o, [0, 1], [30, 0])}px)` : undefined,
               }}
             >
-              <Icon name={pointIcon(points[0] ?? "", 0)} size={isPortrait ? sp(130) : 110} color="#fff" />
+              {list.map((p, i) => {
+                const t = springIn(f, fps, resolveAnchor(timing, pointAnchor(p), i), page.motion);
+                const iconBox = Math.round(finalFs * 1.75);
+                return (
+                  <Card
+                    key={i}
+                    accent={ac}
+                    leftBar
+                    pad={isPortrait ? sp(24) : SPACE.md}
+                    style={{
+                      flexShrink: 0,
+                      opacity: t,
+                      transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px)`,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <IconTile
+                        name={pointIcon(p, i)}
+                        accent={ac}
+                        size={iconBox > 60 ? "lg" : iconBox > 48 ? "md" : "sm"}
+                        style={{ marginRight: isPortrait ? sp(24) : SPACE.md }}
+                      />
+                      <div
+                        style={{
+                          fontSize: finalFs,
+                          fontWeight: FW.bold,
+                          color: C.ink,
+                          lineHeight: LH.body,
+                          textWrap: "balance",
+                          fontFamily: FONT,
+                        }}
+                      >
+                        {pointText(p, i)}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
             </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
     </AbsoluteFill>
   );

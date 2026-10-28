@@ -32,8 +32,9 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           display: "grid",
           gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`,
           columnGap: isPortrait ? sp(60) : 60,
-          rowGap: isPortrait ? sp(20) : 20,
-          marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET,
+          // 竖屏 4 张卡原来只隔 17px、整组像一块石板；且 marginTop 用了 212px，上方空 363px
+          rowGap: isPortrait ? sp(48) : 20,
+          marginTop: isPortrait ? sp(120) : HEADER_OFFSET,
           marginBottom: captionReserve,
           width: isPortrait ? contentWidth : 1560,
         }}
@@ -54,7 +55,11 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,
               }}
             >
-              <Card pad={isPortrait ? sp(34) : 34} style={{ height: "100%", textAlign: "center" }}>
+              <Card
+                pad={isPortrait ? sp(34) : 34}
+                // 竖屏给一个最小高度：4 张单行卡只有 190px 高，整组只占画布 44%
+                style={{ height: "100%", textAlign: "center", minHeight: isPortrait ? sp(250) : undefined }}
+              >
                 {/* 序号原来是"64px 实心圆 + 64px 图标方块"竖向堆两个，把卡片撑满、正文被挤成窄条。
                     现在序号缩成右上角 40px 徽标，主视觉只留一个图标方块，正文多出约 84px 高度 */}
                 <div
@@ -105,8 +110,9 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: a,
-                    fontSize: isPortrait ? fs(44) : 44,
+                    // 箭头不再跟卡片轮换颜色（7 个版式里那三处“杂色”就是这么来的）
+                    color: C.accent,
+                    fontSize: isPortrait ? fs(56) : 56,
                     fontWeight: FW.heavy,
                   }}
                 >
