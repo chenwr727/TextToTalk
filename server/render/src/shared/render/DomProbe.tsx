@@ -85,7 +85,17 @@ export const DomProbe: React.FC<{ spec: ProbeSpec }> = ({ spec }) => {
         // 只取最深的那个（子元素都不含这段文字的才算叶子），否则会命中 body/html
         return !Array.from(el.children).some((c) => c.textContent?.includes(needle));
       });
-    const report: any[] = spec.text
+    /**
+     * 探针结果的一条：命中选择器 / 命中数 / 前几个元素的描述；
+     * 选择器写错时只有 selector + error。字段直接序列化回 Node 侧，所以用 unknown 而非 any。
+     */
+    type ProbeEntry = {
+      selector: string;
+      count?: number;
+      error?: string;
+      items?: Array<Record<string, unknown>>;
+    };
+    const report: ProbeEntry[] = spec.text
       ? [
           {
             selector: `text:${spec.text}`,

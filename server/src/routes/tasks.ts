@@ -8,6 +8,7 @@ import { renderTaskInBackground, OUT_DIR } from "../services/renderService.js";
 import { renderPageFrames } from "../services/frameExtract.js";
 import { authorizeTask } from "../services/auth.js";
 import type { VideoParams } from "../types.js";
+import type { PointItem } from "../../../shared/types.js";
 
 export function registerTaskRoutes(app: FastifyInstance) {
   app.get("/api/tasks/:id", async (req, reply) => {
@@ -46,7 +47,7 @@ export function registerTaskRoutes(app: FastifyInstance) {
     if (!task) return reply;
     const mp4 = path.join(OUT_DIR, `${taskId}.mp4`);
     if (!existsSync(mp4)) return reply.code(404).send({ error: "产物不存在，请先渲染" });
-    const q = (req as any).query as Record<string, string> | undefined;
+    const q = req.query as Record<string, string> | undefined;
     const asAttachment = q?.download === "1";
     const stat = statSync(mp4);
     const range = (req.headers.range as string) || "";
@@ -80,7 +81,7 @@ export function registerTaskRoutes(app: FastifyInstance) {
     const taskId = String((req.params as { id: string }).id);
     const task = authorizeTask(req, reply, taskId);
     if (!task || !task.storyboard) return reply.code(404).send({ error: "任务或分镜不存在" });
-    void renderPageFrames(taskId, task.storyboard, task.storyboard.pages as any[], task.params.fps || 30, undefined, {
+    void renderPageFrames(taskId, task.storyboard, task.storyboard.pages, task.params.fps || 30, undefined, {
       theme: task.params.theme,
       width: task.params.width,
       height: task.params.height,
@@ -136,9 +137,10 @@ export function registerTaskRoutes(app: FastifyInstance) {
       if (!Array.isArray(body.points)) return reply.code(400).send({ error: "points 必须是数组" });
       next.points = body.points.map((p) => {
         if (typeof p === "string") return p;
-        if (p && typeof p === "object" && typeof (p as any).text === "string") {
-          const item: any = { text: (p as any).text, icon: (p as any).icon ?? null };
-          const a = Number((p as any).anchor);
+        const o = p as { text?: unknown; icon?: unknown; anchor?: unknown } | null;
+        if (o && typeof o.text === "string") {
+          const item: PointItem = { text: o.text, icon: (o.icon ?? null) as PointItem["icon"] };
+          const a = Number(o.anchor);
           if (Number.isInteger(a) && a >= 0) item.anchor = a;
           return item;
         }

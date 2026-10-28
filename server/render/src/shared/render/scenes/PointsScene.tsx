@@ -231,7 +231,6 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     ? contentWidth
     : Math.round(Math.min(CONTENT_WIDTH * 0.95, [1240, 1460, 1600][maxLen <= 14 ? 0 : maxLen <= 22 ? 1 : 2]));
 
-  const availW = singleColW;
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -291,10 +290,6 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   zoom = Math.max(1, Math.round(zoom * 100) / 100);
   const scale: Scale = mkScale(zoom);
 
-  const iconBlock = scale.btnSub + (isPortrait ? sp(24) : 24);
-  const padX = parseX(scale.subPad);
-  const colH = Math.max(200, boxW - iconBlock - padX);
-  const rowGap = (isPortrait ? sp(scale.gap) : scale.gap) + (isPortrait ? sp(scale.rowMb) : scale.rowMb);
   /**
    * 单列要点统一宽度。
    *

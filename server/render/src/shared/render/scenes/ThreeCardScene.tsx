@@ -24,7 +24,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);

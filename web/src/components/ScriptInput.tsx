@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { VideoParams } from "../types";
+import type { Granularity, Tone, VideoParams } from "../types";
 import { THEME_IDS, THEME_TOKENS } from "../../../server/render/src/shared/render/theme";
 
 /** 主题的中文名来自渲染端 token，避免两处各写一份漂移；图标只是 UI 装饰 */
@@ -126,7 +126,7 @@ export function ScriptInput({
                   <select
                     className="dsh-field"
                     value={params.tone}
-                    onChange={(e) => onParamsChange({ ...params, tone: e.target.value as any })}
+                    onChange={(e) => onParamsChange({ ...params, tone: e.target.value as Tone })}
                   >
                     <option value="formal">🎓 正式严谨</option>
                     <option value="casual">😄 轻松易懂</option>
@@ -138,7 +138,7 @@ export function ScriptInput({
                   <select
                     className="dsh-field"
                     value={params.granularity}
-                    onChange={(e) => onParamsChange({ ...params, granularity: e.target.value as any })}
+                    onChange={(e) => onParamsChange({ ...params, granularity: e.target.value as Granularity })}
                   >
                     <option value="coarse">粗（页少）</option>
                     <option value="medium">中</option>
@@ -164,7 +164,7 @@ export function ScriptInput({
                   <select
                     className="dsh-field"
                     value={params.theme ?? "tech"}
-                    onChange={(e) => onParamsChange({ ...params, theme: e.target.value as any })}
+                    onChange={(e) => onParamsChange({ ...params, theme: e.target.value })}
                   >
                     {THEME_IDS.map((id) => (
                       <option key={id} value={id}>

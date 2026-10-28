@@ -4,7 +4,7 @@ import { C, FONT, FW, RADIUS, alpha } from "../shared/render/theme";
 import { useResponsive, CAPTION_METRICS } from "../shared/render/responsive";
 import { tokenizeCaption } from "../shared/render/tokenize";
 
-const Aud = Audio as any;
+const Aud = Audio;
 
 const HIGHLIGHT = "#ffd54a";
 /** 旧的整句数字高亮（karaoke 关闭时仍用） */

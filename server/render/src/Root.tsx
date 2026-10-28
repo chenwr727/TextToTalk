@@ -38,8 +38,15 @@ export function computeTotalFrames(pages: RenderProps["pages"], fps: number): nu
   return Math.max(30, frames - transitionFramesTotal);
 }
 
+/*
+ * 第一个类型参数在 Remotion 4 里是"可选的 zod schema"（AnyZodObject），不是 props 类型——
+ * 项目不用 schema（props 由 Node 侧直接传），所以只能给一个"满足约束但永不使用"的占位类型。
+ * 第二个类型参数才是真正生效的 props（RenderProps）。
+ */
+type NoSchema = { _def: unknown; _input: unknown };
+
 export const RemotionRoot: FC = () => (
-  <Composition<any, RenderProps>
+  <Composition<NoSchema, RenderProps>
     id="DynamicVideo"
     component={DynamicVideo}
     durationInFrames={30}

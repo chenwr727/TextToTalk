@@ -176,6 +176,8 @@
 
 ### 清理
 
+- **lint 告警 89 → 51**：13 条 `no-unused-vars` 全部清掉（`SmartArt` 里 6 个失效的 `fs` / `MAX_LINES` / `FS_CANDIDATES`、`PointsScene` 里随布局重构失效的 `availW` / `colH` / `rowGap` / `iconBlock` / `padX`、以及 `PageHeading` 的 `FONT`、`preview-portrait.mjs` 的 `getCompositions`）；25 条 `no-explicit-any` 换成真实类型——SSE 帧改成 `Record<string, unknown>` 逐字段 `typeof` 收窄，`subscribeStoryboard` 的事件回调入参加 `unknown`、`ScriptInput` 的三处 `as any` 换成 `Tone` / `Granularity`（`theme` 本来就是 `string`，直接去掉断言），`RenderThumb` 用 `normalizeThemeId()`、`DynamicVideo` 的 `theme` 同理，`tasks.ts` 的 `points` 归一化改用项目自己的 `PointItem`，`GeneratedPage` 的注入组件类型改成 `ComponentType<Record<string, unknown>>`。剩 51 条全在 `normalize.ts`（LLM 输出归一化，`any` 用得最多，单独一轮带测试重构）。`DynamicVideo` 的 `pickTransition` 保留一个**带理由的** eslint-disable：Remotion 的 `TransitionPresentation<T>` 对 T 不变，五套转场预设合不成单一类型（不写 `any` 时 tsc 报 TS2322）。
+
 - 删除 `server/render/src/gen/` 下 8 个陈旧生成入口、`server/render-profile/` 空任务目录，以及调试期遗留的 `server.repro.log` / `web/vite.repro.log`。
 
 ## [0.2.0] - 2026-09-02

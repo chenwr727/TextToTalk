@@ -72,14 +72,17 @@ async function resolveEntryUrl(b: Backend): Promise<string> {
   return (await ping("http://127.0.0.1:3000")) ? "http://127.0.0.1:3000" : b.baseUrl;
 }
 
-async function health(): Promise<{
+/** /api/health 的返回结构；用它给 fetch 的结果注入类型，而不是 as any */
+type HealthPayload = {
   outDir: string;
   llm: { baseUrl: string; model: string; configured: boolean };
-} | null> {
+};
+
+async function health(): Promise<HealthPayload | null> {
   if (!backend) return null;
   try {
     const res = await fetch(`${backend.baseUrl}/api/health`, { signal: AbortSignal.timeout(2000) });
-    return (await res.json()) as any;
+    return (await res.json()) as HealthPayload;
   } catch {
     return null;
   }

@@ -97,19 +97,21 @@ export function subscribeOutline(
           const lines = frame.split("\n");
           const event = lines.find((l) => l.startsWith("event: "))?.slice(7) ?? "message";
           const data = lines.find((l) => l.startsWith("data: "))?.slice(6) ?? "";
-          let parsed: any;
+          // SSE 帧是服务端自定义的 JSON，这里按"字段可能存在、类型未知"处理，
+          // 每个分支都先做 typeof 收窄再用——比 any 多一行，但字段名改了会报错
+          let parsed: Record<string, unknown> = {};
           try {
-            parsed = JSON.parse(data);
+            parsed = JSON.parse(data) as Record<string, unknown>;
           } catch {
             continue;
           }
-          if (event === "token" && typeof parsed?.token === "string") onToken(parsed.token);
+          if (event === "token" && typeof parsed.token === "string") onToken(parsed.token);
           else if (event === "reset") onReset?.();
-          else if (event === "stage" && typeof parsed?.stage === "string") onStage(parsed.stage);
-          else if (event === "section" && typeof parsed?.label === "string") onSection(parsed.label);
-          else if (event === "final") onFinal(parsed.outline);
+          else if (event === "stage" && typeof parsed.stage === "string") onStage(parsed.stage);
+          else if (event === "section" && typeof parsed.label === "string") onSection(parsed.label);
+          else if (event === "final") onFinal(parsed.outline as Outline);
           else if (event === "error") {
-            onError(new Error(parsed?.error || "生成大纲失败"));
+            onError(new Error(typeof parsed.error === "string" ? parsed.error : "生成大纲失败"));
             return;
           } else if (event === "done") {
             onDone();
@@ -157,7 +159,8 @@ export function subscribeStoryboard(
   onReset?: () => void,
 ): () => void {
   const es = new EventSource(withToken(`${BASE}/stream?id=${taskId}`));
-  const on = (type: string, handler: (d: any) => void) => {
+  /** 事件数据同样是自定义 JSON：入参按 unknown 接，由各个回调自己收窄 */
+  const on = (type: string, handler: (d: unknown) => void) => {
     es.addEventListener(type, (e) => {
       try {
         handler(JSON.parse((e as MessageEvent).data));
@@ -166,16 +169,19 @@ export function subscribeStoryboard(
       }
     });
   };
-  on("page", (d) => onPage(d));
+  on("page", (d) => onPage(d as StoryPage));
   on("token", (d) => {
-    if (typeof d?.token === "string") onToken?.(d.token);
+    const o = d as { token?: unknown } | null;
+    if (typeof o?.token === "string") onToken?.(o.token);
   });
   on("reset", () => onReset?.());
   on("stage", (d) => {
-    if (typeof d?.stage === "string") onStage?.(d.stage);
+    const o = d as { stage?: unknown } | null;
+    if (typeof o?.stage === "string") onStage?.(o.stage);
   });
   on("section", (d) => {
-    if (typeof d?.label === "string") onSection?.(d.label);
+    const o = d as { label?: unknown } | null;
+    if (typeof o?.label === "string") onSection?.(o.label);
   });
   on("final", (d) => onFinal?.(d));
   on("done", (d) => {

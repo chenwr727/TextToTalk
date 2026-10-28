@@ -29,7 +29,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, sp, contentWidth } = useResponsive();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -62,8 +62,6 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const ICON_BLOCK = isPortrait ? sp(CARD_TYPE.iconBox) : CARD_TYPE.iconBox;
   const V_PAD = (isPortrait ? sp(CARD_TYPE.padY) : CARD_TYPE.padY) * 2;
   const LINE_H = CARD_TYPE.lineHeight;
-  const MAX_LINES = CARD_TYPE.maxLines;
-  const FS_CANDIDATES = CARD_TYPE.fsCandidates;
 
   const contentAvailH = Math.max(ICON_BLOCK, maxCardH - V_PAD);
   const nodeFs = pickCardFont(maxChars, TEXT_W, contentAvailH);
@@ -370,7 +368,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
   const title = page.title;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
   const timing = useSceneTiming();
   const chart = page.chart;
   const labels = chart?.type === "pyramid" ? chart.labels : [];
@@ -496,7 +494,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const list = items;
 
@@ -731,7 +729,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const list = items.slice(0, 4);
   /*

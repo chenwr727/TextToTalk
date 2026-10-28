@@ -234,7 +234,7 @@ export function RenderOutput({
                   value={bgm}
                   onChange={(e) => {
                     markTouched();
-                    setBgm(e.target.value as any);
+                    setBgm(e.target.value as VideoParams["bgm"]);
                   }}
                 >
                   <option value="default">🎵 轻快配乐</option>

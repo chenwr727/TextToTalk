@@ -23,12 +23,15 @@ const remotionApi = { AbsoluteFill, interpolate, Sequence, spring, useCurrentFra
  * 3. **失败不炸片**：编译或运行期任何异常都降级成 points 版式，成片照常出，
  *    而不是让整条流水线因为一页 AI 代码而失败。
  */
-const compiledCache = new Map<string, React.ComponentType<any> | null>();
+/** 生成代码拿到的 props（page / portrait / width / height）都是"字段可能不存在"，用 unknown 值类型就够 */
+type GeneratedProps = Record<string, unknown>;
 
-const compilePage = (js: string): React.ComponentType<any> | null => {
+const compiledCache = new Map<string, React.ComponentType<GeneratedProps> | null>();
+
+const compilePage = (js: string): React.ComponentType<GeneratedProps> | null => {
   const cached = compiledCache.get(js);
   if (cached !== undefined) return cached;
-  let comp: React.ComponentType<any> | null = null;
+  let comp: React.ComponentType<GeneratedProps> | null = null;
   try {
     const factory = new Function(
       "React",
@@ -40,8 +43,9 @@ const compilePage = (js: string): React.ComponentType<any> | null => {
     );
     const mod: { exports: Record<string, unknown> } = { exports: {} };
     const out = factory(React, Kit, remotionApi, mod, mod.exports);
-    const candidate = typeof out === "function" ? out : (out as any)?.default;
-    comp = typeof candidate === "function" ? (candidate as React.ComponentType<any>) : null;
+    const candidate =
+      typeof out === "function" ? out : (out as { default?: unknown } | undefined)?.default;
+    comp = typeof candidate === "function" ? (candidate as React.ComponentType<GeneratedProps>) : null;
   } catch {
     comp = null;
   }

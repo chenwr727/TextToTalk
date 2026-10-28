@@ -62,7 +62,7 @@ export function RenderThumb({
           <ResponsiveContext.Provider value={isPortrait ? { width, height } : null}>
             <Bg
               variant={bg}
-              theme={theme as any}
+              theme={normalizeThemeId(theme)}
               draw={!!(p as { effects?: { pathDraw?: boolean } }).effects?.pathDraw}
               decor={rp.decor}
             />

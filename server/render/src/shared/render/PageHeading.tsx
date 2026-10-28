@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { interpolate, useCurrentFrame } from "remotion";
-import { C, FONT, FONT_DISPLAY, FW, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD, alpha, useTheme } from "./theme";
+import { C, FONT_DISPLAY, FW, RADIUS, BORDER, PILL_SHADOW, GLASS, ACCENT_GRAD, alpha, useTheme } from "./theme";
 import { useResponsive } from "./responsive";
 import { useAnnotation, type PageAnnotation } from "./annotation";
 import { Circle, Highlight, Underline } from "@remotion/rough-notation";

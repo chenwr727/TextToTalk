@@ -21,6 +21,13 @@ export const TRANSITION_FRAMES = TRANSITION_FRAME_MAP.fade;
 /** 不同转场占用的帧数，来自 shared/types 的唯一定义（服务端抽帧也用同一份） */
 export const transitionFrames = (t: TransitionType | undefined): number => transitionFramesOf(t);
 
+/*
+ * 这里的 any 是库的类型限制，不是偷懒：
+ * Remotion 的 TransitionPresentation<T> 对 T 不变，五套预设（fade / slide / zoom / none）
+ * 各自的 props 类型互不兼容，合不成一个能赋给 TransitionSeries.Transition 的单一类型
+ * （不写 any 时 tsc 直接报 TS2322）。真要去掉得给每个分支加 as unknown as，反而更脏。
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- 见上：Remotion 的转场预设类型不变，无法合并
 function pickTransition(t: TransitionType | undefined): any {
   switch (t) {
     case "slide-left":
@@ -53,7 +60,7 @@ export const DynamicVideo: React.FC<RenderProps> = ({ projectTitle, pages, fps, 
     const isLast = i === pages.length - 1;
     children.push(
       <TransitionSeries.Sequence key={p.pageIndex} durationInFrames={dur}>
-        <Bg variant={bg} theme={theme as any} draw={!!p.effects?.pathDraw} decor={p.decor} />
+        <Bg variant={bg} theme={normalizeThemeId(theme)} draw={!!p.effects?.pathDraw} decor={p.decor} />
         <PageBody page={p} fps={fps} subtitles={subtitles} isFirst={i === 0} Scene={Scene} />
       </TransitionSeries.Sequence>,
     );
