@@ -1,4 +1,4 @@
-import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig, spring } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import {
   alpha,
   C,
@@ -22,12 +22,12 @@ import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
-const CARD_W = 580;
 const CARD_PAD_X = 44;
-const CARD_PAD_TOP = 80;
-const CARD_PAD_BOTTOM = 36;
-const HEAD_H = 64;
-const ITEM_GAP = 22;
+const CARD_PAD_BOTTOM = 32;
+const HEAD_PAD_TOP = SPACE.lg;
+const HEAD_PAD_BOTTOM = SPACE.md;
+const DIVIDER_BLOCK = 21;
+const ITEM_GAP_MIN = 22;
 const ICON_BOX = 44;
 
 export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
@@ -35,7 +35,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -49,22 +49,59 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const right = sides ? sides.b.label : rightItems[0] ? pointText(rightItems[0], half) : "…";
   const skipFirst = !sides ? 1 : 0;
 
-  const leftCount = leftItems.length - skipFirst;
-  const rightCount = rightItems.length - skipFirst;
-  const maxCount = Math.max(leftCount, rightCount);
+  /*
+   * 卡片宽度按可用宽度算，不再写死 580。
+   *
+   * 580×2 + 96(VS) + 72(gap) = 1328，只占 1920 的 69%；竖屏则相反——
+   * 卡片撑满 1080 但里面只有 3 条短句，下半截全是空的。
+   */
+  const vsSize = isPortrait ? sp(96) : 96;
+  const cardGap = isPortrait ? sp(24) : 36;
+  const cardW = isPortrait
+    ? contentWidth
+    : Math.min(760, Math.floor((contentWidth - vsSize - cardGap * 2) / 2));
 
   const compareItems = sides ? [...leftItems.slice(skipFirst), ...rightItems.slice(skipFirst)] : items.slice(skipFirst);
   const maxItemLen = Math.max(1, ...compareItems.map((p) => [...pointText(p, 0)].length));
-  const itemFs = pickCardFont(maxItemLen, isPortrait ? contentWidth : CARD_W - CARD_PAD_X * 2);
-  const lineH = LH.body;
-  const itemBlockH = (isPortrait ? sp(ICON_BOX) : ICON_BOX) + (isPortrait ? sp(16) : 16);
-  const listH = maxCount > 0 ? maxCount * itemBlockH + (maxCount - 1) * (isPortrait ? sp(ITEM_GAP) : ITEM_GAP) : 0;
-  const cardH =
-    (isPortrait ? sp(CARD_PAD_TOP) : CARD_PAD_TOP) +
-    (isPortrait ? sp(HEAD_H) : HEAD_H) +
-    (isPortrait ? sp(28) : 28) +
-    listH +
-    (isPortrait ? sp(CARD_PAD_BOTTOM) : CARD_PAD_BOTTOM);
+  const textW = cardW - CARD_PAD_X * 2 - ICON_BOX - SPACE.sm;
+  const baseFs = pickCardFont(maxItemLen, textW);
+
+  const linesOf = (text: string, fSize: number) =>
+    Math.max(1, Math.ceil([...text].length / Math.max(4, Math.floor(textW / (fSize * 1.02)))));
+  /** 列表实际需要的高度：每个条目取「图标方块 44」与「文字行高」的较大值 */
+  const listHOf = (list: typeof items, fSize: number) => {
+    const n = Math.max(list.length - skipFirst, 0);
+    if (!n) return 0;
+    const blocks = list.slice(skipFirst).reduce((sum, p, i) => {
+      const h = linesOf(pointText(p, i), fSize) * fSize * LH.body;
+      return sum + Math.max(ICON_BOX, h);
+    }, 0);
+    return blocks + (n - 1) * ITEM_GAP_MIN;
+  };
+  const neededH = (fSize: number) =>
+    HEAD_PAD_TOP +
+    56 +
+    HEAD_PAD_BOTTOM +
+    DIVIDER_BLOCK +
+    Math.max(listHOf(leftItems, fSize), listHOf(rightItems, fSize)) +
+    CARD_PAD_BOTTOM;
+
+  /*
+   * 上下留白预算。
+   *
+   * 原来 `CARD_PAD_TOP = 80`（实际头部内边距是 SPACE.lg=32）把卡片高度多算了 84px，
+   * 于是内容只有 330px 高、卡片却画 410px，底部空出一整条。现在按实际内容给高度，
+   * 并把富余的高度用 space-between 摊到条目间距里。
+   */
+  const bandH = isPortrait
+    ? contentHeight - captionReserve - sp(210) - vsSize - cardGap * 2
+    : 1080 - HEADER_OFFSET - captionReserve - 60;
+
+  let itemFs = baseFs;
+  for (let guard = 0; guard < 20 && neededH(itemFs + 2) <= bandH * 0.94 * 0.88 && itemFs < 52; guard++) {
+    itemFs += 2;
+  }
+  const cardH = Math.max(neededH(itemFs), Math.min(bandH * 0.94, neededH(itemFs) * 1.35));
 
   const tA = resolveAnchor(timing, leftItems[0] ? pointAnchor(leftItems[0]) : undefined, 0, 8);
   const tB = resolveAnchor(timing, rightItems[0] ? pointAnchor(rightItems[0]) : undefined, 1, 22);
@@ -86,19 +123,25 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     <div
       style={{
         position: "relative",
+        display: "flex",
         opacity: op,
+        flex: isPortrait ? undefined : 1,
+        width: isPortrait ? "100%" : undefined,
         transform: `translateY(${interpolate(op, [0, 1], [72, 0])}px)`,
       }}
     >
-      {/* 这张卡原来是 Card.tsx 的 1:1 复制品（只是 topBar 高 10、高光 48%），
-          改一处就得改两处。现在统一用 <Card topBar>，材质与其它版式一致 */}
-      <Card accent={accent} topBar pad={0} style={{ width: isPortrait ? contentWidth : CARD_W, height: cardH }}>
+      <Card
+        accent={accent}
+        topBar
+        pad={0}
+        style={{ width: isPortrait ? contentWidth : cardW, minHeight: cardH, height: "100%" }}
+      >
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: `${SPACE.lg}px ${CARD_PAD_X}px ${SPACE.md}px ${CARD_PAD_X}px`,
+            padding: `${HEAD_PAD_TOP}px ${CARD_PAD_X}px ${HEAD_PAD_BOTTOM}px ${CARD_PAD_X}px`,
             position: "relative",
           }}
         >
@@ -106,7 +149,8 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             <IconTile name={icon} accent={accent} size="md" />
             <div
               style={{
-                fontSize: FS.body,
+                // 卡片标题跟着条目字号走：条目顶到 46 之后，28px 的标题会被正文压住，层级反了
+                fontSize: Math.max(FS.body, Math.round(itemFs * 0.82)),
                 fontWeight: FW.heavy,
                 color: C.ink,
                 lineHeight: LH.tight,
@@ -149,7 +193,17 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           }}
         />
 
-        <div style={{ display: "flex", flexDirection: "column", gap: ITEM_GAP, padding: `0 ${CARD_PAD_X}px` }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            // 富余高度摊到条目之间，而不是全留在卡底
+            justifyContent: "space-between",
+            gap: ITEM_GAP_MIN,
+            flex: 1,
+            padding: `0 ${CARD_PAD_X}px ${CARD_PAD_BOTTOM}px ${CARD_PAD_X}px`,
+          }}
+        >
           {list.slice(skipFirst).map((p, i) => (
             <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: SPACE.sm }}>
               <div
@@ -172,7 +226,14 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 {i + 1}
               </div>
               <div
-                style={{ fontSize: itemFs, color: C.ink, lineHeight: lineH, fontFamily: FONT, fontWeight: FW.regular }}
+                style={{
+                  fontSize: itemFs,
+                  color: C.ink,
+                  lineHeight: LH.body,
+                  fontFamily: FONT,
+                  fontWeight: FW.regular,
+                  textWrap: "balance",
+                }}
               >
                 {pointText(p, i)}
               </div>
@@ -197,10 +258,13 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           position: "relative",
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
-          gap: isPortrait ? sp(24) : 36,
-          marginTop: isPortrait ? sp(HEADER_OFFSET) : HEADER_OFFSET,
+          gap: cardGap,
+          // 竖屏原来用 sp(HEADER_OFFSET)=212，标题下多空出一整块
+          marginTop: isPortrait ? sp(120) : HEADER_OFFSET,
           marginBottom: captionReserve,
-          alignItems: "center",
+          alignItems: "stretch",
+          justifyContent: "center",
+          width: isPortrait ? contentWidth : undefined,
         }}
       >
         {panel(
@@ -217,8 +281,8 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         <div
           style={{
             position: "relative",
-            width: isPortrait ? sp(96) : 96,
-            height: isPortrait ? sp(96) : 96,
+            width: vsSize,
+            height: vsSize,
             borderRadius: "50%",
             background: `linear-gradient(135deg, ${C.accent}, ${C.accentSoft})`,
             display: "flex",
@@ -227,6 +291,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             boxShadow: `0 10px 28px ${C.accentFaint}`,
             opacity: enterVs,
             transform: `scale(${interpolate(enterVs, [0, 1], [0.4, 1])}) rotate(${interpolate(enterVs, [0, 1], [-90, 0])}deg)`,
+            alignSelf: "center",
             zIndex: 2,
             flexShrink: 0,
           }}

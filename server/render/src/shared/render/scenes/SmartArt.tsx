@@ -283,31 +283,12 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           width: isPortrait ? sp(180) : 180,
           height: isPortrait ? sp(180) : 180,
           borderRadius: "50%",
-          background: C.accent,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: CARD_SHADOW,
-        }}
-      >
-        <div
-          style={{
-            width: isPortrait ? sp(64) : 64,
-            height: isPortrait ? sp(64) : 64,
-            borderRadius: "50%",
-            background: GLASS.card,
-          }}
-        />
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          left: CX - (isPortrait ? sp(30) : 30),
-          top: CY - (isPortrait ? sp(30) : 30),
-          width: isPortrait ? sp(60) : 60,
-          height: isPortrait ? sp(60) : 60,
-          borderRadius: "50%",
-          background: C.accent,
+          /*
+           * 原来是三层叠在一起：180px 主色实心圆 + 64px 白色玻璃圆 + 60px 主色小圆，
+           * 最里面才是 FS.label（≈22px）的「循环」—— 圈大、字小、层数多，远看像个毛球。
+           * 收成一层：主色渐变圆 + 44px 白字。
+           */
+          background: `linear-gradient(135deg, ${C.accent}, ${C.accentSoft})`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -317,9 +298,10 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         <span
           style={{
             color: "#fff",
-            fontSize: isPortrait ? fs(FS.label) : FS.label,
+            fontSize: isPortrait ? fs(44) : 44,
             fontWeight: FW.heavy,
             fontFamily: FONT,
+            letterSpacing: 2,
           }}
         >
           循环
@@ -362,7 +344,6 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 boxSizing: "border-box",
               }}
             >
-              <Icon name={pointIcon(it, i)} size={isPortrait ? sp(26) : 26} color={ac} />
               <span
                 style={{
                   fontSize: nodeFs,
@@ -372,6 +353,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   lineHeight: LH.tight,
                   flex: 1,
                   wordBreak: "break-word",
+                  textWrap: "balance",
                 }}
               >
                 {pointText(it, i)}
@@ -520,7 +502,12 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   const SIDE_SAFE = 60;
   const nodeSlot = (1920 - SIDE_SAFE * 2) / Math.max(1, list.length);
-  const NODE_W = isPortrait ? contentWidth : Math.max(260, Math.min(400, Math.round(nodeSlot * 0.92)));
+  /*
+   * 标签宽度上限从写死的 400 改为“用满自己那一格”。
+   * 3 个节点时每格 600px，而标签只给 400：「第 2 月：砍掉两道重复审批」被挤成
+   * 两行且末字「批」孤零零掉到第二行。
+   */
+  const NODE_W = isPortrait ? contentWidth : Math.max(260, Math.round(nodeSlot - 32));
   const TEXT_W = NODE_W - (isPortrait ? sp(36) : 40);
   const FIRST_CX = NODE_W / 2 + SIDE_SAFE;
   const LAST_CX = 1920 - NODE_W / 2 - SIDE_SAFE;
@@ -541,26 +528,12 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const PORTRAIT_TOP = sp(260);
   const PORTRAIT_BOTTOM = captionReserve + sp(40);
-  const PORTRAIT_ROW_H = (contentHeight - PORTRAIT_TOP - PORTRAIT_BOTTOM) / Math.max(1, list.length);
   const PORTRAIT_NODE_W = contentWidth / 2 - sp(70);
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={title} />
       <div style={{ flex: 1, position: "relative" }}>
-        {isPortrait ? (
-          <div
-            style={{
-              position: "absolute",
-              top: PORTRAIT_TOP,
-              bottom: PORTRAIT_BOTTOM,
-              left: "50%",
-              width: 8,
-              transform: "translateX(-50%)",
-              background: C.accent,
-              borderRadius: 4,
-            }}
-          />
-        ) : (
+        {isPortrait ? null : (
           /* 轴线两端与首尾节点的圆心严格对齐。 */
           <div
             style={{
@@ -577,17 +550,35 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         )}
         {isPortrait ? (
           <div style={{ position: "absolute", top: PORTRAIT_TOP, bottom: PORTRAIT_BOTTOM, left: 0, right: 0 }}>
+            {/*
+             * 轴线和节点放在同一个容器里、用百分比定位。
+             * 先前轴线在外层、节点在内层，两层各自用 px 算坐标，
+             * 结果轴线比节点少了一整段、末尾节点落在轴线外面。
+             */}
+            <div
+              style={{
+                position: "absolute",
+                left: "50%",
+                top: `${50 / Math.max(1, list.length)}%`,
+                height: `${((list.length - 1) * 100) / Math.max(1, list.length)}%`,
+                width: 8,
+                transform: "translateX(-50%)",
+                background: C.accent,
+                borderRadius: 4,
+              }}
+            />
             {list.map((it, i) => {
               const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
               const a = accentOf(i);
               const left = i % 2 === 0;
-              const y = PORTRAIT_TOP + i * PORTRAIT_ROW_H + PORTRAIT_ROW_H / 2;
+              // 百分比坐标：直接用容器实高算，不再依赖对 contentHeight 的估算
+              const yPct = ((i + 0.5) * 100) / Math.max(1, list.length);
               return (
                 <div
                   key={i}
                   style={{
                     position: "absolute",
-                    top: y,
+                    top: `${yPct}%`,
                     /*
                      * 轴在画布中线：左侧节点贴到中线左侧、图标朝右挨着轴，
                      * 右侧节点贴到中线右侧、图标朝左挨着轴。
@@ -629,6 +620,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                       textAlign: left ? "right" : "left",
                       fontFamily: FONT,
                       lineHeight: CARD_TYPE.lineHeight,
+                      textWrap: "balance",
                       flex: 1,
                     }}
                   >
@@ -676,6 +668,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                           textAlign: "center",
                           fontFamily: FONT,
                           lineHeight: CARD_TYPE.lineHeight,
+                          textWrap: "balance",
                         }}
                       >
                         {!below ? pointText(it, i) : ""}
@@ -684,8 +677,9 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     <div
                       style={{
                         position: "relative",
-                        width: 60,
-                        height: 60,
+                        // 时间轴只有一条轴 + 几个圆，圆太小整屏看起来是一根细线
+                        width: 80,
+                        height: 80,
                         borderRadius: "50%",
                         background: a,
                         display: "flex",
@@ -695,7 +689,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                         flexShrink: 0,
                       }}
                     >
-                      <Icon name={pointIcon(it, i)} size={32} color="#fff" />
+                      <Icon name={pointIcon(it, i)} size={44} color="#fff" />
                     </div>
                     <div
                       style={{
@@ -715,6 +709,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                           textAlign: "center",
                           fontFamily: FONT,
                           lineHeight: CARD_TYPE.lineHeight,
+                          textWrap: "balance",
                         }}
                       >
                         {below ? pointText(it, i) : ""}
