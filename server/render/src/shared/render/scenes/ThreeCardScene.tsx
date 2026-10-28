@@ -185,51 +185,80 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 </div>
               </Card>
               {i < 2 && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: isPortrait ? "100%" : "50%",
-                    right: isPortrait ? "50%" : -(CARD_GAP / 2),
-                    width: 40,
-                    height: 40,
-                    /*
-                     * 原来是一个 34×22 的裸 chevron：在 1920 画布上只有 1.8% 宽，
-                     * 看着像误加上去的杂点。改成带底色的小圆章（直径 40 = 卡间距 48
-                     * 刚好塞得下），有了底色和描边才读得出"流向"。
-                     * 注意别额外横向平移：往右偏会让圆章盖进下一张卡，被后绘制的卡片压掉半边。
-                     */
-                    borderRadius: "50%",
-                    background: alpha(a, 16),
-                    border: `1.5px solid ${alpha(a, 34)}`,
-                    transform: "translate(50%, -50%)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    opacity: springIn(
-                      f,
-                      fps,
-                      resolveAnchor(timing, items[i] ? pointAnchor(items[i]) : undefined, i) + 6,
-                      page.motion,
-                    ),
-                  }}
-                >
-                  <svg
-                    width={22}
-                    height={18}
-                    viewBox="0 0 22 18"
-                    fill="none"
-                    style={{ transform: isPortrait ? "rotate(90deg)" : "none" }}
-                  >
-                    <path d="M1 9 H14" stroke={a} strokeWidth={3.5} strokeLinecap="round" />
-                    <path
-                      d="M10 3 L17 9 L10 15"
-                      stroke={a}
-                      strokeWidth={3.5}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                <>
+                  {/* 竖屏：卡与卡之间补一条细竖线，40px 的小圆章单独漂在中间会读不出"流向" */}
+                  {isPortrait && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: "50%",
+                        width: 2,
+                        height: Math.max(0, gapPortrait || portraitGap),
+                        transform: "translateX(-50%)",
+                        background: alpha(a, 30),
+                        opacity: springIn(
+                          f,
+                          fps,
+                          resolveAnchor(timing, items[i] ? pointAnchor(items[i]) : undefined, i) + 6,
+                          page.motion,
+                        ),
+                      }}
                     />
-                  </svg>
-                </div>
+                  )}
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: isPortrait ? "100%" : "50%",
+                      right: isPortrait ? "50%" : -(CARD_GAP / 2),
+                      width: 40,
+                      height: 40,
+                      /*
+                       * 原来是一个 34×22 的裸 chevron：在 1920 画布上只有 1.8% 宽，
+                       * 看着像误加上去的杂点。改成带底色的小圆章（直径 40 = 卡间距 48
+                       * 刚好塞得下），有了底色和描边才读得出"流向"。
+                       * 注意别额外横向平移：往右偏会让圆章盖进下一张卡，被后绘制的卡片压掉半边。
+                       */
+                      borderRadius: "50%",
+                      background: alpha(a, 16),
+                      border: `1.5px solid ${alpha(a, 34)}`,
+                      /*
+                       * 竖屏：箭头要落在卡间距的中间。
+                       * 只写 translate(50%, -50%) 时圆章中心正好压在卡片下沿，
+                       * 看起来像贴在卡下的一颗分隔点，而卡与卡之间反而空着。
+                       */
+                      transform: isPortrait
+                        ? `translate(50%, calc(-50% + ${Math.round((gapPortrait || portraitGap) / 2)}px))`
+                        : "translate(50%, -50%)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: springIn(
+                        f,
+                        fps,
+                        resolveAnchor(timing, items[i] ? pointAnchor(items[i]) : undefined, i) + 6,
+                        page.motion,
+                      ),
+                    }}
+                  >
+                    <svg
+                      width={22}
+                      height={18}
+                      viewBox="0 0 22 18"
+                      fill="none"
+                      style={{ transform: isPortrait ? "rotate(90deg)" : "none" }}
+                    >
+                      <path d="M1 9 H14" stroke={a} strokeWidth={3.5} strokeLinecap="round" />
+                      <path
+                        d="M10 3 L17 9 L10 15"
+                        stroke={a}
+                        strokeWidth={3.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </>
               )}
             </div>
           );

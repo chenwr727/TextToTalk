@@ -24,12 +24,19 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   /**
    * 竖屏稀疏页放大：一问一答这类内容量最少的页，实测只占可用内容带的 20%，
-   * 上下各一大片空白。先估自然高度，再按目标填充率放大字号与间距（封顶 1.55）。
+   * 上下各一大片空白。先估自然高度，再按目标填充率放大字号与间距。
    */
   const zoom = (() => {
     if (!isPortrait) return 1;
-    const padQ = sp(34);
-    const qInnerW = contentWidth - padQ * 2 - sp(64) - sp(28);
+    /*
+     * 内宽要按「放大后的」内边距和问号圆章算。
+     *
+     * 这里原来用未放大的 sp(34) / sp(64)，但实际渲染用的是 sp(34*zi) / sp(64*zi)，
+     * zi 封顶 1.3 —— 于是放大后内宽少了约 35px，估出来"放得下"、实际却折了行。
+     */
+    const ZI_CAP = 1.3;
+    const padQ = sp(34 * ZI_CAP);
+    const qInnerW = contentWidth - padQ * 2 - sp(64 * ZI_CAP) - sp(28);
     const qFs = fs(FS.title);
     const qLines = estLines(question, qFs, qInnerW, FW.heavy);
     const qH = padQ * 2 + Math.max(sp(64), Math.round(qLines * qFs * LH.tight));
@@ -45,7 +52,14 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       sp(24) * Math.max(0, answers.length - 1);
 
     const band = contentHeight - PORTRAIT_HEADING_RESERVE - captionReserve;
-    return portraitFill(qH + sp(32) + answersH, band, { max: 1.85, target: 0.55 });
+    /*
+     * 问句是这一页的主视觉，不能被折成「砍层级会不 / 会失控？」这种断在词中间的硬折行。
+     * 按「问句单行放得下」反推放大上限，再留 8% 余量（CJK 字宽≈1em，估算容易贴着边界）。
+     */
+    const qChars = Array.from(question).length;
+    const qFitCap = qChars > 0 ? (qInnerW * 0.92) / (qChars * qFs) : 2.35;
+    const cap = Math.max(1.2, Math.min(2.35, qFitCap));
+    return portraitFill(qH + sp(32) + answersH, band, { max: cap, target: 0.62 });
   })();
   /** 间距跟字号放大但更克制：字放大 1.5 倍时留白也放大 1.5 倍会显得散 */
   const zi = Math.min(zoom, 1.3);
@@ -58,10 +72,10 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
       {/*
-        * 原来 marginTop 用一个写死的 250px 顶下去、却完全不消费字幕预留：
-        * 两段卡挤在 y496-824（画布 30%），上方空 263px、下方离字幕条只剩 74px。
-        * 交给 AbsoluteFill 的居中，上下留白由字幕预留决定。
-        */}
+       * 原来 marginTop 用一个写死的 250px 顶下去、却完全不消费字幕预留：
+       * 两段卡挤在 y496-824（画布 30%），上方空 263px、下方离字幕条只剩 74px。
+       * 交给 AbsoluteFill 的居中，上下留白由字幕预留决定。
+       */}
       <div
         style={{
           marginTop: isPortrait ? 0 : 120,

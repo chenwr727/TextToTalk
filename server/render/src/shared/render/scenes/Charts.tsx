@@ -44,7 +44,8 @@ const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> 
       {head && sub && sub !== head ? (
         <div
           style={{
-            marginTop: isPortrait ? sp(12) : 12,
+            // 竖屏副标题原来距装饰线 sp(12)≈10px，像挤在标题下面
+            marginTop: isPortrait ? sp(26) : 12,
             fontSize: isPortrait ? sp(24) : FS.label,
             fontWeight: FW.regular,
             color: C.sub,
