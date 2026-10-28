@@ -1,8 +1,8 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { C, FONT, FS, FW, CARD_TYPE, pickCardFont, HEADER_OFFSET, accentOf, SOLID_SHADOW, springIn } from "../theme";
+import { C, FONT, FS, FW, CARD_TYPE, pickCardFont, accentOf, SOLID_SHADOW, springIn } from "../theme";
 import { IconTile } from "../IconTile";
 import { Card } from "../Card";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
@@ -14,6 +14,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -34,7 +35,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           columnGap: isPortrait ? sp(60) : 60,
           // 竖屏 4 张卡原来只隔 17px、整组像一块石板；且 marginTop 用了 212px，上方空 363px
           rowGap: isPortrait ? sp(48) : 20,
-          marginTop: isPortrait ? sp(120) : HEADER_OFFSET,
+          marginTop: contentTop,
           marginBottom: captionReserve,
           width: isPortrait ? contentWidth : 1560,
         }}

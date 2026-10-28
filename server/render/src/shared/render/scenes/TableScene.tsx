@@ -1,8 +1,8 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, FS, FW, HEADER_OFFSET, LH, ACCENT_HEADER_GRAD, springIn } from "../theme";
-import { useResponsive } from "../responsive";
+import { alpha, C, FONT, FS, FW, LH, ACCENT_HEADER_GRAD, springIn } from "../theme";
+import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming } from "../captionTiming";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { Card } from "../Card";
 import type { SceneProps } from "./types";
 
@@ -33,13 +33,18 @@ function estimateColWidths(headers: string[], rows: string[][], canvasWidth: num
   return scaled.map((w) => Math.max(minW, Math.round(w * s2)));
 }
 
-export const TableScene: React.FC<SceneProps> = ({ page }) => {
+export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const headers = page.table!.headers;
   const rows = page.table!.rows;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, height } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
+  const captionReserve = useCaptionReserve(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const o = springIn(f, fps, timing.frameAt(0), page.motion);
   const DESIGN_WIDTH = isPortrait ? contentWidth : 1920;
@@ -57,12 +62,16 @@ export const TableScene: React.FC<SceneProps> = ({ page }) => {
   // 竖屏行高下限 80 -> 120：1920 高的画布里 67px 的行高等于一条细缝
   const minCellH = Math.round((isPortrait ? sp(120) : 66) * Math.min(1.22, fitW));
   const startX = (DESIGN_WIDTH - totalW) / 2;
-  // 表格垂直位置：竖屏在画布正中；横屏在「标题下沿」与「字幕带」之间居中，
-  // 此前一律顶到 HEADER_OFFSET，两行表的内容会全挤在上半屏
+  // 表格垂直位置：竖屏在画布正中；横屏在「标题下沿」与「字幕带」之间居中
   const tableH = (1 + rows.length) * minCellH;
+  /*
+   * 居中的“可用带”必须扣掉字幕条：只按 contentTop..height 算会把表格整体往下推半个
+   * 字幕高度（实测表格原先落在 490..850：上面空 240、下面只剩 75）。
+   */
+  const band = height - contentTop - captionReserve;
   const startY = isPortrait
     ? (height - tableH) / 2
-    : Math.max(HEADER_OFFSET, HEADER_OFFSET + (height - 240 - HEADER_OFFSET - tableH) / 2);
+    : contentTop + Math.max(0, (band - tableH) / 2);
   /**
    * 数值格子拆成「数字 + 单位」两段。
    *

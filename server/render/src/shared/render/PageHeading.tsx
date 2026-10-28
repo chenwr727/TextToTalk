@@ -177,6 +177,29 @@ const Annotated: React.FC<{ kind: Exclude<PageAnnotation, "none">; children: Rea
 };
 
 /**
+ * 标题占位测量。
+ *
+ * PageHeading 是绝对定位、不占文档流的，于是每个版式各自猜"标题到底有多高"：
+ * `HEADER_OFFSET = 250` 一个常数用在五个版式里，实测"标题底 → 内容顶"分别是
+ * 49 / 81 / 103 / 213 / 262px —— 有的几乎贴着标题，有的空出一整块。
+ * 这里按主题的标题形态（pill / bar / plain）把高度真算出来，内容一律从
+ * `contentTop` 起笔，换主题、换竖屏缩放都自动跟随。
+ */
+export const useHeadingMetrics = () => {
+  const { isPortrait, sp, fs } = useResponsive();
+  const t = useTheme();
+  const size = isPortrait ? fs(t.heading.size) : t.heading.size;
+  const top = isPortrait ? sp(90) : 90;
+  // 胶囊标题自带上下内边距；bar / plain 的文字就是行高本身
+  const pillPad = t.heading.style === "pill" ? (isPortrait ? sp(16) : 16) * 2 : 0;
+  const ruleH = t.heading.style === "pill" ? 6 : 2;
+  const gapToRule = isPortrait ? sp(16) : 16;
+  const height = pillPad + size * 1.2 + gapToRule + ruleH;
+  const gap = isPortrait ? sp(48) : 48;
+  return { top, height, bottom: top + height, contentTop: top + height + gap };
+};
+
+/**
  * 页面标题（页面级，绝对定位在顶部）。
  *
  * 标题形态是主题的一部分：pill（胶囊）/ bar（左侧竖线）/ plain（纯文字 + 细下划线），

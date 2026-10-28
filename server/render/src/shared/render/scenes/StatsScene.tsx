@@ -1,9 +1,9 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { makeSpark } from "@remotion/shapes";
-import { C, FONT, FONT_DISPLAY, FS, LH, FW, HEADER_OFFSET, accentOf, SPACE, springIn } from "../theme";
+import { C, FONT, FONT_DISPLAY, FS, LH, FW, accentOf, SPACE, springIn } from "../theme";
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandUnderline } from "../rough";
 import { useResponsive, useCaptionReserve } from "../responsive";
@@ -16,6 +16,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   // 竖屏每行放两个卡，3 个数据就会变成「两个 + 一个半宽」的怪排布（最后一张孤零零居中）。
   // 3 个数据时竖屏改为一列铺满，读起来才整齐。
   const portraitCols = points.length === 3 ? 1 : 2;
@@ -42,7 +43,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           display: "flex",
           flexWrap: isPortrait ? "wrap" : "nowrap",
           gap: isPortrait ? sp(24) : 24,
-          marginTop: isPortrait ? 0 : HEADER_OFFSET,
+          marginTop: contentTop,
           // 本场景此前完全没消费字幕预留，三张卡直接顶到字幕条上（实测只剩 52px）
           marginBottom: isPortrait ? captionReserve : 0,
           width: isPortrait ? contentWidth : 1560,

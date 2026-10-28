@@ -1,8 +1,8 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, CONTENT_WIDTH, SPACE, DOT_SHADOW, accentOf, FW, springIn, HEADER_OFFSET } from "../theme";
+import { alpha, C, FONT, CONTENT_WIDTH, SPACE, DOT_SHADOW, accentOf, FW, springIn } from "../theme";
 import { Icon } from "../Icon";
 import { Card } from "../Card";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { HandHighlight } from "../rough";
 import { useResponsive, useCaptionReserve, portraitFill } from "../responsive";
@@ -208,6 +208,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
   const timing = useSceneTiming();
+  const { contentTop } = useHeadingMetrics();
 
   const texts = points.map((p, i) => pointText(p, i));
   const maxLen = texts.reduce((m, t) => Math.max(m, [...t].length), 0);
@@ -221,7 +222,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 原来写死成 [360, 330, 300, 270][scaleIdx]：标题高度与条数、字数无关，
    * 这个梯子只是历史上调出来的“好看”值。
    */
-  const padTop = HEADER_OFFSET + SPACE.md;
+  const padTop = contentTop;
 
   // 横屏内容带此前固定 1240（画布 1920），两侧留白比正文还宽，画面显得空。
   // 但不能一味加宽：短句铺满 1680 会变成"一行只放一句"的大字报。

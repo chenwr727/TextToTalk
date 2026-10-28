@@ -7,14 +7,13 @@ import {
   FW,
   LH,
   RADIUS,
-  HEADER_OFFSET,
   accentOf,
   SPACE,
   tileShadow,
   springIn,
   pickCardFont,
 } from "../theme";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -36,6 +35,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -95,7 +95,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const bandH = isPortrait
     ? contentHeight - captionReserve - sp(210) - vsSize - cardGap * 2
-    : 1080 - HEADER_OFFSET - captionReserve - 60;
+    : 1080 - contentTop - captionReserve - 60;
 
   let itemFs = baseFs;
   for (let guard = 0; guard < 20 && neededH(itemFs + 2) <= bandH * 0.94 * 0.88 && itemFs < 52; guard++) {
@@ -260,7 +260,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           flexDirection: isPortrait ? "column" : "row",
           gap: cardGap,
           // 竖屏原来用 sp(HEADER_OFFSET)=212，标题下多空出一整块
-          marginTop: isPortrait ? sp(120) : HEADER_OFFSET,
+          marginTop: contentTop,
           marginBottom: captionReserve,
           alignItems: "stretch",
           justifyContent: "center",

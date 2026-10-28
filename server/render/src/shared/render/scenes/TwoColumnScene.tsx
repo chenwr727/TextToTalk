@@ -1,8 +1,8 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, FW, LH, HEADER_OFFSET, accentOf, SPACE, springIn } from "../theme";
+import { alpha, C, FONT, FW, LH, accentOf, SPACE, springIn } from "../theme";
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
@@ -14,6 +14,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -30,9 +31,11 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const half = Math.ceil(points.length / 2);
   const columns = [points.slice(0, half), points.slice(half)].filter((list) => list.length > 0);
 
-  const availH = isPortrait
-    ? contentHeight - captionReserve
-    : Math.max(360, 1080 - HEADER_OFFSET - captionReserve - 40);
+  // 可用带：标题底 .. 字幕条顶（横竖两个方向同一套算法）
+  const availH = Math.max(
+    360,
+    (isPortrait ? contentHeight : 1080) - contentTop - captionReserve - (isPortrait ? sp(24) : 40),
+  );
 
   const boxW = isPortrait ? contentWidth : 1560;
   const colGap = isPortrait ? sp(36) : 48;
@@ -92,7 +95,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
           gap: colGap,
-          marginTop: isPortrait ? 0 : HEADER_OFFSET,
+          marginTop: contentTop,
           marginBottom: isPortrait ? captionReserve : 0,
           width: boxW,
           alignItems: isPortrait ? "stretch" : "center",
