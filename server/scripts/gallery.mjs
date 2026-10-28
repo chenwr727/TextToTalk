@@ -8,6 +8,8 @@
  *   - gallery 盯"设计本身"（每个版式的静态成图），改视觉时用，一次看完 14 种版式。
  *
  * 环境变量：
+ *   GALLERY_PAGES_JSON=<路径>  改渲任意 pages 数组（如 e2e-generate.mjs 落盘的真实分镜），
+ *                              用来核对"真跑模型出来的页面"在画布上的样子
  *   GALLERY_ONLY=<子串>     只渲部分版式（如 GALLERY_ONLY=card）
  *   GALLERY_THEME=<id>      主题，默认 tech
  * 输出：server/out/gallery/<theme>/<layout>.png
@@ -16,7 +18,8 @@ import { spawn } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PAGES, pageName } from "./gallery-pages.mjs";
+import { readFileSync } from "node:fs";
+import { PAGES as SAMPLES, pageName } from "./gallery-pages.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "..", "..");
@@ -31,6 +34,19 @@ const theme = process.env.GALLERY_THEME || "tech";
 const SIZE = (process.env.GALLERY_SIZE || "landscape").trim();
 const [CANVAS_W, CANVAS_H] = SIZE === "portrait" ? [1080, 1920] : [1920, 1080];
 const only = (process.env.GALLERY_ONLY || "").trim();
+/**
+ * 默认渲设计样本；给了 GALLERY_PAGES_JSON 就渲那份真实分镜。
+ *
+ * 真实分镜里没有 "_name"，pageName 会退化成 layout，同 layout 多页会互相覆盖——
+ * 所以这里补上页码前缀，保证一页一张图。
+ */
+const pagesJson = (process.env.GALLERY_PAGES_JSON || "").trim();
+const PAGES = pagesJson
+  ? JSON.parse(readFileSync(pagesJson, "utf8")).storyboard.pages.map((p, i) => ({
+      ...p,
+      _name: `${String(i + 1).padStart(2, "0")}-${p.layout}`,
+    }))
+  : SAMPLES;
 const targets = PAGES.filter((p) => !only || String(p.layout).includes(only));
 
 /**
