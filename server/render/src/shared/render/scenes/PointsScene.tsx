@@ -1,5 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import { alpha, C, FONT, CONTENT_WIDTH, SPACE, DOT_SHADOW, accentOf, FW, springIn } from "../theme";
+import { alpha, C, FONT, CONTENT_WIDTH, SPACE, DOT_SHADOW, accentOf, FW, springIn, HEADER_OFFSET } from "../theme";
 import { Icon } from "../Icon";
 import { Card } from "../Card";
 import { PageHeading } from "../PageHeading";
@@ -216,8 +216,12 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const scaleIdx = Math.min(SCALES.length - 1, Math.max(byCount, byLength));
   const baseScale: Scale = SCALES[scaleIdx] ?? SCALES[3];
 
-  // 顶部要同时容纳 PageHeading（标题 + 装饰线，约 200px），否则首卡会压住标题
-  const padTop = [360, 330, 300, 270][scaleIdx] ?? 270;
+  /*
+   * 顶部留白以 PageHeading 底部为准。
+   * 原来写死成 [360, 330, 300, 270][scaleIdx]：标题高度与条数、字数无关，
+   * 这个梯子只是历史上调出来的“好看”值。
+   */
+  const padTop = HEADER_OFFSET + SPACE.md;
 
   // 横屏内容带此前固定 1240（画布 1920），两侧留白比正文还宽，画面显得空。
   // 但不能一味加宽：短句铺满 1680 会变成"一行只放一句"的大字报。
@@ -258,21 +262,33 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 可用内容带的 37%，上下各一大片空白。这里按估算高度反推放大量，只放大字号与
    * 行内间距（间距封顶 1.3，否则字大了留白更散），卡片结构不动。
    */
-  const zoom = isPortrait ? portraitFill(estHeightOf(baseScale), availH, { max: 1.25, target: 0.5 }) : 1;
-  const scale: Scale =
-    zoom > 1.01
+  const mkScale = (z: number): Scale =>
+    z > 1.01
       ? {
           ...baseScale,
-          leadFs: Math.round(baseScale.leadFs * zoom),
-          subFs: Math.round(baseScale.subFs * zoom),
-          btnLead: Math.round(baseScale.btnLead * zoom),
-          btnSub: Math.round(baseScale.btnSub * zoom),
-          iconLead: Math.round(baseScale.iconLead * zoom),
-          iconSub: Math.round(baseScale.iconSub * zoom),
-          gap: Math.round(baseScale.gap * Math.min(zoom, 1.3)),
-          rowMb: Math.round(baseScale.rowMb * Math.min(zoom, 1.3)),
+          leadFs: Math.round(baseScale.leadFs * z),
+          subFs: Math.round(baseScale.subFs * z),
+          btnLead: Math.round(baseScale.btnLead * z),
+          btnSub: Math.round(baseScale.btnSub * z),
+          iconLead: Math.round(baseScale.iconLead * z),
+          iconSub: Math.round(baseScale.iconSub * z),
+          gap: Math.round(baseScale.gap * Math.min(z, 1.3)),
+          rowMb: Math.round(baseScale.rowMb * Math.min(z, 1.3)),
         }
       : baseScale;
+  /*
+   * 竖屏放大要同时满足两件事：尽量填满可用带，但不能装不下。
+   *
+   * 旧写法只靠 portraitFill 的 max 封顶，4 条长文案的页只能放到 ~1.04（实测卡片组占
+   * 可用带 38%）；把上限提到 1.6 后 estH 又会超过 twoCol 阈值、整页被切成两列。
+   * 这里改成：先用 portraitFill 给一个期望值，再逐步回退到
+   * 「估算高度 ≤ 可用带 95%」的最大倍数。两列降级改成按基准字号判定是不是真的装不下，
+   * 不再跟放大倍数耦合。
+   */
+  let zoom = isPortrait ? portraitFill(estHeightOf(baseScale), availH, { max: 1.6, target: 0.86 }) : 1;
+  for (let guard = 0; guard < 12 && estHeightOf(mkScale(zoom)) > availH * 0.95; guard++) zoom -= 0.06;
+  zoom = Math.max(1, Math.round(zoom * 100) / 100);
+  const scale: Scale = mkScale(zoom);
 
   const iconBlock = scale.btnSub + (isPortrait ? sp(24) : 24);
   const padX = parseX(scale.subPad);
@@ -316,7 +332,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     return Math.round(Math.min(sp(scale.gap) * 1.2, Math.max(0, extra)));
   })();
 
-  const twoCol = texts.length >= 4 && estH > availH * 0.92;
+  const twoCol = texts.length >= 4 && estHeightOf(baseScale) > availH * 0.95;
 
   if (twoCol) {
     const left = points.map((p, i) => ({ p, i })).filter(({ i }) => i % 2 === 0);

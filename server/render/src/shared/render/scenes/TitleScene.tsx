@@ -35,26 +35,36 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const t0 = timing.frameAt(0);
   const o = springIn(f, fps, t0, page.motion);
   const s = interpolate(f, [t0, t0 + 26], [0.86, 1], { extrapolateRight: "clamp", output: "perceptual-scale" });
-  const bar = interpolate(f, [t0 + 10, t0 + 40], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   const titleChars = Array.from(title).length;
-  const titleVisualWidth = isPortrait
-    ? Math.min(contentWidth, Math.max(300, titleChars * fs(88)))
-    : Math.min(1680, Math.max(360, titleChars * 88));
-  const accentBarW = Math.max(90, Math.min(180, titleVisualWidth * 0.18));
-  const underlineW = Math.min(680, Math.max(220, titleVisualWidth * 0.95));
-
+  // 竖屏字号整体上一档：9 字标题原来只用 56px，在 1080 宽画布上只占 470px，
+  // 首页主标题反而比内页标题（PageHeading）还小。
   const titleFontSize = isPortrait
     ? titleChars > 18
-      ? 40
+      ? 44
       : titleChars > 14
-        ? 46
-        : 56
+        ? 56
+        : 76
     : titleChars > 18
       ? 64
       : titleChars > 14
         ? 72
         : 88;
+  /*
+   * 下划线宽度要跟真实字号走。
+   * 原来用写死的 88px 乘字数，但 >14 字时字号已降到 56/72，
+   * 算出来的宽度偏大 28%~40%：9 字标题实际 414px，下划线却画 615px。
+   */
+  const titleVisualWidth = Math.min(
+    isPortrait ? contentWidth * 0.94 : 1680,
+    Math.max(300, titleChars * titleFontSize * 1.04),
+  );
+  // 下划线跟正文等宽：写死的 680 封顶会让 9 字标题（实测 795px）的
+  // 下划线只有 672px，短一截。
+  const underlineW = Math.min(
+    isPortrait ? contentWidth * 0.94 : 1700,
+    Math.max(220, titleVisualWidth * 0.97),
+  );
   const titleLineHeight = LH.tight;
 
   const typedChars = Math.floor(
@@ -79,15 +89,6 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           width: "100%",
         }}
       >
-        <div
-          style={{
-            width: accentBarW * bar,
-            height: 6,
-            borderRadius: RADIUS.pill,
-            background: `linear-gradient(90deg, ${C.accent}, ${C.accentTint})`,
-            marginBottom: sp(30),
-          }}
-        />
         {page.effects?.threeD ? (
           <div style={{ perspective: 1000, width: "100%", display: "flex", justifyContent: "center" }}>
             <div
@@ -98,6 +99,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 maxWidth: "92%",
                 fontFamily: FONT_DISPLAY,
                 lineHeight: titleLineHeight,
+                textWrap: "balance",
                 letterSpacing: 1,
                 color: C.ink,
                 textShadow: TEXT_SHADOW,
@@ -117,6 +119,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               maxWidth: "92%",
               fontFamily: FONT_DISPLAY,
               lineHeight: titleLineHeight,
+              textWrap: "balance",
               letterSpacing: 1,
               color: C.ink,
               textShadow: TEXT_SHADOW,
@@ -132,7 +135,8 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           height={22}
           viewBox={`0 0 ${underlineW} 22`}
           preserveAspectRatio="none"
-          style={{ marginTop: 6, opacity: o }}
+          // 6px 贴着字底读起来像删除线，14px 才是下划线的感觉
+          style={{ marginTop: 14, opacity: o }}
         >
           {page.effects?.pathDraw ? (
             <UnderlinePath w={underlineW} progress={springIn(f, fps, t0 + 10, page.motion)} color={C.accent} />
