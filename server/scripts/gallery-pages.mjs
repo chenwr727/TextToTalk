@@ -4,6 +4,8 @@
  * 抽出来的理由：探针要复现"某版式在某帧的真实布局"，样本若和 gallery 各写一份，
  * 两边会慢慢漂移，探到的布局也就不是看到的那张图了。
  */
+import { CODE_PAGE_JS } from "./samples/code-page.mjs";
+
 const page = (o) => ({
   pageIndex: 0,
   title: "",
@@ -321,6 +323,16 @@ export const PAGES = [
       { type: "text", x: 750, y: 192, text: "完成", fontSize: 28, fill: "#166534" },
     ],
     accent: 2,
+  }),
+  page({
+    layout: "code",
+    _name: "generated",
+    role: "content",
+    title: "一条审批为什么要走 11 道",
+    points: [{ text: "提需求" }, { text: "部门审批" }, { text: "财务复核" }],
+    // 与生产一致的转译产物，来源见 samples/code-page.tsx
+    code: CODE_PAGE_JS,
+    accent: 1,
   }),
 ];
 /**

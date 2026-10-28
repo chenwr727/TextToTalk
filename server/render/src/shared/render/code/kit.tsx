@@ -67,16 +67,23 @@ const Card: React.FC<{ children?: ReactNode; accentIndex?: number; style?: CSSPr
   );
 };
 
-const Stat: React.FC<{ value: string; label?: string; accentIndex?: number; style?: CSSProperties }> = ({
-  value,
-  label,
-  accentIndex = 0,
-  style,
-}) => (
+const Stat: React.FC<{
+  value: string;
+  label?: string;
+  accentIndex?: number;
+  /**
+   * 数值字号，默认 `FS.hero`（96）。
+   *
+   * 加这个参数是因为竖屏：生成页面在 1080 宽下平均每个卡只有 300px 左右，
+   * 96px 的"4.2 天"会折成两行、把整排卡片撑得高矮不齐。给生成代码一个下调的入口。
+   */
+  size?: number;
+  style?: CSSProperties;
+}> = ({ value, label, accentIndex = 0, size = FS.hero, style }) => (
   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, ...style }}>
     <div
       style={{
-        fontSize: FS.hero,
+        fontSize: size,
         fontWeight: FW.heavy,
         fontFamily: FONT_DISPLAY,
         color: accentOf(accentIndex),
