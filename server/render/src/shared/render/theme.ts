@@ -549,7 +549,8 @@ export const GLASS = {
 
 export const SAFE = { x: 120, y: 100 };
 export const CONTENT_WIDTH = 1920 - SAFE.x * 2;
-export const HEADER_OFFSET = 250;
+// 标题占位不再用写死的常数（旧 HEADER_OFFSET = 250）：见
+// PageHeading.tsx 的 useHeadingMetrics()，按主题标题形态真算高度。
 
 /**
  * 间距比例（4 的倍数）。

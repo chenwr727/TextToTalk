@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { evolvePath } from "@remotion/paths";
 import { C, FONT, FW, springIn, accentOf } from "../theme";
-import { PageHeading } from "../PageHeading";
-import { useResponsive } from "../responsive";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
+import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor, type SceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 import type { MapSpec, MapRoute, MapRegion } from "../props";
@@ -280,9 +280,14 @@ const Legend: React.FC<{
   );
 };
 
-export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
+export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
   const f = useCurrentFrame();
   const { isPortrait, contentWidth, contentHeight } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
+  const captionReserve = useCaptionReserve(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const spec = page.map;
   const markers = spec?.markers ?? [];
@@ -290,23 +295,38 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
   const regions = spec?.regions ?? [];
   const regionPolys = useMemo(() => regions.map((r) => parsePolygon(r.points)), [regions]);
   const canvas = isPortrait ? { w: contentWidth, h: contentHeight } : CANVAS;
-  // 竖屏把底板铺满整块安全区时会被拉成一条极窄的竖条，中间那点图缩在正中、像一张空表格。
-  // 按接近 1:1 的比例收一下高度再居中；水平也内缩一圈，给地名留位置。
   /*
-   * 竖屏底板原来撑到 contentWidth*0.95（≈904px），而散点云只有 204px 高，
-   * 上下各空一整块空底板。按内容包围盒的纵横比给高度，并给一个下限。
+   * 竖屏底板高度按「内容包围盒」算，不再用一个拍出来的 0.62 纵横比。
+   *
+   * 之前的 `Math.max(520, (contentWidth - 96) * 0.62)` 与实际图形无关：3 个地标的
+   * 散点云只占 ~240px 高，底板却给 500px，上下各空一条空底色（实测底板上空 100、
+   * 下空 160）。这里先用内容包围盒反推图形放大后的实际高度，再加上地名需要的上下
+   * 边距，底板就正好裹住图形。
    */
-  const portraitBoardH = Math.round(
-    Math.min(
-      contentHeight - 96,
-      Math.max(520, (contentWidth - 96) * 0.62),
-    ),
+  const bounds = useMemo(
+    () => computeMapBounds(spec ?? { markers: [], routes: [], regions: [] }, regionPolys),
+    [spec, regionPolys],
   );
+  const PORTRAIT_FIT_MAX = 1.1;
+  const portraitBoard = useMemo(() => {
+    const boardW = contentWidth - 120;
+    const cW = Math.max(bounds.maxX - bounds.minX, 100);
+    const cH = Math.max(bounds.maxY - bounds.minY, 100);
+    // 与 computeFitTransform 用同一个放大上限，否则底板按 1.4 估、图形只放到 1.1
+    const scale = Math.min((boardW - 220) / cW, PORTRAIT_FIT_MAX);
+    // 上下各留 110：地名画在地标上方/下方 26px 处的 30px 字，再加一点余量
+    const h = Math.round(cH * scale + 220);
+    return { w: boardW, h: Math.min(Math.round(contentHeight - 96), Math.max(420, h)) };
+  }, [bounds, contentWidth, contentHeight]);
+  const portraitBoardH = portraitBoard.h;
   const safe = isPortrait
     ? {
         x: 60,
-        y: Math.round((contentHeight - portraitBoardH) / 2),
-        w: contentWidth - 120,
+        // 底板在「标题底 .. 字幕条顶」之间居中，而不是在整张画布上居中（否则被字幕条往上顶）
+        y: Math.round(
+          contentTop + Math.max(0, (contentHeight - contentTop - captionReserve - portraitBoardH) / 2),
+        ),
+        w: portraitBoard.w,
         h: portraitBoardH,
       }
     : SAFE;
@@ -317,7 +337,7 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
     ? { x: safe.x + 110, y: safe.y + 90, w: Math.max(200, safe.w - 220), h: Math.max(200, safe.h - 180) }
     : safe;
   const fit = useMemo(
-    () => (spec ? computeFitTransform(spec, regionPolys, fitBox, isPortrait ? 1.1 : 1.35) : null),
+    () => (spec ? computeFitTransform(spec, regionPolys, fitBox, isPortrait ? PORTRAIT_FIT_MAX : 1.35) : null),
     [spec, regionPolys, fitBox, isPortrait],
   );
   if (!spec || !fit) return null;
@@ -396,6 +416,75 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
           </g>
           <Legend routes={routes} frame={f} fps={fps} motion={motion} safe={safe} timing={timing} />
         </svg>
+        {/*
+         * 竖屏：地图下方补齐「地标清单」。
+         *
+         * 这张地图的图形本身是扁的（3 个地标的包围盒纵横比 ≈0.3），竖屏把宽度用满后
+         * 高度最多也就 270px 左右，剩下 1000+px 无论怎么放大都填不上——之前是靠给底板
+         * 一个假高度硬撑，结果底板里空、底板外也空。这里把地标按顺序列出来，既填满
+         * 竖向空间，也让"哪三个部门"一眼可读。
+         */}
+        {isPortrait && markers.length > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              left: safe.x,
+              top: safe.y + safe.h + 36,
+              width: safe.w,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              gap: 18,
+              height: Math.max(
+                0,
+                Math.min(contentHeight - captionReserve - (safe.y + safe.h + 36) - 24, markers.length * 150),
+              ),
+            }}
+          >
+            {markers.map((mk, i) => {
+              const at = resolveAnchor(timing, mk.anchor, i);
+              const o = springIn(f, fps, at, motion);
+              const col = mk.color ?? accentOf(i);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 22,
+                    padding: "18px 28px",
+                    borderRadius: 20,
+                    background: "rgba(255,255,255,0.72)",
+                    borderLeft: `6px solid ${col}`,
+                    boxShadow: `0 8px 22px ${C.accentFaint}`,
+                    opacity: o,
+                    transform: `translateY(${interpolate(o, [0, 1], [24, 0])}px)`,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: "50%",
+                      background: col,
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                      fontWeight: FW.heavy,
+                      fontFamily: FONT,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {i + 1}
+                  </div>
+                  <div style={{ fontSize: 34, fontWeight: FW.bold, color: C.ink, fontFamily: FONT }}>{mk.name}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </AbsoluteFill>
   );

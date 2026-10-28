@@ -259,7 +259,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
           gap: cardGap,
-          // 竖屏原来用 sp(HEADER_OFFSET)=212，标题下多空出一整块
+          // 竖屏原来用一个拍出来的 212px，标题下多空出一整块
           marginTop: contentTop,
           marginBottom: captionReserve,
           alignItems: "stretch",

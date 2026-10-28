@@ -58,7 +58,7 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
       {/*
-        * 原来 marginTop 用 HEADER_OFFSET(250) 顶下去、却完全不消费字幕预留：
+        * 原来 marginTop 用一个写死的 250px 顶下去、却完全不消费字幕预留：
         * 两段卡挤在 y496-824（画布 30%），上方空 263px、下方离字幕条只剩 74px。
         * 交给 AbsoluteFill 的居中，上下留白由字幕预留决定。
         */}
