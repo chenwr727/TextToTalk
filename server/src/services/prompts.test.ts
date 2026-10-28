@@ -159,3 +159,31 @@ describe("regeneratePrompt（单页重做）", () => {
     assert.ok(p.includes("只返回【恰好一个】JSON 对象"));
   });
 });
+
+describe("code 版式的竖屏契约", () => {
+  /**
+   * 生成代码只能看到 prompt：契约里不写清楚"同一页还会被渲染成竖屏"，
+   * AI 就会按 1920×1080 写死横向排布 —— 实测三张 minWidth:340 的统计卡
+   * 在竖屏 952 可用宽度下溢出，左右两张被裁。这几条断言防的是"改模板时把规则删掉"。
+   */
+  const codePrompt = () =>
+    pagePrompt(2, "一段文案", "大纲", "", "", { layout: "code" } as never, params(), undefined, 6);
+
+  test("告诉模型 props 里有 portrait / width / height", () => {
+    const p = codePrompt();
+    assert.match(p, /portrait/);
+    assert.match(p, /\bwidth\b/);
+    assert.match(p, /\bheight\b/);
+  });
+
+  test("说明竖屏画布尺寸与内容带", () => {
+    const p = codePrompt();
+    assert.match(p, /1080×1920/);
+    assert.match(p, /952/);
+  });
+
+  test("要求别写死横向宽度，给出 flexWrap 这类自适应手段", () => {
+    const p = codePrompt();
+    assert.match(p, /flexWrap/);
+  });
+});
