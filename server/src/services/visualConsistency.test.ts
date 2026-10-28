@@ -112,6 +112,39 @@ test("竖屏必须真的缩放字号：fs() 不能是恒等函数", () => {
   assert.match(src, /export const DESIGN_W = 1920/, "设计基准宽仍是 1920");
 });
 
+test("竖屏的横向流程图必须重排成竖列，而不是等比缩小", () => {
+  const src = read("shared/render/scenes/CustomSvgScene.tsx");
+  // 3.2:1 的流程示意图塞进 9:16 后，宽度用满 → 图形只有 ~200px 高（占画布 7%），
+  // 再怎么调缩放都填不上，因为纵横比是死的。真正的解法是换组织方式。
+  assert.match(
+    src,
+    /export function buildPortraitChain\(/,
+    "竖屏重排逻辑应抽成可测试的纯函数 buildPortraitChain",
+  );
+  assert.match(
+    src,
+    /isPortrait \? buildPortraitChain\(spec, portraitBand\)/,
+    "竖屏要尝试把节点链竖排，而不是直接等比缩放",
+  );
+  assert.match(
+    src,
+    /chain \? \{ scale: 1, tx: 0, ty: 0 \} : computeFitTransform\(spec, safe\)/,
+    "识别成链后不再叠加 fit 变换（坐标已是画布坐标）",
+  );
+  assert.match(
+    src,
+    /portraitSafeH\(spec, w, portraitBand\.h\)/,
+    "识别不了链的复杂图必须退回等比缩放",
+  );
+  // 复杂图放弃重排的三个闸门，少一个就会把多行图排错
+  assert.match(src, /if \(cols\.length < 2 \|\| cols\.length > 4\) return null/, "列数超出范围应放弃重排");
+  assert.match(src, /if \(cols\[c\]\.minX < cols\[c - 1\]\.maxX\) return null/, "列之间不允许重叠");
+  // 复杂图放弃重排的闸门：节点太少/太多、列重叠、图元归类不了。
+  // （read() 会剥掉注释，所以这里数 return null 的条数，而不是匹配注释文案）
+  const gates = src.match(/return null;/g)?.length ?? 0;
+  assert.ok(gates >= 4, `buildPortraitChain 应有 ≥4 个放弃重排的闸门，当前 ${gates}`);
+});
+
 test("字幕字号独立于正文缩放（竖屏上前者要更大）", () => {
   const caption = fs.readFileSync(path.join(process.cwd(), "render", "src", "components", "Caption.tsx"), "utf8");
   assert.match(

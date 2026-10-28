@@ -325,6 +325,24 @@ export const PAGES = [
     accent: 2,
   }),
   page({
+    layout: "points",
+    _name: "custom_svg_grid",
+    title: "两行两列的对照组",
+    // 不是「单行节点链」的示意图：竖屏必须退回等比缩放，不能被强行竖排
+    customSvg: [
+      { type: "rect", x: 80, y: 120, width: 300, height: 120, rx: 18, fill: "#eef2ff", stroke: "#6366f1", strokeWidth: 3 },
+      { type: "text", x: 130, y: 180, text: "旧流程", fontSize: 32, fill: "#3730a3" },
+      { type: "line", x1: 400, y1: 180, x2: 500, y2: 180, stroke: "#6366f1", strokeWidth: 4 },
+      { type: "rect", x: 520, y: 120, width: 300, height: 120, rx: 18, fill: "#ecfeff", stroke: "#06b6d4", strokeWidth: 3 },
+      { type: "text", x: 570, y: 180, text: "新流程", fontSize: 32, fill: "#155e75" },
+      { type: "rect", x: 80, y: 320, width: 300, height: 120, rx: 18, fill: "#f0fdf4", stroke: "#22c55e", strokeWidth: 3 },
+      { type: "text", x: 130, y: 380, text: "11 道审批", fontSize: 32, fill: "#166534" },
+      { type: "rect", x: 520, y: 320, width: 300, height: 120, rx: 18, fill: "#fff7ed", stroke: "#f97316", strokeWidth: 3 },
+      { type: "text", x: 570, y: 380, text: "3 道审批", fontSize: 32, fill: "#9a3412" },
+    ],
+    accent: 1,
+  }),
+  page({
     layout: "code",
     _name: "generated",
     role: "content",
