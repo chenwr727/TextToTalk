@@ -275,15 +275,54 @@ const SvgEl: React.FC<{
   }
 };
 
+/**
+ * 竖屏安全区的高度要跟着内容的纵横比走。
+ *
+ * 第一版把高度写死成 `contentHeight * 0.56`：一张 3.2:1 的宽流程图塞进高盒子后
+ * 由宽度定标，实际只占 300px，上下的空盒子各留了 400px 白。这里按"内容等比放大后
+ * 再多留 30% 边距"给高度，并夹在可用高度之内。
+ */
+export function portraitSafeH(
+  els: SvgElement[],
+  safeW: number,
+  availH: number,
+): number {
+  if (!els.length) return Math.round(availH * 0.6);
+  const bounds = els.map(elementBounds);
+  const contentW = Math.max(Math.max(...bounds.map((b) => b.maxX)) - Math.min(...bounds.map((b) => b.minX)), 100);
+  const contentH = Math.max(Math.max(...bounds.map((b) => b.maxY)) - Math.min(...bounds.map((b) => b.minY)), 100);
+  const fitH = (contentH / contentW) * safeW * 1.3;
+  return Math.round(Math.min(availH, Math.max(320, fitH)));
+}
+
 export const CustomSvgScene: React.FC<SceneProps> = ({ page, fps }) => {
   const f = useCurrentFrame();
-  const { isPortrait, contentWidth, contentHeight } = useResponsive();
+  const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
   const timing = useSceneTiming();
   const spec = page.customSvg;
   if (!spec || !spec.length) return null;
   const motion = page.motion ?? "spring";
   const canvas = isPortrait ? { w: contentWidth, h: contentHeight } : CANVAS;
-  const safe = isPortrait ? { x: 0, y: 0, w: contentWidth, h: contentHeight } : SAFE;
+  /*
+   * 竖屏的安全区原来直接等于整块画布（x/y 都是 0、宽高等于画布）：
+   * 宽图（样本 776×240）的缩放因此由**宽度**决定，`fitW` 正好等于 1080、`tx` 等于 0，
+   * 左边框贴着画布边缘被 rx=24 的圆角遮罩切掉，整张图只剩 151px 高（占 1920 的 7.9%），
+   * 上下各空 620px / 772px。竖屏改成"标题以下、留出左右边距"的一块画布，
+   * 缩放到高度、宽度都留白，同时把圆角裁切挪到有明显边距的位置。
+   */
+  const safe = isPortrait
+    ? (() => {
+        const w = Math.round(contentWidth - sp(96));
+        const h = portraitSafeH(spec, w, Math.round(contentHeight * 0.72));
+        /*
+         * 纵向位置：居中在"标题底（约 300）~ 字幕条顶"之间。
+         * 写死 `y = sp(230)` 时，宽图放大后只有 300px 高，盒子上半个空档全留在下方。
+         */
+        const top = Math.round(sp(200));
+        const bottom = Math.round(contentHeight - sp(220));
+        return { x: Math.round(sp(48)), y: Math.round(top + Math.max(0, (bottom - top - h) / 2)), w, h };
+      })()
+    : SAFE;
   const { scale, tx, ty } = useMemo(() => computeFitTransform(spec, safe), [spec, safe]);
 
   return (

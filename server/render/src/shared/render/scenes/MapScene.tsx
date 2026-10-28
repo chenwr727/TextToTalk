@@ -197,7 +197,8 @@ const MarkerEl: React.FC<{
   const o = springIn(frame, fps, resolveAnchor(timing, marker.anchor, 0) + 10 + index * 12, motion);
   const color = marker.color ?? accentOf(index);
   const r = marker.size ?? 10;
-  const labelY = labelBelow ? marker.y + r + 20 : marker.y - r - 12;
+  // 光晕半径是 r*2.2，原来标签只往外偏 r+12（=22px），正好压在自己的光晕上
+  const labelY = labelBelow ? marker.y + r * 2.2 + 26 : marker.y - r * 2.2 - 26;
   return (
     <g opacity={o}>
       <circle cx={marker.x} cy={marker.y} r={r * 2.2} fill={color} fillOpacity={0.12} />
@@ -209,7 +210,7 @@ const MarkerEl: React.FC<{
         textAnchor="middle"
         dominantBaseline="central"
         fill={C.ink}
-        fontSize={24}
+        fontSize={30}
         fontWeight={FW.bold}
         fontFamily={FONT}
         style={{ paintOrder: "stroke", stroke: "rgba(255,255,255,0.9)", strokeWidth: 4 }}
@@ -246,7 +247,7 @@ const Legend: React.FC<{
         height={items.length * 30 + 20}
         rx={12}
         fill="rgba(255,255,255,0.85)"
-        stroke={C.ink}
+        stroke={accentOf(0)}
         strokeOpacity={0.1}
         strokeWidth={1}
       />
@@ -257,7 +258,7 @@ const Legend: React.FC<{
             y1={0}
             x2={34}
             y2={0}
-            stroke={C.ink}
+            stroke={accentOf(0)}
             strokeWidth={it.width}
             strokeLinecap="round"
             strokeDasharray={it.dash}
@@ -291,7 +292,16 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
   const canvas = isPortrait ? { w: contentWidth, h: contentHeight } : CANVAS;
   // 竖屏把底板铺满整块安全区时会被拉成一条极窄的竖条，中间那点图缩在正中、像一张空表格。
   // 按接近 1:1 的比例收一下高度再居中；水平也内缩一圈，给地名留位置。
-  const portraitBoardH = Math.min(contentHeight - 96, Math.round(contentWidth * 0.95));
+  /*
+   * 竖屏底板原来撑到 contentWidth*0.95（≈904px），而散点云只有 204px 高，
+   * 上下各空一整块空底板。按内容包围盒的纵横比给高度，并给一个下限。
+   */
+  const portraitBoardH = Math.round(
+    Math.min(
+      contentHeight - 96,
+      Math.max(520, (contentWidth - 96) * 0.62),
+    ),
+  );
   const safe = isPortrait
     ? {
         x: 60,
@@ -344,7 +354,7 @@ export const MapScene: React.FC<SceneProps> = ({ page, fps }) => {
             height={safe.h}
             rx={24}
             fill="url(#map-board)"
-            stroke={C.ink}
+            stroke={accentOf(0)}
             strokeOpacity={0.1}
             strokeWidth={1.5}
           />
