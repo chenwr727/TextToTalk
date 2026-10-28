@@ -623,3 +623,135 @@ describe("生成式版式（layout=code）的归一化", () => {
     );
   });
 });
+
+/**
+ * 非字符串的垃圾输入。
+ *
+ * 上面各条测试用的都是"错但仍是字符串"的值（"wipe" / "mechanism"）。真实 LLM 也会
+ * 直接给数字、null、数组、对象——以前 normalize 层签名是 any，这些值靠 `includes()`
+ * 碰巧收敛；把签名收成 unknown 之后，这里逐条钉死收敛结果，防止换类型时行为漂移。
+ */
+describe("畸形输入：非字符串垃圾值也必须收敛到安全默认", () => {
+  const garbage: unknown[] = [null, undefined, 0, 1, true, false, [], ["dense"], {}, { toString: "dense" }];
+
+  test("枚举归一化对数字/布尔/null/数组/对象一律回落默认", () => {
+    for (const g of garbage) {
+      assert.equal(normalizeLayout(g), "points", `layout(${JSON.stringify(g)})`);
+      assert.equal(normalizeRole(g), null, `role(${JSON.stringify(g)})`);
+      assert.equal(normalizeIcon(g), null, `icon(${JSON.stringify(g)})`);
+      assert.equal(normalizeArt(g), null, `art(${JSON.stringify(g)})`);
+      assert.equal(normalizeRhythm(g), "anchor", `rhythm(${JSON.stringify(g)})`);
+      assert.equal(normalizeTransition(g), "fade", `transition(${JSON.stringify(g)})`);
+      assert.equal(normalizeMotion(g), "spring", `motion(${JSON.stringify(g)})`);
+      assert.equal(normalizeDecor(g), undefined, `decor(${JSON.stringify(g)})`);
+    }
+  });
+
+  test("accent 只接受可转成 0~5 整数的值，其余丢弃", () => {
+    assert.equal(normalizeAccent("3"), 3);
+    assert.equal(normalizeAccent(3), 3);
+    assert.equal(normalizeAccent(5), 5);
+    assert.equal(normalizeAccent(6), undefined);
+    assert.equal(normalizeAccent(-1), undefined);
+    assert.equal(normalizeAccent("abc"), undefined);
+    assert.equal(normalizeAccent(null), undefined);
+    assert.equal(normalizeAccent([]), undefined);
+    assert.equal(normalizeAccent({}), undefined);
+  });
+
+  test("effects 对非对象输入返回空对象，字段里的垃圾值被丢弃", () => {
+    for (const g of [null, undefined, 0, "highlight", [], ["highlight"]]) {
+      const e = normalizeEffects(g);
+      assert.equal(e.annotation, undefined);
+      assert.equal(e.pathDraw, undefined);
+      assert.equal(e.threeD, undefined);
+    }
+    const weird = normalizeEffects({ annotation: ["highlight"], pathDraw: 1, threeD: null });
+    assert.equal(weird.annotation, undefined);
+    assert.equal(weird.pathDraw, undefined);
+    assert.equal(weird.threeD, undefined);
+  });
+
+  test("要点里的垃圾值：非字符串/非对象回落空文本，anchor 越界丢弃", () => {
+    const page = normalizePage({ points: [null, 42, true, [], { text: 42, icon: "nope", anchor: 99 }] }, 1);
+    // null / true / [] 都归成空文本（随后被 .filter(text) 丢掉），数字 42 保留成 "42"
+    assert.deepEqual(
+      page.points.map((p) => (typeof p === "string" ? p : p.text)),
+      ["42", "42"],
+    );
+    const item = page.points[1] as { icon: unknown; anchor: unknown };
+    assert.equal(item.icon, null);
+    assert.equal(item.anchor, undefined);
+  });
+
+  test("captions 里的非字符串元素被丢弃而不是变成字符串 'undefined'", () => {
+    const page = normalizePage({ captions: [null, "真句子", 42, {}, undefined], narration: "" }, 1);
+    assert.deepEqual(page.captions, ["真句子"]);
+  });
+
+  test("customSvg 里的垃圾元素被丢弃或补默认，不带着 NaN 进渲染", () => {
+    const page = normalizePage(
+      {
+        customSvg: [
+          null,
+          { type: "circle", cx: "abc", cy: 100, r: 10 },
+          { type: "nonsense" },
+          { type: "text", x: 10, y: 10, text: 42 },
+          { type: "rect", x: 10, y: 10, width: -5, height: 20 },
+        ],
+      },
+      1,
+    );
+    const els = page.customSvg as { type: string; [k: string]: unknown }[];
+    assert.ok(Array.isArray(els));
+    for (const el of els) {
+      assert.equal(typeof el.type, "string", "每个元素都必须有类型");
+      for (const [k, v] of Object.entries(el)) {
+        if (typeof v === "number") assert.ok(Number.isFinite(v), `${k} 不能是 NaN/Infinity`);
+      }
+    }
+  });
+
+  test("map 的标记点/路线/区域带垃圾值时不会造出 NaN 坐标", () => {
+    const page = normalizePage(
+      {
+        layout: "map",
+        map: {
+          markers: [null, { name: "", x: 1, y: 2 }, { name: "合法", x: "abc", y: 3 }],
+          routes: [{ from: 0, to: 99 }, null],
+          regions: [{ points: ["a", "b"] }, null],
+        },
+      },
+      1,
+    );
+    const map = page.map as { markers: { x: number; y: number }[] } | null;
+    if (map) {
+      for (const m of map.markers) {
+        assert.ok(Number.isFinite(m.x) && Number.isFinite(m.y), JSON.stringify(m));
+      }
+    }
+  });
+
+  test("表格里非数组的行被丢弃，单元格里的对象被转成字符串", () => {
+    const page = normalizePage(
+      {
+        layout: "table",
+        table: { headers: ["A", "B"], rows: [["1", "2"], "not-a-row", null, [{}, "4"]] },
+      },
+      1,
+    );
+    const table = page.table as { headers: string[]; rows: string[][] } | null;
+    if (table) {
+      for (const row of table.rows) {
+        assert.equal(row.length, table.headers.length, `行列数必须与表头一致: ${JSON.stringify(row)}`);
+        for (const cell of row) assert.equal(typeof cell, "string");
+      }
+    }
+  });
+
+  test("normalizeDirect 对 page 元素为垃圾值时不抛错", () => {
+    const sb = normalizeDirect({ pages: [null, 42, { title: "正常" }] });
+    assert.ok(sb.pages.length <= 10);
+    for (const p of sb.pages) assert.equal(typeof p.title, "string");
+  });
+});

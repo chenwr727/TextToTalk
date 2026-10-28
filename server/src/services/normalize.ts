@@ -13,6 +13,10 @@ import type {
   MotionStyle,
   PageEffects,
   CustomSvgSpec,
+  SvgElement,
+  MapMarker,
+  MapRoute,
+  MapRegion,
   MapSpec,
   ComparisonSides,
 } from "../types.js";
@@ -91,15 +95,19 @@ export function extractJson(text: string): string {
   return t;
 }
 
-export function parseJson(text: string): any {
+/**
+ * 解析模型返回的 JSON。返回 unknown——内容完全不可信，
+ * 调用方必须自己收窄（见 normalizeDirect / normalizePage）。
+ */
+export function parseJson(text: string): unknown {
   const t = text.replace(/```json|```/g, "").trim();
   try {
-    return JSON.parse(t);
+    return JSON.parse(t) as unknown;
   } catch {}
   const candidate = extractJson(t);
   if (candidate) {
     try {
-      return JSON.parse(candidate);
+      return JSON.parse(candidate) as unknown;
     } catch {}
   }
   return { pages: [] };
@@ -289,8 +297,24 @@ const ROLES: PageRole[] = [
   "action",
   "end",
 ];
-export function normalizeRole(r: any): PageRole | null {
-  return ROLES.includes(r) ? (r as PageRole) : null;
+/**
+ * LLM 输出的值一律按 unknown 进来，归一化层自己收窄。
+ *
+ * 这两个小工具替代了原来的 `any` + `includes()`：
+ * - isRecord：排除 null / 数组（typeof [] 也是 "object"，不能只看 typeof）
+ * - oneOf：只接受字符串且在白名单内，否则 null
+ */
+/** 把任意值当对象读（非对象当空对象）——供 parseJson 调用方使用 */
+export const asRecord = (v: unknown): Record<string, unknown> => (isRecord(v) ? v : {});
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+const oneOf = <T extends string>(v: unknown, list: readonly T[]): T | null =>
+  typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : null;
+
+export function normalizeRole(r: unknown): PageRole | null {
+  return oneOf(r, ROLES);
 }
 
 const ICON_IDS: IconId[] = [
@@ -330,89 +354,94 @@ const ICON_IDS: IconId[] = [
   "home",
   "award",
 ];
-export function normalizeIcon(x: any): IconId | null {
-  return ICON_IDS.includes(x) ? (x as IconId) : null;
+export function normalizeIcon(x: unknown): IconId | null {
+  return oneOf(x, ICON_IDS);
 }
 
-export function normalizeLayout(l: any): Layout {
-  return [
-    "title",
-    "section",
-    "points",
-    "three_card",
-    "comparison",
-    "chart",
-    "table",
-    "end",
-    "two_column",
-    "steps",
-    "stats",
-    "qa",
-    "map",
-    "code",
-  ].includes(l)
-    ? (l as Layout)
-    : "points";
+const LAYOUT_IDS: Layout[] = [
+  "title",
+  "section",
+  "points",
+  "three_card",
+  "comparison",
+  "chart",
+  "table",
+  "end",
+  "two_column",
+  "steps",
+  "stats",
+  "qa",
+  "map",
+  "code",
+];
+export function normalizeLayout(l: unknown): Layout {
+  return oneOf(l, LAYOUT_IDS) ?? "points";
 }
 
 /** 页面主色序号：非法/越界一律丢弃（回落到主题默认主色），不做猜测 */
-export function normalizeAccent(a: any): number | undefined {
+export function normalizeAccent(a: unknown): number | undefined {
   if (a == null || a === "") return undefined;
+  /*
+   * 只接受字符串/数字。原来直接 Number(a)：
+   * Number([]) === 0、Number(true) === 1，于是空数组会静默把页面主色改成第 0 档（实测）。
+   */
+  if (typeof a !== "string" && typeof a !== "number") return undefined;
   const n = Number(a);
   if (!Number.isFinite(n)) return undefined;
   const i = Math.round(n);
   return i >= 0 && i <= 5 ? i : undefined;
 }
 
-export function normalizeDecor(d: any): "full" | "quiet" | undefined {
-  return d === "full" || d === "quiet" ? d : undefined;
+export function normalizeDecor(d: unknown): "full" | "quiet" | undefined {
+  return oneOf(d, ["full", "quiet"] as const) ?? undefined;
 }
-export function normalizeRhythm(r: any): PageRhythm {
-  return ["anchor", "dense", "breathing"].includes(r) ? (r as PageRhythm) : "anchor";
-}
-
-export function normalizeTransition(t: any): TransitionType {
-  return ["fade", "slide-left", "slide-right", "zoom", "none"].includes(t) ? (t as TransitionType) : "fade";
+export function normalizeRhythm(r: unknown): PageRhythm {
+  return oneOf(r, ["anchor", "dense", "breathing"] as const) ?? "anchor";
 }
 
-export function normalizeMotion(m: any): MotionStyle {
-  return ["spring", "linear", "float"].includes(m) ? (m as MotionStyle) : "spring";
+export function normalizeTransition(t: unknown): TransitionType {
+  return oneOf(t, ["fade", "slide-left", "slide-right", "zoom", "none"] as const) ?? "fade";
 }
 
-export function normalizeEffects(e: any): PageEffects {
-  if (!e || typeof e !== "object") return {};
-  const annotation = ["highlight", "underline", "circle"].includes(e.annotation) ? e.annotation : undefined;
+export function normalizeMotion(m: unknown): MotionStyle {
+  return oneOf(m, ["spring", "linear", "float"] as const) ?? "spring";
+}
+
+export function normalizeEffects(e: unknown): PageEffects {
+  if (!isRecord(e)) return {};
   return {
-    annotation,
+    annotation: oneOf(e.annotation, ["highlight", "underline", "circle"] as const) ?? undefined,
     pathDraw: e.pathDraw === true ? true : undefined,
     threeD: e.threeD === true ? true : undefined,
   };
 }
 
-export function normalizeArt(a: any): Art | null {
-  return ["flow", "loop", "timeline", "quadrant", "quote"].includes(a) ? (a as Art) : null;
+export function normalizeArt(a: unknown): Art | null {
+  return oneOf(a, ["flow", "loop", "timeline", "quadrant", "quote"] as const);
 }
 
-function normalizeAnchor(x: any): number | undefined {
+function normalizeAnchor(x: unknown): number | undefined {
+  if (typeof x !== "number" && typeof x !== "string") return undefined;
   const n = Number(x);
   return Number.isInteger(n) && n >= 0 && n <= 20 ? n : undefined;
 }
 
-function normalizePoint(x: any): { text: string; icon: IconId | null; anchor?: number } {
+function normalizePoint(x: unknown): { text: string; icon: IconId | null; anchor?: number } {
   if (typeof x === "string") return { text: x, icon: null };
-  if (x && typeof x === "object") {
+  if (isRecord(x)) {
     return {
       text: String(x.text ?? "").trim(),
       icon: normalizeIcon(x.icon ?? null),
       anchor: normalizeAnchor(x.anchor),
     };
   }
-  return { text: String(x ?? "").trim(), icon: null };
+  return { text: typeof x === "number" ? String(x) : "", icon: null };
 }
 
-function normalizeSides(s: any): ComparisonSides | null {
-  const one = (side: any) => {
-    if (!side || typeof side !== "object") return null;
+function normalizeSides(s: unknown): ComparisonSides | null {
+  const root = isRecord(s) ? s : {};
+  const one = (side: unknown) => {
+    if (!isRecord(side)) return null;
     const label = String(side.label ?? "")
       .trim()
       .slice(0, 20);
@@ -424,26 +453,28 @@ function normalizeSides(s: any): ComparisonSides | null {
     if (!pts.length) return null;
     return { label, points: pts };
   };
-  const a = one(s?.a);
-  const b = one(s?.b);
+  const a = one(root.a);
+  const b = one(root.b);
   return a && b ? { a, b } : null;
 }
 
-function normalizeChart(c: any): ChartSpec {
+function normalizeChart(input: unknown): ChartSpec {
+  if (!isRecord(input)) return null;
+  const c = input;
   const t =
-    c?.type === "bar"
+    c.type === "bar"
       ? "bar"
-      : c?.type === "line"
+      : c.type === "line"
         ? "line"
-        : c?.type === "pie"
+        : c.type === "pie"
           ? "pie"
-          : c?.type === "pyramid"
+          : c.type === "pyramid"
             ? "pyramid"
-            : c?.type === "area"
+            : c.type === "area"
               ? "area"
-              : c?.type === "donut"
+              : c.type === "donut"
                 ? "donut"
-                : c?.type === "stacked-bar"
+                : c.type === "stacked-bar"
                   ? "stacked-bar"
                   : c?.type === "scatter"
                     ? "scatter"
@@ -457,12 +488,15 @@ function normalizeChart(c: any): ChartSpec {
   if (t === "scatter") {
     const points = (Array.isArray(c.points) ? c.points : [])
       .slice(0, 12)
-      .map((p: any) => ({
-        x: Number(p?.x),
-        y: Number(p?.y),
-        label: p?.label ? String(p.label).slice(0, 8) : undefined,
-      }))
-      .filter((p: any) => Number.isFinite(p.x) && Number.isFinite(p.y));
+      .map((raw: unknown) => {
+        const pt = isRecord(raw) ? raw : {};
+        return {
+          x: Number(pt.x),
+          y: Number(pt.y),
+          label: pt.label ? String(pt.label).slice(0, 8) : undefined,
+        };
+      })
+      .filter((pt) => Number.isFinite(pt.x) && Number.isFinite(pt.y));
     if (points.length < 2) return null;
     return { type: "scatter", points, title };
   }
@@ -473,14 +507,17 @@ function normalizeChart(c: any): ChartSpec {
   if (t === "stacked-bar") {
     const series = (Array.isArray(c.series) ? c.series : [])
       .slice(0, 4)
-      .map((s: any) => ({
-        name: String(s?.name ?? "").slice(0, 10),
-        values: (Array.isArray(s?.values) ? s.values : [])
-          .slice(0, cap)
-          .map(Number)
-          .filter((n: number) => !Number.isNaN(n)),
-      }))
-      .filter((s: any) => s.name && s.values.length === labels.length);
+      .map((raw: unknown) => {
+        const s = isRecord(raw) ? raw : {};
+        return {
+          name: String(s.name ?? "").slice(0, 10),
+          values: (Array.isArray(s.values) ? s.values : [])
+            .slice(0, cap)
+            .map(Number)
+            .filter((n: number) => !Number.isNaN(n)),
+        };
+      })
+      .filter((s) => s.name && s.values.length === labels.length);
     if (!series.length) return null;
     return { type: "stacked-bar", labels, series, title };
   }
@@ -497,41 +534,44 @@ function normalizeChart(c: any): ChartSpec {
   return { type: t as "bar" | "line", labels, values, title };
 }
 
-function normalizeTable(t: any): TableSpec | null {
-  if (!t || !Array.isArray(t.headers) || !Array.isArray(t.rows)) return null;
-  const headers = (t.headers as any[]).slice(0, 5).map((x) => String(x ?? ""));
+function normalizeTable(t: unknown): TableSpec | null {
+  if (!isRecord(t) || !Array.isArray(t.headers) || !Array.isArray(t.rows)) return null;
+  const headers = (t.headers as unknown[]).slice(0, 5).map((x) => String(x ?? ""));
   const w = headers.length;
   if (!w) return null;
-  const rows = (t.rows as any[])
+  const rows = (t.rows as unknown[])
     .slice(0, 5)
-    .map((r) => (Array.isArray(r) ? (r as any[]).slice(0, w).map((x) => String(x ?? "")) : []))
+    .map((r) => (Array.isArray(r) ? (r as unknown[]).slice(0, w).map((x) => String(x ?? "")) : []))
     .filter((r: string[]) => r.length === w);
   if (!rows.length) return null;
   return { headers, rows };
 }
 
-function normalizeCustomSvg(c: any): CustomSvgSpec {
-  if (!Array.isArray(c)) return null;
-  const num = (x: any, min = -2000, max = 2000) =>
-    typeof x === "number" && Number.isFinite(x) && x >= min && x <= max ? x : undefined;
-  const str = (x: any, max = 200) => (typeof x === "string" ? x.slice(0, max) : undefined);
-  const TYPES = ["circle", "rect", "ellipse", "line", "path", "polygon", "text"];
+const SVG_TYPES = ["circle", "rect", "ellipse", "line", "path", "polygon", "text"] as const;
 
-  const els = c
+function normalizeCustomSvg(c: unknown): CustomSvgSpec {
+  if (!Array.isArray(c)) return null;
+  const num = (x: unknown, min = -2000, max = 2000) =>
+    typeof x === "number" && Number.isFinite(x) && x >= min && x <= max ? x : undefined;
+  const str = (x: unknown, max = 200) => (typeof x === "string" ? x.slice(0, max) : undefined);
+
+  const els = (c as unknown[])
     .slice(0, 60)
-    .map((e: any): any => {
-      if (!e || typeof e !== "object") return null;
-      const type = TYPES.includes(e.type) ? e.type : null;
+    .map((raw: unknown): SvgElement | null => {
+      if (!isRecord(raw)) return null;
+      const e = raw;
+      const type = oneOf(e.type, SVG_TYPES);
       if (!type) return null;
-      const el: any = { type };
-      for (const k of ["x", "y", "cx", "cy", "r", "width", "height", "rx", "ry", "x1", "y1", "x2", "y2"]) {
+      const el: SvgElement = { type };
+      const NUM_KEYS = ["x", "y", "cx", "cy", "r", "width", "height", "rx", "ry", "x1", "y1", "x2", "y2"] as const;
+      for (const k of NUM_KEYS) {
         const v = num(e[k]);
         if (v !== undefined) el[k] = v;
       }
       const Y_MAX = 780;
-      const yKeys = ["y", "cy", "y1", "y2"] as const;
-      for (const k of yKeys) {
-        if (typeof el[k] === "number" && el[k] > Y_MAX) el[k] = Y_MAX;
+      for (const k of ["y", "cy", "y1", "y2"] as const) {
+        const v = el[k];
+        if (typeof v === "number" && v > Y_MAX) el[k] = Y_MAX;
       }
       if (type === "rect" && typeof el.y === "number" && typeof el.height === "number" && el.y + el.height > Y_MAX) {
         el.y = Math.max(220, Y_MAX - el.height);
@@ -563,7 +603,8 @@ function normalizeCustomSvg(c: any): CustomSvgSpec {
         if (fs !== undefined) el.fontSize = fs;
         const fw = num(e.fontWeight, 100, 900);
         if (fw !== undefined) el.fontWeight = fw;
-        if (["start", "middle", "end"].includes(e.textAnchor)) el.textAnchor = e.textAnchor;
+        const textAnchor = oneOf(e.textAnchor, ["start", "middle", "end"] as const);
+        if (textAnchor) el.textAnchor = textAnchor;
       }
       const delay = num(e.delay, 0, 300);
       if (delay !== undefined) el.delay = delay;
@@ -572,27 +613,29 @@ function normalizeCustomSvg(c: any): CustomSvgSpec {
       if (e.draw === true) el.draw = true;
       return el;
     })
-    .filter(Boolean);
+    .filter((el): el is SvgElement => el !== null);
 
   return els.length ? els : null;
 }
 
-function normalizeMap(m: any): MapSpec | null {
-  if (!m || typeof m !== "object") return null;
-  const num = (x: any, min = -2000, max = 2000) =>
+function normalizeMap(input: unknown): MapSpec | null {
+  if (!isRecord(input)) return null;
+  const m = input;
+  const num = (x: unknown, min = -2000, max = 2000) =>
     typeof x === "number" && Number.isFinite(x) && x >= min && x <= max ? x : undefined;
-  const str = (x: any, max = 40) => (typeof x === "string" ? x.slice(0, max) : undefined);
-  const color = (x: any) => (typeof x === "string" && x.length <= 30 ? x : undefined);
+  const str = (x: unknown, max = 40) => (typeof x === "string" ? x.slice(0, max) : undefined);
+  const color = (x: unknown) => (typeof x === "string" && x.length <= 30 ? x : undefined);
 
-  const markers = (Array.isArray(m.markers) ? m.markers : [])
+  const markers = (Array.isArray(m.markers) ? (m.markers as unknown[]) : [])
     .slice(0, 12)
-    .map((mk: any): any => {
-      if (!mk || typeof mk !== "object") return null;
+    .map((raw: unknown): MapMarker | null => {
+      if (!isRecord(raw)) return null;
+      const mk = raw;
       const name = str(mk.name);
       const x = num(mk.x, 0, 1920);
       const y = num(mk.y, 0, 1080);
       if (!name || x === undefined || y === undefined) return null;
-      const el: any = { name, x, y };
+      const el: MapMarker = { name, x, y };
       const c = color(mk.color);
       if (c) el.color = c;
       const s = num(mk.size, 4, 40);
@@ -601,35 +644,38 @@ function normalizeMap(m: any): MapSpec | null {
       if (anchor !== undefined) el.anchor = anchor;
       return el;
     })
-    .filter(Boolean);
+    .filter((mk): mk is MapMarker => mk !== null);
 
-  const routes = (Array.isArray(m.routes) ? m.routes : [])
+  const routes = (Array.isArray(m.routes) ? (m.routes as unknown[]) : [])
     .slice(0, 12)
-    .map((rt: any): any => {
-      if (!rt || typeof rt !== "object") return null;
+    .map((raw: unknown): MapRoute | null => {
+      if (!isRecord(raw)) return null;
+      const rt = raw;
       const from = num(rt.from, 0, markers.length - 1);
       const to = num(rt.to, 0, markers.length - 1);
       if (from === undefined || to === undefined || from === to) return null;
-      const el: any = { from, to };
+      const el: MapRoute = { from, to };
       const c = color(rt.color);
       if (c) el.color = c;
       if (rt.dashed === true) el.dashed = true;
       if (rt.animated === false) el.animated = false;
       if (rt.flow === false) el.flow = false;
-      if (rt.type === "rail" || rt.type === "flight" || rt.type === "road") el.type = rt.type;
+      const routeType = oneOf(rt.type, ["rail", "flight", "road"] as const);
+      if (routeType) el.type = routeType;
       const anchor = normalizeAnchor(rt.anchor);
       if (anchor !== undefined) el.anchor = anchor;
       return el;
     })
-    .filter(Boolean);
+    .filter((rt): rt is MapRoute => rt !== null);
 
-  const regions = (Array.isArray(m.regions) ? m.regions : [])
+  const regions = (Array.isArray(m.regions) ? (m.regions as unknown[]) : [])
     .slice(0, 6)
-    .map((rg: any): any => {
-      if (!rg || typeof rg !== "object") return null;
+    .map((raw: unknown): MapRegion | null => {
+      if (!isRecord(raw)) return null;
+      const rg = raw;
       const points = typeof rg.points === "string" ? rg.points.slice(0, 500) : undefined;
       if (!points) return null;
-      const el: any = { points };
+      const el: MapRegion = { points };
       const name = str(rg.name);
       if (name) el.name = name;
       const label = str(rg.label);
@@ -640,17 +686,17 @@ function normalizeMap(m: any): MapSpec | null {
       if (anchor !== undefined) el.anchor = anchor;
       return el;
     })
-    .filter(Boolean);
+    .filter((rg): rg is MapRegion => rg !== null);
 
   if (!markers.length && !routes.length && !regions.length) return null;
-  const out: any = {};
+  const out: MapSpec = {};
   if (markers.length) out.markers = markers;
   if (routes.length) out.routes = routes;
   if (regions.length) out.regions = regions;
   return out;
 }
 
-function estimateSecs(items: any[]): number {
+function estimateSecs(items: unknown[]): number {
   const totalChars = items.map((x) => String(x ?? "").length).reduce((a, b) => a + b, 0);
   return Math.max(3, Math.ceil(totalChars / 5 + 1));
 }
@@ -666,7 +712,7 @@ function splitCaptions(text: string): string[] {
 }
 
 export function normalizePage(
-  p: any,
+  input: unknown,
   i: number,
   layout?: Layout,
   art?: Art | null,
@@ -679,6 +725,12 @@ export function normalizePage(
   /** 归一化过程发现的问题（供重试提示使用，不进入产物） */
   diagnostics?: string[],
 ): StoryPage {
+  /*
+   * 外部（LLM / 手改分镜）传进来的是任意值，一律按 unknown 接。
+   * 原来签名是 any，normalizeDirect 里的 null 页会直接炸在 p.chart（实测抛
+   * TypeError）；非对象一律当空页处理，走同一套默认值。
+   */
+  const p = isRecord(input) ? input : {};
   const chart = normalizeChart(p.chart);
   const table = normalizeTable(p.table);
   const rawSvg = normalizeCustomSvg(p.customSvg);
@@ -704,11 +756,18 @@ export function normalizePage(
 
   const finalLayout =
     (hasSvg && STRUCTURAL_LAYOUTS.has(layoutVal)) || (layoutVal === "code" && !code) ? "points" : layoutVal;
-  const rawCaptions = (Array.isArray(p.captions) ? p.captions : []).map((x: any) => String(x)).filter(Boolean);
+  /*
+   * 字幕只接受字符串。原来 String(x) 会把 null / {} 变成
+   * "null" / "[object Object]"，然后作为字幕条直接烧进成片（实测）。
+   */
+  const rawCaptions = (Array.isArray(p.captions) ? (p.captions as unknown[]) : [])
+    .filter((x): x is string => typeof x === "string")
+    .map((x) => x.trim())
+    .filter(Boolean);
   const rawNarration = String(p.narration ?? "").trim();
-  const pointsArr = Array.isArray(p.points) ? p.points : [];
+  const pointsArr: unknown[] = Array.isArray(p.points) ? (p.points as unknown[]) : [];
   const pointsText = pointsArr
-    .map((x: any) => (typeof x === "string" ? x : String(x?.text ?? "")))
+    .map((x) => (typeof x === "string" ? x : isRecord(x) ? String(x.text ?? "") : ""))
     .filter(Boolean)
     .join("，");
   const narration = rawNarration || rawCaptions.join("") || pointsText;
@@ -743,10 +802,13 @@ export function normalizePage(
   };
 }
 
-export function normalizeDirect(pages: any): Storyboard {
+export function normalizeDirect(input: unknown): Storyboard {
+  const pages = isRecord(input) ? input : {};
   return {
     projectTitle: String(pages.projectTitle ?? "我的讲解").slice(0, 22),
-    pages: (Array.isArray(pages.pages) ? pages.pages : []).map((p: any, i: number) => normalizePage(p, i)).slice(0, 10),
+    pages: (Array.isArray(pages.pages) ? (pages.pages as unknown[]) : [])
+      .slice(0, 10)
+      .map((p, i) => normalizePage(p, i)),
   };
 }
 
@@ -835,10 +897,10 @@ export function validatePageContent(page: StoryPage): string[] {
       problems.push(`本页版式是 comparison，要点达 ${pointCount} 条，两侧各最多 3 条，请精简到 A/B 各 2~3 条。`);
     } else {
       const half = pointCount / 2;
-      const ptText = (idx: number) =>
-        typeof page.points![idx] === "string"
-          ? String(page.points![idx])
-          : String((page.points![idx] as any)?.text ?? "");
+      const ptText = (idx: number) => {
+        const item = page.points?.[idx];
+        return typeof item === "string" ? item : String(item?.text ?? "");
+      };
       const paired = Array.from({ length: half }, (_, k) => captionOverlap(ptText(k), ptText(half + k)));
       if (paired.every((v) => v >= 0.6)) {
         problems.push(

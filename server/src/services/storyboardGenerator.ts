@@ -1,6 +1,8 @@
 import { chatStream, type ChatMessage } from "./llmClient.js";
 import { stripPrompt, planPrompt, pagePrompt, fallbackPrompt, regeneratePrompt } from "./prompts.js";
 import {
+  asRecord,
+  normalizeEffects,
   parsePlan,
   parseJson,
   normalizePage,
@@ -154,7 +156,7 @@ async function generatePage(
   let messages = base;
   for (let attempt = 0; attempt < 3; attempt++) {
     const raw = await chatStream({ messages, onDelta: onToken });
-    const obj = parseJson(raw);
+    const obj = asRecord(parseJson(raw));
     const multiObj = detectMultiObject(raw);
     const hints: string[] = [];
     if (multiObj) {
@@ -184,7 +186,7 @@ async function generatePage(
         block.rhythm,
         block.transition,
         block.motion,
-        obj.effects,
+        normalizeEffects(obj.effects),
         codeDiagnostics,
       );
       const isFinalPage = index === (plan.pages?.length ?? 0) - 1;
@@ -228,7 +230,7 @@ async function fallbackDirect(
   onSection?.("兜底 · 一次性生成全部分镜");
   const sys = fallbackPrompt(params);
   const raw = await chatStream({ messages: msgPair(sys, user), onDelta: onToken });
-  const obj = parseJson(raw);
+  const obj = asRecord(parseJson(raw));
   const sb = normalizeDirect(obj);
   const issues: string[] = [];
   sb.pages.forEach((p, i) => {
@@ -317,7 +319,7 @@ async function regeneratePageRaw(
   let messages = base;
   for (let attempt = 0; attempt < 3; attempt++) {
     const raw = await chatStream({ messages, onDelta: onToken });
-    const obj = parseJson(raw);
+    const obj = asRecord(parseJson(raw));
     const multiObj = detectMultiObject(raw);
     const hints: string[] = [];
     if (multiObj) {

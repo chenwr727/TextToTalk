@@ -45,6 +45,13 @@
 
 ### 修复
 
+- **`normalize.ts` 换真实类型时挖出的三个真缺陷**（都是“垃圾值被 `String()` / `Number()` 默默吃掉”这类隐式转换）：
+  - `normalizeDirect({pages:[null]})` 直接抛 `TypeError`（`Cannot read properties of null (reading 'chart')`）——兜底直出路径上一页垃圾就能炸掉整条流水线。现在非对象页当空页处理，走同一套默认值。
+  - `accent` 传空数组时 `Number([]) === 0`，静默把页面主色改成第 0 档（`true` 同理→`1`）。现在只接受字符串/数字。
+  - `captions` 里的 `null` / `{}` 会被 `String()` 变成 `"null"` / `"[object Object]"`，并作为字幕条直接烧进成片。现在只保留字符串（并 trim）。
+
+  对应新增 8 条“畸形输入”测试（数字 / 布尔 / null / 数组 / 对象 各枚举一遍）钉住收敛结果，防止以后改动悄悄放宽。
+
 - **`qa` 问句被折在词中间、放大后更难读**：竖屏放大按内容高度算，但内宽用的是**未放大**的内边距和问号圆章（实际渲染是 `sp(34*zi)` / `sp(64*zi)`，`zi` 封顶 1.3），估算的内宽比实际宽 ~35px，于是"估算放得下、实际折行"——问句被切成立`砍层级会不 / 会失控？`。改为按 zi 后的真实内宽计算，并反推出「问句单行放得下」的放大上限（留 8% 余量），问句恢复单行、字号 46 → 72px。
 - **`three_card` 竖屏卡片之间的流向箭头读不出来**：圆章中心压在卡片下沿（`translate(50%,-50%)` 叠在 `top:100%` 上），看起来像贴在卡底的一颗分隔点，而两卡之间反而空着。改为圆章落在间距正中，并补一条贯穿间距的细竖线，三卡重新读成一条流程。
 - **`chart-*` 竖屏副标题贴着标题装饰线**：`marginTop: sp(12) ≈ 10px`，副标题像挤在标题下面（柱状图实测标题下划线到底下文字只有 10px）。竖屏改为 `sp(26)`。
@@ -175,6 +182,8 @@
 - **白色卡面写死**：`CustomSvgScene` / `TableScene` / `SmartArt` 里三处 `#fff` / `rgba(255,255,255,0.92)` 卡面改为 `GLASS.card`，否则深色主题上会出现白块。
 
 ### 清理
+
+- **`normalize.ts` 的 51 条 `any` 全部换成真实类型（lint 告警 51 → 0）**：这个文件是「LLM 输出 → 强类型分镜」的唯一收口，所有入参改成 `unknown`，再用两个小工具收窄：`isRecord()`（排除 null/数组）与 `oneOf()`（字符串 + 白名单）；`SvgElement` / `MapMarker` / `MapRoute` / `MapRegion` / `MapSpec` / `PointItem` 全部用回项目自己的类型，构造时就能发现字段名写错；`parseJson()` 返回 `unknown`，`normalizeDirect` / `normalizePage` 自己守第一道关。此前靠 `any` + `includes()` 碰巧收敛的地方（数组、布尔、`null`）现在都有显式规则。
 
 - **lint 告警 89 → 51**：13 条 `no-unused-vars` 全部清掉（`SmartArt` 里 6 个失效的 `fs` / `MAX_LINES` / `FS_CANDIDATES`、`PointsScene` 里随布局重构失效的 `availW` / `colH` / `rowGap` / `iconBlock` / `padX`、以及 `PageHeading` 的 `FONT`、`preview-portrait.mjs` 的 `getCompositions`）；25 条 `no-explicit-any` 换成真实类型——SSE 帧改成 `Record<string, unknown>` 逐字段 `typeof` 收窄，`subscribeStoryboard` 的事件回调入参加 `unknown`、`ScriptInput` 的三处 `as any` 换成 `Tone` / `Granularity`（`theme` 本来就是 `string`，直接去掉断言），`RenderThumb` 用 `normalizeThemeId()`、`DynamicVideo` 的 `theme` 同理，`tasks.ts` 的 `points` 归一化改用项目自己的 `PointItem`，`GeneratedPage` 的注入组件类型改成 `ComponentType<Record<string, unknown>>`。剩 51 条全在 `normalize.ts`（LLM 输出归一化，`any` 用得最多，单独一轮带测试重构）。`DynamicVideo` 的 `pickTransition` 保留一个**带理由的** eslint-disable：Remotion 的 `TransitionPresentation<T>` 对 T 不变，五套转场预设合不成单一类型（不写 `any` 时 tsc 报 TS2322）。
 
