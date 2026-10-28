@@ -74,12 +74,12 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const availW = isPortrait ? contentWidth : 1920 - 160;
   const barGap = Math.max(
     isPortrait ? sp(24) : 24,
-    Math.min(isPortrait ? sp(110) : 110, (availW - n * (isPortrait ? sp(60) : 60)) / Math.max(1, n - 1)),
+    Math.min(isPortrait ? sp(110) : 180, (availW - n * (isPortrait ? sp(60) : 60)) / Math.max(1, n - 1)),
   );
-  const barW = Math.min(isPortrait ? 220 : 120, (availW - (n - 1) * barGap) / n);
+  const barW = Math.min(isPortrait ? 220 : 200, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
-  const chartH = isPortrait ? 880 : 450;
-  const barMaxH = isPortrait ? 700 : 300;
+  const chartH = isPortrait ? 880 : 500;
+  const barMaxH = isPortrait ? 700 : 380;
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <ChartHeading page={page} chartTitle={title} />
@@ -221,8 +221,8 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const W = isPortrait ? contentWidth : 1180,
-    H = isPortrait ? 900 : 470,
+  const W = isPortrait ? contentWidth : 1500,
+    H = isPortrait ? 900 : 505,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
@@ -452,8 +452,8 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const W = isPortrait ? contentWidth : 1180,
-    H = isPortrait ? 900 : 470,
+  const W = isPortrait ? contentWidth : 1500,
+    H = isPortrait ? 900 : 505,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD - BOTTOM, H - BOTTOM);
@@ -680,10 +680,10 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
     isPortrait ? sp(24) : 24,
     Math.min(isPortrait ? sp(90) : 90, (availW - n * (isPortrait ? sp(60) : 60)) / Math.max(1, n - 1)),
   );
-  const barW = Math.min(isPortrait ? 210 : 120, (availW - (n - 1) * barGap) / n);
+  const barW = Math.min(isPortrait ? 210 : 260, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
-  const chartH = isPortrait ? 840 : 360;
-  const barMaxH = isPortrait ? 660 : 300;
+  const chartH = isPortrait ? 840 : 440;
+  const barMaxH = isPortrait ? 660 : 360;
   // 柱区底边：让出标签那一行，刻度才能与柱高对齐（此前标签在柱底下撑开，柱底位置不定）
   const barBottom = Math.round(labelFs * 1.2) + (isPortrait ? sp(18) : 18);
   const { top: stackTop, ticks: axisTicks } = axisScale(maxTotal);
@@ -832,7 +832,7 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
-  const W = isPortrait ? contentWidth : 1180,
+  const W = isPortrait ? contentWidth : 1500,
     H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
