@@ -145,7 +145,14 @@ function computeFitTransform(
   const contentH = Math.max(maxY - minY, 100);
   const scaleX = safe.w / contentW;
   const scaleY = safe.h / contentH;
-  const scale = Math.min(scaleX, scaleY, 1.35);
+  /*
+   * 上限从 1.35 放宽到 2.2。
+   *
+   * AI 画的示意图坐标空间大小完全随机（有的画在 800×240 里，有的画在 4000×2000 里），
+   * 1.35 的硬上限让小图只能占到安全区的六成、周围全是空的。
+   * 不溢出的保证来自 min(scaleX, scaleY)，上限只负责"别把小图放得过分大"。
+   */
+  const scale = Math.min(scaleX, scaleY, 2.2);
 
   const fitW = contentW * scale;
   const fitH = contentH * scale;

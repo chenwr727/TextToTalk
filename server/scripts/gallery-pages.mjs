@@ -229,6 +229,99 @@ export const PAGES = [
     points: [{ text: "下期讲：怎么判断一个流程该删还是该改" }],
     accent: 0,
   }),
+  /*
+   * 以下 8 页是为了补覆盖。
+   *
+   * 之前场景注册表里有 27 个版式，gallery 只覆盖 19 个：`flow` / `loop` / `timeline` /
+   * `quadrant` / `quote` / `chart.pyramid` / `custom_svg` / `code` 一个样本都没有，
+   * 等于写完从没被渲染过。补上之后横竖两版都进全量重渲。
+   */
+  page({
+    layout: "points",
+    _name: "flow",
+    art: "flow",
+    title: "一次审批要经过四道手",
+    points: [
+      { text: "提需求" },
+      { text: "部门审批" },
+      { text: "财务复核" },
+      { text: "老板签字" },
+    ],
+    accent: 2,
+  }),
+  page({
+    layout: "points",
+    _name: "loop",
+    art: "loop",
+    title: "为什么流程越改越长",
+    points: [
+      { text: "出问题" },
+      { text: "加一道审批" },
+      { text: "速度变慢" },
+      { text: "临时打补丁" },
+    ],
+    accent: 3,
+  }),
+  page({
+    layout: "points",
+    _name: "timeline",
+    art: "timeline",
+    title: "三个月改造路线",
+    points: [
+      { text: "第 1 月：统计每个环节的等待时间" },
+      { text: "第 2 月：砍掉两道重复审批" },
+      { text: "第 3 月：把决策点前移到一线" },
+    ],
+    accent: 1,
+  }),
+  page({
+    layout: "points",
+    _name: "quadrant",
+    art: "quadrant",
+    title: "哪些流程值得先改",
+    points: [
+      { text: "高频高痛：报销" },
+      { text: "高频低痛：周报" },
+      { text: "低频高痛：招聘" },
+      { text: "低频低痛：设备领用" },
+    ],
+    accent: 4,
+  }),
+  page({
+    layout: "points",
+    _name: "quote",
+    art: "quote",
+    title: "一句话记住",
+    points: [{ text: "流程的价值不在管住人，而在让人少等一会儿" }],
+    accent: 5,
+  }),
+  page({
+    layout: "chart",
+    title: "越往下越是执行层",
+    chart: {
+      type: "pyramid",
+      title: "组织层级与人数",
+      labels: ["决策层", "管理层", "执行层"],
+      values: [3, 12, 85],
+    },
+    accent: 0,
+  }),
+  page({
+    layout: "points",
+    _name: "custom_svg",
+    title: "手绘版流程示意",
+    // CustomSvgScene 直接吃 SVG 图元数组，用来验证"AI 画示意图"这条路的观感
+    customSvg: [
+      { type: "rect", x: 60, y: 120, width: 220, height: 120, rx: 20, fill: "#eef2ff", stroke: "#6366f1", strokeWidth: 3 },
+      { type: "text", x: 90, y: 190, text: "申请", fontSize: 34, fill: "#3730a3" },
+      { type: "line", x1: 300, y1: 180, x2: 420, y2: 180, stroke: "#6366f1", strokeWidth: 4 },
+      { type: "rect", x: 440, y: 120, width: 220, height: 120, rx: 20, fill: "#ecfeff", stroke: "#06b6d4", strokeWidth: 3 },
+      { type: "text", x: 470, y: 190, text: "审批", fontSize: 34, fill: "#155e75" },
+      { type: "circle", cx: 780, cy: 180, r: 56, fill: "#f0fdf4", stroke: "#22c55e", strokeWidth: 3 },
+      { type: "text", x: 750, y: 192, text: "完成", fontSize: 28, fill: "#166534" },
+    ],
+    accent: 2,
+  }),
 ];
 /**
  * 输出文件名。

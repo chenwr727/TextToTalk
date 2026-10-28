@@ -204,7 +204,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   );
 };
 
-export const LoopScene: React.FC<SceneProps> = ({ page }) => {
+export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const items = page.points;
   const f = useCurrentFrame();
@@ -216,7 +216,17 @@ export const LoopScene: React.FC<SceneProps> = ({ page }) => {
   const titleChars = Array.from(title).length;
   const titleLines = titleChars > 14 ? 2 : 1;
   const HEADER_BOTTOM = 90 + (titleLines === 2 ? 170 : 110);
-  const BOTTOM_SAFE = isPortrait ? contentHeight : 1080 - 80;
+  /*
+   * 环形图的"底"必须让开字幕条。
+   *
+   * 原先写死 `1080 - 80`＝1000：四个节点落在椭圆上下两端，最下面那个正好被
+   * 字幕条盖住（实测节点框 860..976，字幕条 925..1010），文字读不出来。
+   * 这里跟其他版式一样按字幕实测高度预留。
+   */
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
+  const captionReserve = useCaptionReserve(subtitles, captionTexts);
+  const BOTTOM_SAFE = (isPortrait ? contentHeight : 1080) - captionReserve - (isPortrait ? sp(24) : 24);
 
   const CX = isPortrait ? contentWidth / 2 : 960;
   const CY = (HEADER_BOTTOM + BOTTOM_SAFE) / 2;
@@ -397,8 +407,14 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
     return Math.max(MIN_W, Math.round(MAX_W * ratio));
   });
 
-  const cols = vals.map((v) => {
-    const r = (v - Math.min(...vals)) / Math.max(1, maxVal - Math.min(...vals));
+  /**
+   * 每一层的底色由"数值占最大值的比例"决定：越往下（数越大）越深。
+   *
+   * 文字颜色必须跟着底色走，不能跟着层号走——金字塔顶层数值最小、底色最浅，
+   * 之前按"i===0 就白字"上色，结果顶层是白字配近白底，整行标题看不见。
+   */
+  const fillRatio = vals.map((v) => (v - Math.min(...vals)) / Math.max(1, maxVal - Math.min(...vals)));
+  const cols = fillRatio.map((r) => {
     const from = [59, 111, 245],
       to = [212, 225, 255];
     const c = from.map((_, idx) => Math.round(to[idx] + (from[idx] - to[idx]) * r));
@@ -433,7 +449,8 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
       >
         {tiers.map((t, i) => {
           const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(t), i, 30), page.motion);
-          const isTop = i === 0;
+          /** 底色够深才用白字：阈值 0.45 对应中等偏深的那一档 */
+          const onDark = (fillRatio[i] ?? 0) > 0.45;
           const label = typeof t === "string" ? t : pointText(t, i);
           const icon = typeof t === "string" ? "layers" : pointIcon(t, i);
           return (
@@ -448,7 +465,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
                 padding: `${isPortrait ? sp(14) : 14}px ${isPortrait ? sp(32) : 32}px`,
                 marginBottom: i === N - 1 ? 0 : Math.min(SPACE.md, Math.max(8, SPACE.md - (N - 4) * 4)),
                 background: cols[i],
-                color: isTop ? "#fff" : "#1a2b4a",
+                color: onDark ? "#fff" : "#1a2b4a",
                 borderRadius: RADIUS.box,
                 display: "flex",
                 alignItems: "center",
@@ -461,7 +478,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
                 boxShadow: CARD_SHADOW,
               }}
             >
-              <Icon name={icon} size={Math.max(24, Math.round(nodeFs * 0.9))} color={isTop ? "#fff" : "#3b6ff5"} />
+              <Icon name={icon} size={Math.max(24, Math.round(nodeFs * 0.9))} color={onDark ? "#fff" : "#3b6ff5"} />
               <span style={{ textAlign: "center" }}>{label}</span>
             </div>
           );
@@ -471,7 +488,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
+export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const items = page.points;
   const f = useCurrentFrame();
@@ -492,8 +509,17 @@ export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
 
   const lines = Math.ceil(maxChars / Math.max(1, Math.floor((TEXT_W * 0.95) / nodeFs)));
   const textH = lines * nodeFs * CARD_TYPE.lineHeight;
-  const PORTRAIT_TOP = sp(40);
-  const PORTRAIT_BOTTOM = 200;
+  /*
+   * 竖屏时间轴的上边界要给标题让位、下边界要给字幕条让位。
+   *
+   * 原先写死 top=sp(40)、bottom=200：竖线从 y≈34 起笔，直接穿过顶部标题胶囊，
+   * 一路拉到 y≈1720 钻进字幕条，中途三个节点被拉得七零八落。
+   */
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
+  const captionReserve = useCaptionReserve(subtitles, captionTexts);
+  const PORTRAIT_TOP = sp(260);
+  const PORTRAIT_BOTTOM = captionReserve + sp(40);
   const PORTRAIT_ROW_H = (contentHeight - PORTRAIT_TOP - PORTRAIT_BOTTOM) / Math.max(1, list.length);
   const PORTRAIT_NODE_W = contentWidth / 2 - sp(70);
   return (
@@ -541,15 +567,22 @@ export const TimelineScene: React.FC<SceneProps> = ({ page }) => {
                   style={{
                     position: "absolute",
                     top: y,
-                    left: left ? 0 : "50%",
+                    /*
+                     * 轴在画布中线：左侧节点贴到中线左侧、图标朝右挨着轴，
+                     * 右侧节点贴到中线右侧、图标朝左挨着轴。
+                     * 原先左侧节点用 `left: 0` + 行方向，图标被顶到画布最左边（半个圆被切掉），
+                     * 而节点尾巴离轴还空着 120px。
+                     */
+                    ...(left
+                      ? { right: "50%", paddingRight: sp(18) }
+                      : { left: "50%", paddingLeft: sp(18) }),
                     width: PORTRAIT_NODE_W,
                     transform: "translateY(-50%)",
                     display: "flex",
-                    flexDirection: "row",
+                    flexDirection: left ? "row-reverse" : "row",
                     alignItems: "center",
                     gap: sp(16),
                     opacity: o,
-                    justifyContent: left ? "flex-end" : "flex-start",
                   }}
                 >
                   <div
@@ -685,19 +718,21 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const list = items.slice(0, 4);
-  const cells = [
-    { r: "flex-start", c: "flex-start", a: C.accent },
-    { r: "flex-start", c: "flex-end", a: "#34c79f" },
-    { r: "flex-end", c: "flex-start", a: "#f2b03f" },
-    { r: "flex-end", c: "flex-end", a: "#e868a4" },
-  ];
+  /*
+   * 四格的颜色；标签统一放在每格顶部的整宽标题条上。
+   *
+   * 原先四个标签各钉在自己格子的"外角"（左上格的左上、右下格的右下），
+   * 于是四格里都是"一个角上有块小标签、其余大片空白"，四个格子还各锚在不同的角，
+   * 看不出这是同一个 2×2 矩阵。改为统一顶部整宽，格子读起来是一张有标题的象限。
+   */
+  const cells = [{ a: C.accent }, { a: "#34c79f" }, { a: "#f2b03f" }, { a: "#e868a4" }];
 
   const TEXT_W = (isPortrait ? sp(550) : 550) - (isPortrait ? sp(26) : 26) * 2 - (isPortrait ? sp(24) : 24) * 2;
   const maxChars = Math.max(1, ...list.map((it, i) => Array.from(pointText(it, i)).length));
   const FS_CANDIDATES = [FS.body, 32, 28, 25, 22];
   const nodeFs = FS_CANDIDATES.find((fsz) => Math.ceil(maxChars / Math.max(1, Math.floor(TEXT_W / fsz))) <= 2) ?? 22;
 
-  const GRID_H = isPortrait ? 1000 : 680;
+  const GRID_H = isPortrait ? 1000 : 520;
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={title} />
@@ -752,8 +787,8 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
                     borderRadius: RADIUS.box,
                     border: `${BORDER.card}px solid ${cells[i].a}`,
                     display: "flex",
-                    alignItems: cells[i].r,
-                    justifyContent: cells[i].c,
+                    alignItems: "flex-start",
+                    justifyContent: "flex-start",
                     padding: isPortrait ? sp(24) : 24,
                     boxShadow: CARD_SHADOW,
                   }}
@@ -773,7 +808,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
                       textAlign: "center",
                       lineHeight: 1.4,
                       boxShadow: SOLID_SHADOW,
-                      width: TEXT_W,
+                      width: "100%",
                       whiteSpace: "normal",
                       overflow: "hidden",
                       boxSizing: "border-box",
