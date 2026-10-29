@@ -72,11 +72,23 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const valueLabel = (v: number) => `${Math.round(v)}`;
   const n = values.length;
   const availW = isPortrait ? contentWidth : 1920 - 160;
-  const barGap = Math.max(
-    isPortrait ? sp(24) : 24,
-    Math.min(isPortrait ? sp(110) : 180, (availW - n * (isPortrait ? sp(60) : 60)) / Math.max(1, n - 1)),
-  );
-  const barW = Math.min(isPortrait ? 220 : 200, (availW - (n - 1) * barGap) / n);
+  /*
+   * 柱宽上限不再写死 220，按"每根柱能分到多宽"给；间距也跟着柱宽走。
+   *
+   * 实测（1080×1920、两根柱的对比图）：原来 2×220 + 94 间距 = 534，只占可用宽 952 的 56%，
+   * 成片里横向只用了 53%、左右各空 250px，整张图看着像没铺开。
+   * 但只放柱宽不放间距会变成"两块紧贴的色板"——间距按 可用宽/n × 0.45 给：
+   * 两根柱 94→187、柱宽 343，四根柱 94→107、柱宽 158（与改动前基本一致）。
+   */
+  // 只对竖屏按可用宽放大；横屏仍固定 200（否则 4 根柱会从 200 涨到 317，横屏版式会被改坏）
+  const barMaxW = isPortrait ? Math.max(220, Math.round((availW / Math.max(2, n)) * 0.72)) : 200;
+  const barGap = isPortrait
+    ? Math.max(
+        sp(24),
+        Math.min(sp(200), Math.round((availW / Math.max(2, n)) * 0.45), (availW - n * sp(60)) / Math.max(1, n - 1)),
+      )
+    : Math.max(24, Math.min(180, (availW - n * 60) / Math.max(1, n - 1)));
+  const barW = Math.min(barMaxW, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
   const chartH = isPortrait ? 880 : 500;
   const barMaxH = isPortrait ? 700 : 380;
@@ -721,11 +733,13 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   const maxTotal = Math.max(...labels.map((_, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0))) || 1;
   const n = labels.length;
   const availW = isPortrait ? contentWidth : 1920 - 160;
+  // 同 bar：柱少时柱宽按可用宽放大，柱多时与改动前一致（间距上限不动，避免四根柱反而变细）
+  const barMaxW = isPortrait ? Math.max(210, Math.round((availW / Math.max(2, n)) * 0.6)) : 260;
   const barGap = Math.max(
     isPortrait ? sp(24) : 24,
     Math.min(isPortrait ? sp(90) : 90, (availW - n * (isPortrait ? sp(60) : 60)) / Math.max(1, n - 1)),
   );
-  const barW = Math.min(isPortrait ? 210 : 260, (availW - (n - 1) * barGap) / n);
+  const barW = Math.min(barMaxW, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
   const chartH = isPortrait ? 840 : 440;
   const barMaxH = isPortrait ? 660 : 360;
