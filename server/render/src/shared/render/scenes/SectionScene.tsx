@@ -3,6 +3,8 @@ import { evolvePath } from "@remotion/paths";
 import { alpha, C, FONT, FS, FW, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
 import { useResponsive } from "../responsive";
+import { useAnnotation } from "../annotation";
+import { Annotated, circleWrap, CIRCLED_TEXT_WIDTH_LANDSCAPE } from "../PageHeading";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -13,6 +15,9 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
+  // 节段页自己画标题，不走 HeadingContent；手绘标注要在这里自己接上
+  const rawAnnot = useAnnotation();
+  const annotate = rawAnnot && rawAnnot !== "none" ? rawAnnot : null;
   const t0 = timing.frameAt(0, 5);
   const o = springIn(f, fps, t0, page.motion);
   const g = interpolate(f, [t0, t0 + 30], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
@@ -68,21 +73,47 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
       >
         SEGMENT
       </div>
-      <div
-        style={{
-          fontSize: isPortrait ? fs(FS.display) : FS.display,
-          fontWeight: FW.heavy,
-          color: C.ink,
-          textAlign: "center",
-          maxWidth: isPortrait ? contentWidth : "80%",
-          fontFamily: FONT,
-          opacity: o,
-          textShadow: TEXT_SHADOW,
-          textWrap: "balance",
-        }}
-      >
-        {title}
-      </div>
+      {annotate ? (
+        <div
+          style={{
+            fontSize: isPortrait ? fs(FS.display) : FS.display,
+            fontWeight: FW.heavy,
+            color: C.ink,
+            textAlign: "center",
+            maxWidth: isPortrait ? contentWidth : "80%",
+            fontFamily: FONT,
+            opacity: o,
+            textShadow: TEXT_SHADOW,
+            textWrap: "balance",
+          }}
+        >
+          {/* 标注只包文字，不包这个块：块是整行宽，再加内边距与椭圆鼓包会超出画布。
+              circle 的容器是 white-space:pre（永远不折行），所以超宽时要自己断行。 */}
+          <Annotated kind={annotate}>
+            {circleWrap(
+              title,
+              isPortrait ? fs(FS.display) : FS.display,
+              isPortrait ? undefined : CIRCLED_TEXT_WIDTH_LANDSCAPE,
+            )}
+          </Annotated>
+        </div>
+      ) : (
+        <div
+          style={{
+            fontSize: isPortrait ? fs(FS.display) : FS.display,
+            fontWeight: FW.heavy,
+            color: C.ink,
+            textAlign: "center",
+            maxWidth: isPortrait ? contentWidth : "80%",
+            fontFamily: FONT,
+            opacity: o,
+            textShadow: TEXT_SHADOW,
+            textWrap: "balance",
+          }}
+        >
+          {title}
+        </div>
+      )}
       {sub && (
         <div
           style={{

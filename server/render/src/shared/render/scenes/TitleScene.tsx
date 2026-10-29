@@ -19,6 +19,8 @@ import {
 import { Icon } from "../Icon";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
+import { useAnnotation } from "../annotation";
+import { Annotated, chunkText, circlePer, CIRCLED_TEXT_WIDTH_LANDSCAPE } from "../PageHeading";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -31,6 +33,14 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
+  /*
+   * 手绘标注在封面页上一直是静默失效的：封面自己画标题，不走 HeadingContent，
+   * 而 AnnotationContext 对所有页都会提供（PageBody）——接上就行。
+   * 注意下面那条手绘下划线：已经有标注时它就是装饰本身，
+   * 不再叠第二条（否则 underline 会画出两条下划线，和 HeadingContent 里踩过的坑一样）。
+   */
+  const rawAnnot = useAnnotation();
+  const annotate = rawAnnot && rawAnnot !== "none" ? rawAnnot : null;
   const timing = useSceneTiming();
   const t0 = timing.frameAt(0);
   const o = springIn(f, fps, t0, page.motion);
@@ -75,6 +85,14 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const typedChars = Math.floor(
     interpolate(f, [t0, t0 + 40], [0, titleChars], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
   );
+  /*
+   * circle 标注要自己断行：rough-notation 的容器是 white-space:pre，永远不折行，
+   * 而手绘椭圆宽 = （文字宽 + 60）× √2。断行位按**整句**算（circlePer），
+   * 打字动画每帧只拿已出的那几个字去切，不会跳行。
+   */
+  const perLine =
+    annotate === "circle" ? circlePer(title, titleFontSize, isPortrait ? undefined : CIRCLED_TEXT_WIDTH_LANDSCAPE) : 0;
+  const shapedTyped = chunkText(title.slice(0, typedChars), perLine);
   const caretOpacity = interpolate(f % 16, [0, 8, 16], [1, 0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -130,32 +148,36 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               textShadow: TEXT_SHADOW,
             }}
           >
-            {title.slice(0, typedChars)}
+            {/* 标注只包文字本身，不包标题这个块：块是整行宽，rough-notation 再各加 30px
+                内边距，椭圆就比画布还宽、两端被切掉（实测）。包文字时它贴着字走。 */}
+            {annotate ? <Annotated kind={annotate}>{shapedTyped}</Annotated> : title.slice(0, typedChars)}
             {/* 光标只在"还在打字"时出现：此前它一直渲染，成片里标题后面永远挂着一个小方块 */}
             {typedChars < title.length ? <span style={{ opacity: caretOpacity, color: C.accent }}>▌</span> : null}
           </div>
         )}
-        <svg
-          width={underlineW}
-          height={22}
-          viewBox={`0 0 ${underlineW} 22`}
-          preserveAspectRatio="none"
-          // 6px 贴着字底读起来像删除线，14px 才是下划线的感觉
-          style={{ marginTop: isPortrait ? 18 : 14, opacity: o }}
-        >
-          {page.effects?.pathDraw ? (
-            <UnderlinePath w={underlineW} progress={springIn(f, fps, t0 + 10, page.motion)} color={C.accent} />
-          ) : (
-            <path
-              d={`M 6 14 C ${underlineW * 0.22} 4, ${underlineW * 0.6} 22, ${underlineW - 8} 10`}
-              fill="none"
-              stroke={C.accent}
-              strokeWidth={6}
-              strokeLinecap="round"
-              opacity={0.85}
-            />
-          )}
-        </svg>
+        {annotate ? null : (
+          <svg
+            width={underlineW}
+            height={22}
+            viewBox={`0 0 ${underlineW} 22`}
+            preserveAspectRatio="none"
+            // 6px 贴着字底读起来像删除线，14px 才是下划线的感觉
+            style={{ marginTop: isPortrait ? 18 : 14, opacity: o }}
+          >
+            {page.effects?.pathDraw ? (
+              <UnderlinePath w={underlineW} progress={springIn(f, fps, t0 + 10, page.motion)} color={C.accent} />
+            ) : (
+              <path
+                d={`M 6 14 C ${underlineW * 0.22} 4, ${underlineW * 0.6} 22, ${underlineW - 8} 10`}
+                fill="none"
+                stroke={C.accent}
+                strokeWidth={6}
+                strokeLinecap="round"
+                opacity={0.85}
+              />
+            )}
+          </svg>
+        )}
       </div>
       {subPoints.length > 0 && (
         <div

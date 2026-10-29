@@ -140,13 +140,28 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
 /**
  * 手绘标注层。
  *
+ * 导出给「自己画标题」的三个场景用（TitleScene / SectionScene / EndScene）。
+ * 这三页不走 HeadingContent，于是 `effects.annotation` 对它们一直是**静默失效**的：
+ * 字段在 types/normalize 里都有，AI 也会输出，渲染时却什么都不发生。
+ *
  * progress 由帧驱动（12 帧内画完），没动画的路径留给 rough-notation 自己的抖动种子，
  * seed 固定为标题长度 —— 保证同一页每次渲染的笔迹完全一致。
  */
-const Annotated: React.FC<{ kind: Exclude<PageAnnotation, "none">; children: React.ReactNode }> = ({
-  kind,
-  children,
-}) => {
+export const Annotated: React.FC<{
+  kind: Exclude<PageAnnotation, "none">;
+  children: React.ReactNode;
+  /**
+   * 覆写内边距。封面 / 章节 / 收尾三页的标题有 900px 宽，
+   * 默认内边距再叠加手绘椭圆的鼓包会超出 1080 画布。
+   */
+  padding?: { top?: number; right?: number; bottom?: number; left?: number };
+  /**
+   * rough-notation 的 circle 默认 box="around"：椭圆宽度 = (文字宽 + 内边距) × 1.414，
+   * 实测 915px 宽的封面标题算出 1379px，比 1080 画布还宽，两端被切平。
+   * box="inside" 时椭圆就是（文字宽 + 内边距）本身，宽标题用这个。
+   */
+  box?: "inside" | "around";
+}> = ({ kind, children, padding, box }) => {
   const f = useCurrentFrame();
   const progress = interpolate(f, [8, 26], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const seed = 7;
@@ -156,7 +171,8 @@ const Annotated: React.FC<{ kind: Exclude<PageAnnotation, "none">; children: Rea
         progress={progress}
         color={C.accent}
         strokeWidth={4}
-        padding={{ top: 18, right: 30, bottom: 18, left: 30 }}
+        padding={{ top: 18, right: 30, bottom: 18, left: 30, ...padding }}
+        box={box}
         seed={seed}
       >
         {children}
@@ -165,7 +181,7 @@ const Annotated: React.FC<{ kind: Exclude<PageAnnotation, "none">; children: Rea
   }
   if (kind === "underline") {
     return (
-      <Underline progress={progress} color={C.accent} strokeWidth={4} padding={{ top: 6 }} seed={seed}>
+      <Underline progress={progress} color={C.accent} strokeWidth={4} padding={{ top: 6, ...padding }} seed={seed}>
         {children}
       </Underline>
     );
@@ -174,13 +190,69 @@ const Annotated: React.FC<{ kind: Exclude<PageAnnotation, "none">; children: Rea
     <Highlight
       progress={progress}
       color={alpha(C.accent, 26)}
-      padding={{ top: 6, right: 10, bottom: 6, left: 10 }}
+      padding={{ top: 6, right: 10, bottom: 6, left: 10, ...padding }}
       seed={seed}
     >
       {children}
     </Highlight>
   );
 };
+
+/**
+ * 被 circle 圈住的标题最多能占多宽的字。
+ *
+ * 手绘椭圆的宽度是 (文字宽 + 内边距) × √2（rough-notation 的 box="around"），
+ * 内边距默认左右各 30：要落在 1080 画布内（左右各留 40）字最宽只能是
+ * (1000 - 60) / 1.414 ≈ 647。字超过这个宽度就得换行——卡在 640 上面。
+ * 直接把 box 改成 "inside" 会得到一个我们试过的坏结果：
+ * 椭圆却是落在画布里了，但扁得像一条线，直接从字面中间穿过去。
+ */
+export const CIRCLED_TEXT_WIDTH = 640;
+
+/**
+ * 给 circle 标注的文字插上手动换行。
+ *
+ * rough-notation 的容器是 `display:inline-block; white-space:pre` —— 文字**永远不折行**，
+ * 给它 maxWidth 一点用也没有。而手绘椭圆的宽度是（文字宽 + 内边距）× √2，
+ * 封面 10 字号题（929px）算出 1399px，比 1080 画布还宽，两端被切平（实测）。
+ * 所以超宽时自己把字断成 2〜3 行：断行位置绑定在**整句**上算，
+ * 否则打字动画进行到一半时换行位会跳。
+ */
+export const circlePer = (text: string, fontSize: number, maxW = CIRCLED_TEXT_WIDTH): number => {
+  const chars = Array.from(text);
+  const w = chars.length * (fontSize + 1);
+  if (w <= maxW) return 0;
+  const lines = Math.min(3, Math.ceil(w / maxW));
+  let per = Math.ceil(chars.length / lines);
+  /*
+   * 行首不能是标点。实测：「先定那一行，再写周报」按 5/5 断开后，
+   * 第二行以逗号开头（「，再写周报」）。遇到这种情况就把标点并回上一行。
+   */
+  const PUNCT = "，。、；：！？、）」』】》·,.;:!?)]}";
+  if (per > 0 && per < chars.length && PUNCT.includes(chars[per])) per += 1;
+  return Math.min(per, chars.length);
+};
+
+/** 按固定每行字数扁断文本（字数为 0 时原样返回） */
+export const chunkText = (text: string, per: number): string => {
+  if (per <= 0) return text;
+  const chars = Array.from(text);
+  const out: string[] = [];
+  for (let i = 0; i < chars.length; i += per) out.push(chars.slice(i, i + per).join(""));
+  return out.join("\n");
+};
+
+/** 一步到位：超宽就断行（静态文本用） */
+export const circleWrap = (text: string, fontSize: number, maxW = CIRCLED_TEXT_WIDTH): string =>
+  chunkText(text, circlePer(text, fontSize, maxW));
+
+/**
+ * 横屏宽度下的同一上限。
+ *
+ * 椭圆宽 = （文字宽 + 60）× √2；1920 画布容得下约 1300px 的字，
+ * 横屏封面标题（88px × 10 字 = 890）因此不需要断行。
+ */
+export const CIRCLED_TEXT_WIDTH_LANDSCAPE = 1300;
 
 /**
  * 标题占位测量。

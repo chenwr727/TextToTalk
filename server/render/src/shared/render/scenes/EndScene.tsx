@@ -2,6 +2,8 @@ import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remo
 import { alpha, C, FONT, FS, FW, RADIUS, CARD_SHADOW, DOT_SHADOW, TEXT_SHADOW, springIn } from "../theme";
 import { pointText } from "../point";
 import { useResponsive } from "../responsive";
+import { useAnnotation } from "../annotation";
+import { Annotated, circleWrap, CIRCLED_TEXT_WIDTH_LANDSCAPE } from "../PageHeading";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -11,6 +13,9 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  // 收尾页同样自己画标题，`effects.annotation` 要自己接
+  const rawAnnot = useAnnotation();
+  const annotate = rawAnnot && rawAnnot !== "none" ? rawAnnot : null;
   const timing = useSceneTiming();
   const t0 = timing.frameAt(0);
   const o = springIn(f, fps, t0 + 8, page.motion);
@@ -27,6 +32,16 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
    * 收尾页没有字幕条压着，视觉重心全靠这块内容，于是再给一档。
    */
   const roomy = isPortrait && points.length <= 4;
+  /*
+   * 标题字号：按字数分档，收尾页宽松时再放大一档。
+   * 提出来是因为 circle 标注断行（circleWrap）也要用它。
+   */
+  const titleFont = (() => {
+    const base = isPortrait ? fs(FS.display - 8) : FS.display - 8;
+    const chars = Array.from(title).length;
+    const k = chars > 20 ? 0.68 : chars > 12 ? 0.82 : 1;
+    return Math.round(base * k * (roomy ? 1.3 : 1));
+  })();
   const markSize = roomy ? sp(172) : sp(90);
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
@@ -56,12 +71,7 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
            * 超 20 字再降一档，并用 balance 均分两行。
            */
           maxWidth: isPortrait ? contentWidth * 0.86 : 1560,
-          fontSize: (() => {
-            const base = isPortrait ? fs(FS.display - 8) : FS.display - 8;
-            const chars = Array.from(title).length;
-            const k = chars > 20 ? 0.68 : chars > 12 ? 0.82 : 1;
-            return Math.round(base * k * (roomy ? 1.3 : 1));
-          })(),
+          fontSize: titleFont,
           fontWeight: FW.heavy,
           color: C.ink,
           fontFamily: FONT,
@@ -71,7 +81,16 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
           textShadow: TEXT_SHADOW,
         }}
       >
-        {title}
+        {/* 标注只包文字，不包标题这个块：块是整行宽，rough-notation 再加 30px 内边距，
+            椭圆会比画布还宽、两端被切掉（实测）。
+            circle 还要自己断行：它的容器是 white-space:pre，永远不折行。 */}
+        {annotate ? (
+          <Annotated kind={annotate}>
+            {circleWrap(title, titleFont, isPortrait ? undefined : CIRCLED_TEXT_WIDTH_LANDSCAPE)}
+          </Annotated>
+        ) : (
+          title
+        )}
       </div>
       <div
         style={{
