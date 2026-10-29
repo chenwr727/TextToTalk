@@ -23,7 +23,7 @@ export const QuoteScene: React.FC<SceneProps> = ({ page }) => {
         alignItems: "center",
         flexDirection: "column",
         // 标题在 top:90（绝对定位），字幕条在 925左右：两边都留出位置，正文在中间坐落
-        paddingTop: isPortrait ? sp(520) : 210,
+        paddingTop: isPortrait ? sp(300) : 210,
         paddingBottom: isPortrait ? sp(300) : 190,
       }}
     >
@@ -35,35 +35,45 @@ export const QuoteScene: React.FC<SceneProps> = ({ page }) => {
        * 观众会以为漏了标题，节奏也断掉。
        */}
       <PageHeading text={title} />
+      {/*
+       * 引号跟着正文走，不再钉在画布的固定高度上。
+       *
+       * 它曾经是正常流里的 220px 字符 + marginBottom：Georgia 的弯引号带基线偏移，
+       * 实际占掉约 300px，把正文整块顶下去。于是改成 `position:absolute; top:sp(330)`。
+       * 但正文是居中的：引号钉在绝对 y≈280，正文却在 y≈900 —— 中间 620px 空白，
+       * 成片里看起来就是一个孤零零的引号悬在半空中（实测帧 t=26s）。
+       * 现在用一个定高的 flex 容器把它放回流里：高度固定就能吸掉基线偏移，
+       * 引号与正文永远相邻，整块一起居中。
+       */}
       <div
         style={{
-          /*
-           * 引号改成装饰元素：绝对定位在正文上方。
-           *
-           * 原来它是个正常流里的 220px 字符 + `marginBottom`，Georgia 的弯引号带基线偏移，
-           * 实际占掉约 300px，把正文整块顶下去，页面上方留 328px 白、下方再留一大片。
-           */
-          position: "absolute",
-          top: isPortrait ? sp(330) : 250,
-          left: "50%",
-          transform: `translateX(-50%) scale(${interpolate(o, [0, 1], [0.6, 1], { output: "perceptual-scale" })})`,
+          height: isPortrait ? sp(132) : 150,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transform: `scale(${interpolate(o, [0, 1], [0.6, 1], { output: "perceptual-scale" })})`,
           opacity: o * 0.9,
-          color: C.accent,
-          fontSize: isPortrait ? fs(260) : 260,
-          fontWeight: FW.black,
-          fontFamily: "Georgia, serif",
-          lineHeight: 0.8,
-          textShadow: TEXT_SHADOW,
-          pointerEvents: "none",
         }}
       >
-        “
+        <span
+          style={{
+            color: C.accent,
+            fontSize: isPortrait ? fs(210) : 260,
+            fontWeight: FW.black,
+            fontFamily: "Georgia, serif",
+            lineHeight: 0.8,
+            textShadow: TEXT_SHADOW,
+            pointerEvents: "none",
+          }}
+        >
+          “
+        </span>
       </div>
       <div
         style={{
           maxWidth: isPortrait ? contentWidth * 0.94 : 1240,
           opacity: o,
-          fontSize: isPortrait ? fs(FS.hero) : FS.hero,
+          fontSize: isPortrait ? fs(Math.round(FS.hero * 1.12)) : FS.hero,
           fontWeight: FW.heavy,
           color: C.ink,
           textAlign: "center",
