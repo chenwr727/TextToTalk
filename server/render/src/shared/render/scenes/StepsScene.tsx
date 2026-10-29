@@ -12,7 +12,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const points = page.points;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const { contentTop } = useHeadingMetrics();
   const captionTexts =
@@ -24,14 +24,32 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const maxChars = Math.max(1, ...points.map((p, i) => [...pointText(p, i)].length));
   const cardW = (isPortrait ? contentWidth : 1560) / perRow;
   const stepsFs = pickCardFont(maxChars, cardW - (isPortrait ? sp(28) : 28) * 2 - 40);
+  /*
+   * 横屏原来把整组卡片放在画布里垂直居中，标题是绝对定位的，于是「标题底 → 卡片顶」
+   * 白出 200~240px（e2e 体检：`03-steps` 空洞 240px，占正文带 33%）。
+   * 现在改成从 `contentTop` 起笔，并给单行卡片一个由正文带高度推出来的行高：
+   * 卡片既贴着标题，又不会因为只有一行而缩成一条。
+   */
+  const bandH = Math.max(0, canvasH - captionReserve - contentTop);
+  const singleRow = !isPortrait && n <= perRow;
+  const rowH = singleRow ? Math.min(470, Math.round(bandH * 0.74)) : undefined;
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        // 竖屏也贴标题排：卡片只有 3 张时，原来的垂直居中会在标题下方留 400px+ 的空洞；
+        // 5 张以上单列可能排不下，这时退回居中，宁可上下留白也不要压到字幕条
+        justifyContent: isPortrait ? "center" : "flex-start",
+        alignItems: "center",
+        flexDirection: "column",
+      }}
+    >
       <PageHeading text={title} />
       <div
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`,
+          gridTemplateRows: rowH ? `${rowH}px` : undefined,
           columnGap: isPortrait ? sp(60) : 60,
           // 竖屏 4 张卡原来只隔 17px、整组像一块石板；且 marginTop 用了 212px，上方空 363px
           rowGap: isPortrait ? sp(48) : 20,
@@ -84,20 +102,24 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 >
                   {i + 1}
                 </div>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: isPortrait ? sp(18) : 18 }}>
-                  <IconTile name={pointIcon(p, i)} accent={a} size="lg" />
-                </div>
-                <div
-                  style={{
-                    fontSize: isPortrait ? fs(stepsFs) : stepsFs,
-                    fontWeight: FW.bold,
-                    color: C.ink,
-                    lineHeight: CARD_TYPE.lineHeight,
-                    fontFamily: FONT,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {pointText(p, i)}
+                {/* 卡片比内容高时（上面推出来的 `rowH`），图标+正文靠 `margin: auto 0` 在卡内垂直居中，
+                    否则会全部挤在卡片上半截 */}
+                <div style={{ marginTop: "auto", marginBottom: "auto" }}>
+                  <div style={{ display: "flex", justifyContent: "center", marginBottom: isPortrait ? sp(18) : 18 }}>
+                    <IconTile name={pointIcon(p, i)} accent={a} size="lg" />
+                  </div>
+                  <div
+                    style={{
+                      fontSize: isPortrait ? fs(stepsFs) : stepsFs,
+                      fontWeight: FW.bold,
+                      color: C.ink,
+                      lineHeight: CARD_TYPE.lineHeight,
+                      fontFamily: FONT,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {pointText(p, i)}
+                  </div>
                 </div>
               </Card>
               {showArrow && (
