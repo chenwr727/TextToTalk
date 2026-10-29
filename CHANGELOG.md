@@ -50,6 +50,7 @@
   - 用项目自己的引擎路径验证（`edgeFactory().synthToFile`）：26064 字节 mp3 / 2083ms。
 
 - **新增 `pnpm run tts:smoke`：真的合成一句，才知道引擎还活着**。这类故障在界面上只表现为"生成失败"，分不清是引擎挂了、额度没了还是网络抖了。脚本对每个已启用的引擎各合成一句，打一行结果，**默认引擎失败才返回非零**（用户实际用的就是它）。实测四种引擎：
+
   ```
   [tts:smoke] 默认引擎 edge
     ✓ edge       zh-CN-XiaoxiaoNeural 26KB 1717ms
@@ -57,6 +58,7 @@
     ✗ qwen-audio DashScope TTS HTTP 403: 该模型只能用免费额度，当前额度已用完（…）
     ✓ seedtts    zh_female_vv_uranus_bigtts 27KB 1841ms
   ```
+
   `qwen-audio`（`qwen-audio-3.0-tts-flash`）失败是账号额度问题：`AllocationQuota.FreeTierOnly`。顺手把百炼的错误码翻成人话（额度用完 / Key 无效 / 无权访问模型），否则界面上只有一串 request_id。
 
 - **Seed-TTS 在合成完成后还会写一次文件，调用方一删目录就 ENOENT 崩进程**。写这个冒烟脚本时撞出来的：`synthViaCurl` 收到结束事件后写文件并 resolve，紧接着 curl 进程 `close` 又写一次——第二次发生在调用方拿到 Promise 之后，脚本合成完就删临时目录，于是那个迟到的 `writeFileSync` 抛 `ENOENT`（`seedtts.ts:104`），整个进程退出。改成 `settled` 钉死第一次结果，后续 stdout/`close`/`error` 事件全部忽略。
