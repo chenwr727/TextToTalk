@@ -25,7 +25,7 @@ import { fileURLToPath } from "node:url";
 
 import { generateFromPlan, generateOutline } from "../src/services/storyboardGenerator.js";
 import type { TimedPage } from "../src/services/renderService.js";
-import { measureInk, auditVerdict, bodyBand, type FrameMetrics } from "../src/services/frameAudit.js";
+import { measureInk, auditVerdict, bodyBand, robustSpread, type FrameMetrics } from "../src/services/frameAudit.js";
 import { TRANSITION_FRAME_MAP } from "../../shared/types.js";
 import type { Storyboard, VideoParams } from "../src/types.js";
 
@@ -446,13 +446,21 @@ const auditMp4 = async (pages: TimedPage[], mp4: string) => {
     off += durs[i] - (next ? (TF[next.transition ?? "fade"] ?? 12) : 0);
   });
 
-  console.log("\n[e2e] 成片体检（每页 30%/60%/85% 三个时点，取中位数）…");
+  console.log("\n[e2e] 成片体检（每页 40/52/64/76/88% 五个时点，取中位数）…");
   const band = bodyBand(params.width, params.height);
   let warned = 0;
   for (let i = 0; i < pages.length; i++) {
     const label = `${String(i + 1).padStart(2, "0")}-${pages[i].layout}/${pages[i].art ?? "-"}`;
     const samples: FrameMetrics[] = [];
-    for (const frac of [0.3, 0.6, 0.85]) {
+    /*
+     * 采样窗口从 30/60/85% 改成 40〜88% 五个点。
+     *
+     * 30% 那一点还在入场动画里：实测 chart 页（12s）t=36.6s 时墨迹一直延到 y=1639，
+     * 与稳定态的 1478 差了 160px，于是同一页量出 89/71/71%，报了一条 20pp 的
+     * 「可能有装饰或动画干扰」。延到 40% 之后就稳定在 71%；五点取中位数还能吃掉
+     * 个别帧的装饰跳变（实测 75% 那一点跳到 77%，中位数仍是 71%）。
+     */
+    for (const frac of [0.4, 0.52, 0.64, 0.76, 0.88]) {
       const frame = starts[i] + Math.min(durs[i] - 2, Math.max(2, Math.round(durs[i] * frac)));
       const gray = await extractGray(mp4, frame / FPS, params.width, params.height);
       if (!gray) continue;
@@ -460,20 +468,21 @@ const auditMp4 = async (pages: TimedPage[], mp4: string) => {
     }
     if (!samples.length) continue;
     /*
-     * 取三个采样点的中位数，而不是逐点报。
+     * 取五个采样点的中位数，而不是逐点报。
      *
      * 实测：背景装饰（右下角那排竖条、大色块）在某些帧里会碰到正文带边界——
      * chart 页第 1374 帧量出 71%，第 1370 帧却是 91%（ink 一直延到 x=1079、y=1690），那是装饰不是内容。
-     * 单帧会误报，三点取中位数就稳；三点差异大时另外提一句，让人去看图。
+     * 单帧会误报，五点取中位数就稳；差异大时另外提一句，让人去看图。
      */
     const fills = samples.map((s) => s.fill).sort((a, b) => a - b);
     const median = fills[fills.length >> 1];
-    const spread = Math.round((fills[fills.length - 1] - fills[0]) * 100);
+    // 中段离散度（见 robustSpread 的注释）：只问"这页整体稳不稳"，不被单帧装饰跳变拉大
+    const spread = robustSpread(fills);
     const worstVoid = samples.reduce((best, s) => (s.voidPx > best.voidPx ? s : best), samples[0]);
     const m: FrameMetrics = { ...worstVoid, fill: median };
     if (spread > 8) {
       console.log(
-        `  ! ${label} 三个采样点差异 ${spread}pp（${fills.map((f) => Math.round(f * 100)).join("/")}%），可能有装饰或动画干扰，请看图`,
+        `  ! ${label} 五个采样点差异 ${spread}pp（${fills.map((f) => Math.round(f * 100)).join("/")}%），可能有装饰或动画干扰，请看图`,
       );
     }
     if (reportOne(label, m, params.width, params.height, portrait, pages[i].layout)) warned++;

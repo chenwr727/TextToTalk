@@ -181,6 +181,17 @@ test("auditVerdict：稀疏版式的空洞上限放宽到 25%，但大断层仍�
   assert.equal(v2.length, 0, "180px/772px = 23% 的洞在收尾页允许");
 });
 
+test("robustSpread：五个采样点取中段，一帧装饰跳变不抬高离散度", () => {
+  const spreadOf = (auditNs as unknown as { robustSpread: (f: number[]) => number }).robustSpread;
+  // 实测 chart 页的五点：71/71/71/77/71（%）—— 最后一个 77 是装饰引起的跳变
+  assert.equal(spreadOf([0.71, 0.71, 0.71, 0.77, 0.71]), 0, "中段一致，应报 0pp");
+  // 真的不稳定（12s 页在 30% 采样时还在入场动画里：89/71/71% + 两个稳定值）
+  assert.equal(spreadOf([0.89, 0.71, 0.71, 0.72, 0.71]), 1, "只剩一个异常点时中段仍稳");
+  assert.equal(spreadOf([0.89, 0.85, 0.71, 0.66, 0.55]), 19, "整体下降必须报出来");
+  assert.equal(spreadOf([0.5, 0.9]), 40, "只有两个点时退回极差");
+  assert.equal(spreadOf([0.66, 0.71, 0.77]), 11, "三个点也是极差");
+});
+
 test("AIRY_LAYOUTS：只登记封面/章节/收尾三页", () => {
   assert.deepEqual([...(audit.AIRY_LAYOUTS as ReadonlySet<string>)].sort(), ["end", "section", "title"]);
 });

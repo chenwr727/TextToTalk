@@ -155,6 +155,20 @@ export function measureInk(gray: Uint8Array, width: number, height: number, opts
   };
 }
 
+/**
+ * 多个采样点的离散度（百分点），中段口径。
+ *
+ * 为什么不用 max-min：五个采样点里只要有一个撞上装饰动画的跳变，
+ * 极差就被它一个人拉大——而那个跳变与内容多少无关。
+ * 丢掉最大最小只看中段，问的是“这页整体稳不稳”。少于五个点时退回极差。
+ */
+export function robustSpread(fills: number[]): number {
+  if (fills.length < 2) return 0;
+  const a = [...fills].sort((x, y) => x - y);
+  if (a.length >= 5) return Math.round((a[a.length - 2] - a[1]) * 100);
+  return Math.round((a[a.length - 1] - a[0]) * 100);
+}
+
 export interface AuditVerdict {
   level: "warn" | "info";
   message: string;
