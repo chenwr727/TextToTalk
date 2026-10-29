@@ -523,12 +523,21 @@ const renderStills = async (storyboard: Storyboard) => {
   });
 
   console.log(`\n[e2e] 渲染 ${pages.length} 张静帧（总帧数 ${offset}）…`);
+  let stillFailed = 0;
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
     const frame = starts[i] + Math.max(20, Math.round(((page.durationSec || 4) * FPS) / 2));
     const name = `${String(i + 1).padStart(2, "0")}-${page.layout}`;
     const outPng = path.join(outDir, `${params.theme}-${name}.png`);
     const configPath = path.join(outDir, `${name}.still.json`);
+    /*
+     * 先删旧图。
+     *
+     * 不加这一步的话，渲染失败时体检会去量上一次跑留下的那张图——
+     * 实测渲染全部失败（端口被占），体检照样打出 19% / 88% / 69% 这些数字，
+     * 看上去像"这次的结果"，其实是一小时前的旧图。失败的页宁可在体检里显示"缺静帧"。
+     */
+    rmSync(outPng, { force: true });
     writeFileSync(
       configPath,
       JSON.stringify({
@@ -546,10 +555,14 @@ const renderStills = async (storyboard: Storyboard) => {
       await runRender(configPath);
       console.log(`  ok ${name} (frame ${frame}, ${Date.now() - ts}ms)`);
     } catch (e) {
+      stillFailed++;
       console.error(`  FAIL ${name}: ${(e as Error).message}`);
     } finally {
       rmSync(configPath, { force: true });
     }
+  }
+  if (stillFailed > 0) {
+    console.error(`[e2e] ${stillFailed}/${pages.length} 页静帧渲染失败——体检会跳过这些页，别把缺的页当成"没问题"`);
   }
   console.log(`\n[e2e] 完成 -> ${outDir}`);
 };

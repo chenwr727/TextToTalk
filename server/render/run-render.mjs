@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { getCompositions, renderMedia, renderStill } from "@remotion/renderer";
@@ -99,6 +100,10 @@ const chromiumOptions = { gl: process.env.RENDER_GL || options.gl || "swiftshade
  * 可选：固定 Remotion 内部 HTTP 服务的端口。
  * Remotion 默认只在 3000-3100 之间扫描空闲端口，如果这段被别的进程占满就会直接报
  * "No available ports found"。可用 options.port 或环境变量 REMOTION_PORT 指定。
+ *
+ * 另外还有自动兜底（见 main 里的 catch）：这一段真的不可用时会自己挑一个端口重试一次。
+ * 实测踩过的两种情况——端口 3000 被一个 Next.js dev server 占着（很常见），
+ * 以及 Windows 上 3001~3800 被 Hyper-V 预留（listen 直接 EACCES），两种情况下扫描全失败。
  */
 const desiredPort = (() => {
   const fromOptions = Number(options.port);
@@ -109,20 +114,80 @@ const desiredPort = (() => {
 })();
 const portOption = desiredPort ? { port: desiredPort } : {};
 
+/**
+ * 找一个"Remotion 也认为是空闲"的端口。
+ *
+ * 必须复刻 Remotion 的判据：它对 hostsToTry 里每个地址都要能 listen 成功才算空闲
+ * （`::1`、`127.0.0.1`、`::`、`0.0.0.0`）。只测 127.0.0.1 是不够的——
+ * 实测本机 3000 在 0.0.0.0 上可用，但 `::` 上被占用，Remotion 就判成不可用。
+ */
+const PORT_HOSTS = ["::1", "127.0.0.1", "::", "0.0.0.0"];
+const PORT_CANDIDATES = [
+  ...range(3000, 3100),
+  ...range(4200, 4300),
+  ...range(8800, 8900),
+  ...range(9000, 9100),
+  ...range(12000, 12100),
+];
+
+function range(from, to) {
+  const out = [];
+  for (let p = from; p <= to; p++) out.push(p);
+  return out;
+}
+
+function freeOnHost(host, port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.unref();
+    server.on("error", () => resolve(false));
+    server.listen({ port, host }, () => server.close(() => resolve(true)));
+  });
+}
+
+async function pickFreePort() {
+  for (const port of PORT_CANDIDATES) {
+    if (await freeOnHost(PORT_HOSTS[0], port)) {
+      let ok = true;
+      for (const host of PORT_HOSTS.slice(1)) {
+        if (!(await freeOnHost(host, port))) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) return port;
+    }
+  }
+  return null;
+}
+
 async function main() {
+  try {
+    await run(portOption);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (desiredPort || !/No available ports found/i.test(message)) throw err;
+    const port = await pickFreePort();
+    if (!port) throw err;
+    console.log(`[render] 3000-3100 没有可用端口（被占用或被系统预留），改用 ${port} 重试一次`);
+    await run({ port });
+  }
+}
+
+async function run(portOpts) {
   const browserExecutable = await resolveBrowser();
   console.log(
     browserExecutable
       ? `[render] 使用浏览器: ${browserExecutable}`
       : "[render] 未找到系统浏览器，将使用 Remotion 内置 Headless Shell",
   );
-  if (desiredPort) console.log(`[render] 固定端口: ${desiredPort}`);
+  if (portOpts.port) console.log(`[render] 固定端口: ${portOpts.port}`);
   const compositions = await getCompositions({
     serveUrl,
     inputProps,
     browserExecutable,
     chromiumOptions,
-    ...portOption,
+    ...portOpts,
   });
   const composition = compositions.find((c) => c.id === compositionId);
   if (!composition) {
@@ -151,7 +216,7 @@ async function main() {
       browserExecutable,
       chromiumOptions,
       onBrowserLog,
-      ...portOption,
+      ...portOpts,
     });
     console.log("Rendered still 1/1");
     return;
@@ -174,7 +239,7 @@ async function main() {
     chromiumOptions,
     logLevel: "warn",
     forceIPv4: options.forceIPv4 !== false,
-    ...portOption,
+    ...portOpts,
     concurrency: Number.isFinite(conc) && conc > 0 ? conc : undefined,
     scale: Number.isFinite(scale) && scale > 0 ? scale : undefined,
     x264Preset: options.x264Preset || undefined,
