@@ -1,18 +1,5 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
-import {
-  alpha,
-  C,
-  FONT,
-  FS,
-  FW,
-  LH,
-  RADIUS,
-  accentOf,
-  SPACE,
-  tileShadow,
-  springIn,
-  pickCardFont,
-} from "../theme";
+import { alpha, C, FONT, FS, FW, LH, RADIUS, accentOf, SPACE, tileShadow, springIn, pickCardFont } from "../theme";
 import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
@@ -57,9 +44,7 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const vsSize = isPortrait ? sp(96) : 96;
   const cardGap = isPortrait ? sp(24) : 36;
-  const cardW = isPortrait
-    ? contentWidth
-    : Math.min(760, Math.floor((contentWidth - vsSize - cardGap * 2) / 2));
+  const cardW = isPortrait ? contentWidth : Math.min(760, Math.floor((contentWidth - vsSize - cardGap * 2) / 2));
 
   const compareItems = sides ? [...leftItems.slice(skipFirst), ...rightItems.slice(skipFirst)] : items.slice(skipFirst);
   const maxItemLen = Math.max(1, ...compareItems.map((p) => [...pointText(p, 0)].length));
@@ -101,7 +86,15 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   for (let guard = 0; guard < 20 && neededH(itemFs + 2) <= bandH * 0.94 * 0.88 && itemFs < 52; guard++) {
     itemFs += 2;
   }
-  const cardH = Math.max(neededH(itemFs), Math.min(bandH * 0.94, neededH(itemFs) * 1.35));
+  /*
+   * 卡片高度上限：横屏 1.35 倍内容高，竖屏只给 1.18 倍。
+   *
+   * 卡片里是 space-between，富余高度全摊成条目间距。竖屏两张卡上下叠、每张 2 条要点时，
+   * 1.35 倍意味着卡高 470、两条要点一条贴着卡头一条贴着卡底，**中间空 150px+**——看着像
+   * 两条要点不属于同一张卡。收窄到 1.18 后间距回到 ~70px，仍比贴着紧凑好看。
+   */
+  const stretch = isPortrait ? 1.18 : 1.35;
+  const cardH = Math.max(neededH(itemFs), Math.min(bandH * 0.94, neededH(itemFs) * stretch));
 
   const tA = resolveAnchor(timing, leftItems[0] ? pointAnchor(leftItems[0]) : undefined, 0, 8);
   const tB = resolveAnchor(timing, rightItems[0] ? pointAnchor(rightItems[0]) : undefined, 1, 22);

@@ -41,11 +41,25 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const CARD_PAD = isPortrait ? sp(CARD_TYPE.padX) : CARD_TYPE.padX;
   const CARD_PAD_Y = isPortrait ? sp(CARD_TYPE.padY) : CARD_TYPE.padY;
   const ARROW_W = isPortrait ? sp(52) : 52;
-  const ROW_GAP = isPortrait ? sp(CARD_TYPE.gapY) : CARD_TYPE.gapY;
-  const SIDE_PAD = isPortrait ? sp(90) : 90;
+  /*
+   * 竖屏一列一张卡，卡与卡之间要留出一个箭头的位置。
+   *
+   * 原来直接用 gapY（约 24px），而箭头只在横排时才画（perRow=1 时
+   * `(i+1)%perRow===0` 恒成立 → 箭头全部被关掉），三张卡变成三块无关联的色块，
+   * "flow"这个语义完全丢了。现在行间距拉到能放下竖向箭头。
+   */
+  const ROW_GAP = isPortrait ? sp(64) : CARD_TYPE.gapY;
+  const SIDE_PAD = isPortrait ? sp(20) : 90;
   const availW = isPortrait ? contentWidth : 1920 - SIDE_PAD * 2;
   const MIN_NODE_W = isPortrait ? sp(150) : 150;
-  const MAX_NODE_W = isPortrait ? sp(560) : 560;
+  /*
+   * 竖屏卡片的宽度上限。
+   *
+   * 原来写 sp(560)≈476：内容区 952px 宽，卡片只用了一半，左右各留 240px。实测帧里三张
+   * 卡 x 只有 305..780（50% 宽），而卡片高度却是满档 470 —— 又窄又高的长方体，文字在
+   * 中间一小团。竖屏一列一张卡，宽度就该用满，高度反而要收（见下面的 cardH）。
+   */
+  const MAX_NODE_W = isPortrait ? Math.max(MIN_NODE_W, availW) : 560;
   const MAX_PER_ROW = isPortrait ? 4 : 8;
   const MAX_ROWS = isPortrait ? 6 : 3;
 
@@ -73,8 +87,18 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 只占可用带（760px）的 26%：上面空 256px、下面空 304px，一页四片"贴着说明文字的色块"。
    * 改成按可用高度的 62% 兜底（≈300px），文字也跟着放大，卡片才有内容感。
    */
+  /*
+   * 竖屏一列卡：宽度已经用满（上面 MAX_NODE_W），高度就不能再吃满档。
+   *
+   * 原来 `cardH = maxCardH`：三张卡各 500px 高、文字只有两三行且垂直居中，看起来是三块
+   * 巨大的色板中间浮着一小团字。改成「按内容定高，但至少占行带 62%、最多 1.15 倍内容高」
+   * —— 三张 310 高的卡 + 间距总高约 990，占可画区 66%，也不再有大片色块。
+   */
   const cardH = isPortrait
-    ? maxCardH
+    ? Math.min(
+        maxCardH,
+        Math.max(Math.round(maxCardH * 0.5), Math.round((Math.max(ICON_BLOCK, textH) + V_PAD) * 1.15)),
+      )
     : Math.min(Math.max(Math.round(maxCardH * 0.62), Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
   const iconSize = isPortrait ? sp(CARD_TYPE.iconSize) : CARD_TYPE.iconSize;
   const ICON_GAP = isPortrait ? sp(16) : 16;
@@ -98,7 +122,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           {list.map((it, i) => {
             const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
             const a = accentOf(i);
-            const showArrow = i < n - 1 && (i + 1) % perRow !== 0;
+            const showArrow = i < n - 1 && (isPortrait || (i + 1) % perRow !== 0);
             return (
               <div
                 key={i}
@@ -124,7 +148,8 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     boxShadow: SOLID_SHADOW,
                     display: "flex",
                     flexDirection: "row",
-                    alignItems: "flex-start",
+                    /* 竖屏卡片又宽又矮，图标和文字共一条中线才不显得悬空；横屏仍顶部对齐（多行文字要从上往下读） */
+                    alignItems: isPortrait ? "center" : "flex-start",
                     justifyContent: "flex-start",
                     gap: ICON_GAP,
                     overflow: "hidden",
@@ -174,20 +199,20 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   <div
                     style={{
                       position: "absolute",
-                      left: "100%",
-                      top: 0,
-                      bottom: 0,
-                      width: ARROW_W,
+                      ...(isPortrait
+                        ? { left: 0, right: 0, top: "100%", height: ROW_GAP }
+                        : { left: "100%", top: 0, bottom: 0, width: ARROW_W }),
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                     }}
                   >
                     <svg
-                      width={Math.round(ARROW_W * 0.62)}
-                      height={isPortrait ? sp(28) : 28}
+                      width={isPortrait ? sp(26) : Math.round(ARROW_W * 0.62)}
+                      height={isPortrait ? sp(26) : 28}
                       viewBox="0 0 40 24"
                       fill="none"
+                      style={isPortrait ? { transform: "rotate(90deg)" } : undefined}
                     >
                       <path d="M2 12 H30" stroke={a} strokeWidth={4} strokeLinecap="round" />
                       <path

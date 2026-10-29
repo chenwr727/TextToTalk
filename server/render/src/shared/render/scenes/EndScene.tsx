@@ -15,13 +15,23 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
   const t0 = timing.frameAt(0);
   const o = springIn(f, fps, t0 + 8, page.motion);
   const check = springIn(f, fps, t0, page.motion);
+  /*
+   * 竖屏收尾页整体放大一档。
+   *
+   * 竖屏这一页只有「圆章 + 标题 + 三条要点」，原来按横屏尺寸居中摆放，实测正文只占
+   * y 704..1201 —— 498px，等于**画面 34%**，上下各空 700px，像一页没加载完的封面。
+   * 竖屏有 1480px 的可画高度，这个内容量就该撑到 50%+：圆章 90→124、标题再放 15%、
+   * 要点增高加间距。要点条数多（>4 条）时不放大，避免溢出。
+   */
+  const roomy = isPortrait && points.length <= 4;
+  const markSize = roomy ? sp(152) : sp(90);
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
       <div
         style={{
-          marginBottom: sp(34),
-          width: sp(90),
-          height: sp(90),
+          marginBottom: roomy ? sp(46) : sp(34),
+          width: markSize,
+          height: markSize,
           borderRadius: "50%",
           background: C.accent,
           display: "flex",
@@ -47,7 +57,7 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
             const base = isPortrait ? fs(FS.display - 8) : FS.display - 8;
             const chars = Array.from(title).length;
             const k = chars > 20 ? 0.68 : chars > 12 ? 0.82 : 1;
-            return Math.round(base * k);
+            return Math.round(base * k * (roomy ? 1.22 : 1));
           })(),
           fontWeight: FW.heavy,
           color: C.ink,
@@ -65,9 +75,9 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "center",
-          gap: sp(26),
-          rowGap: sp(20),
-          marginTop: sp(44),
+          gap: roomy ? sp(22) : sp(26),
+          rowGap: roomy ? sp(34) : sp(20),
+          marginTop: roomy ? sp(64) : sp(44),
           maxWidth: isPortrait ? contentWidth : 1680,
           fontSize: isPortrait ? fs(FS.body) : FS.body,
           color: C.sub,
@@ -81,7 +91,7 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
               display: "inline-block",
               background: alpha(C.accent, 10),
               color: C.ink,
-              padding: `${sp(10)}px ${sp(22)}px`,
+              padding: `${roomy ? sp(26) : sp(10)}px ${roomy ? sp(32) : sp(22)}px`,
               borderRadius: RADIUS.pill,
               boxShadow: DOT_SHADOW,
             }}

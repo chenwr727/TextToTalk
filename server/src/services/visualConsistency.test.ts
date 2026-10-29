@@ -116,11 +116,7 @@ test("竖屏的横向流程图必须重排成竖列，而不是等比缩小", ()
   const src = read("shared/render/scenes/CustomSvgScene.tsx");
   // 3.2:1 的流程示意图塞进 9:16 后，宽度用满 → 图形只有 ~200px 高（占画布 7%），
   // 再怎么调缩放都填不上，因为纵横比是死的。真正的解法是换组织方式。
-  assert.match(
-    src,
-    /export function buildPortraitChain\(/,
-    "竖屏重排逻辑应抽成可测试的纯函数 buildPortraitChain",
-  );
+  assert.match(src, /export function buildPortraitChain\(/, "竖屏重排逻辑应抽成可测试的纯函数 buildPortraitChain");
   assert.match(
     src,
     /isPortrait \? buildPortraitChain\(spec, portraitBand\)/,
@@ -131,11 +127,7 @@ test("竖屏的横向流程图必须重排成竖列，而不是等比缩小", ()
     /chain \? \{ scale: 1, tx: 0, ty: 0 \} : computeFitTransform\(spec, safe\)/,
     "识别成链后不再叠加 fit 变换（坐标已是画布坐标）",
   );
-  assert.match(
-    src,
-    /portraitSafeH\(spec, w, portraitBand\.h\)/,
-    "识别不了链的复杂图必须退回等比缩放",
-  );
+  assert.match(src, /portraitSafeH\(spec, w, portraitBand\.h\)/, "识别不了链的复杂图必须退回等比缩放");
   // 复杂图放弃重排的三个闸门，少一个就会把多行图排错
   assert.match(src, /if \(cols\.length < 2 \|\| cols\.length > 4\) return null/, "列数超出范围应放弃重排");
   assert.match(src, /if \(cols\[c\]\.minX < cols\[c - 1\]\.maxX\) return null/, "列之间不允许重叠");
@@ -158,4 +150,36 @@ test("字幕字号独立于正文缩放（竖屏上前者要更大）", () => {
     /const fSize = Math\.round\(m\.fontSize \* \(isPortrait \? 0\.92 : 1\)\)/,
     "字幕预留高度必须与字幕字号用同一口径，否则正文给字幕让位的空间会算错",
   );
+});
+
+/**
+ * 竖屏流程图的箭头曾经整排消失。
+ *
+ * FlowScene 的 `showArrow = i < n-1 && (i+1) % perRow !== 0` 是给横排去尾用的；竖屏
+ * `perRow` 恒为 1，`(i+1)%1` 恒等于 0 —— 于是一条箭头都不画，三张卡堆成三块无关的
+ * 色块，"flow"这个语义彻底丢了（实测帧里卡片之间干干净净）。箭头必须按方向分别判断。
+ */
+test("竖屏 flow 也要画箭头，且画在卡片下方而不是右侧", () => {
+  const src = read("shared/render/scenes/SmartArt.tsx");
+  assert.match(
+    src,
+    /const showArrow = i < n - 1 && \(isPortrait \|\| \(i \+ 1\) % perRow !== 0\)/,
+    "竖屏又把箭头关了（perRow=1 时会全部被截断），卡片之间不再有流向",
+  );
+  assert.match(
+    src,
+    /isPortrait\s*\? \{ left: 0, right: 0, top: "100%", height: ROW_GAP \}/,
+    "竖屏箭头必须落在卡片下方的行间距里",
+  );
+});
+
+/**
+ * 竖屏一列卡片的宽度上限。
+ *
+ * 原来 MAX_NODE_W 写死 sp(560)≈476，而内容区有 952 —— 卡片只用一半宽、却吃满行高，
+ * 三张"又窄又高的长方体"，文字在中间一小团（实测卡片 x 305..780、高 470）。
+ */
+test("竖屏流程卡片宽度要用满内容区", () => {
+  const src = read("shared/render/scenes/SmartArt.tsx");
+  assert.match(src, /const MAX_NODE_W = isPortrait \? Math\.max\(MIN_NODE_W, availW\) : 560/);
 });
