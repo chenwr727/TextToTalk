@@ -37,14 +37,22 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const s = interpolate(f, [t0, t0 + 26], [0.86, 1], { extrapolateRight: "clamp", output: "perceptual-scale" });
 
   const titleChars = Array.from(title).length;
-  // 竖屏字号整体上一档：9 字标题原来只用 56px，在 1080 宽画布上只占 470px，
-  // 首页主标题反而比内页标题（PageHeading）还小。
+  /*
+   * 竖屏字号：不再按字数分三档猜，而是**先算一行能放多大**，放得下就不折行。
+   *
+   * 分档那套的老问题：76/56/44 是按横屏字数划的，竖屏画布窄，15~16 字正好卡在
+   * "56 能一行、再大一档就折两行"的边界。实测 16 字标题
+   * （周报没人看，是因为你写成了流水账）在 62px 下折成
+   * 「周报没人看，是因 / 为你写成了流水账」——把"因为"劈开，中文没有词边界，
+   * `text-wrap: balance` 也救不了这种断法。
+   *
+   * 现在：可用宽 960px（div 限宽 92% = 994，留 34px 余量）、扣掉 1px 字间距，
+   * 算出单行最大字号，封顶 92（10 字 = 929px）。算下来 ≤16 字都能一行放下；
+   * 再长就维持 59px 折行（59 比原来的 44 大一档，25 字从 3 行变 2 行）。
+   */
+  const fitOne = Math.floor((960 - (titleChars - 1)) / Math.max(1, titleChars));
   const titleFontSize = isPortrait
-    ? titleChars > 18
-      ? 44
-      : titleChars > 14
-        ? 56
-        : 76
+    ? Math.max(59, Math.min(92, fitOne))
     : titleChars > 18
       ? 64
       : titleChars > 14
@@ -61,10 +69,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   );
   // 下划线跟正文等宽：写死的 680 封顶会让 9 字标题（实测 795px）的
   // 下划线只有 672px，短一截。
-  const underlineW = Math.min(
-    isPortrait ? contentWidth * 0.94 : 1700,
-    Math.max(220, titleVisualWidth * 0.97),
-  );
+  const underlineW = Math.min(isPortrait ? contentWidth * 0.94 : 1700, Math.max(220, titleVisualWidth * 0.97));
   const titleLineHeight = LH.tight;
 
   const typedChars = Math.floor(
@@ -136,7 +141,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           viewBox={`0 0 ${underlineW} 22`}
           preserveAspectRatio="none"
           // 6px 贴着字底读起来像删除线，14px 才是下划线的感觉
-          style={{ marginTop: 14, opacity: o }}
+          style={{ marginTop: isPortrait ? 18 : 14, opacity: o }}
         >
           {page.effects?.pathDraw ? (
             <UnderlinePath w={underlineW} progress={springIn(f, fps, t0 + 10, page.motion)} color={C.accent} />
@@ -155,12 +160,12 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       {subPoints.length > 0 && (
         <div
           style={{
-            marginTop: sp(40),
+            marginTop: sp(isPortrait ? 68 : 40),
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: sp(18),
+            gap: sp(isPortrait ? 30 : 18),
             width: isPortrait ? contentWidth : 1500,
           }}
         >
@@ -171,7 +176,8 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             const itemO = springIn(f, fps, delay, page.motion);
             const ac = accentOf(i);
             const len = [...text].length;
-            const base = isPortrait ? fs(FS.body) : FS.heading;
+            // 竖屏要点跟着标题一起放大一档（原来比标题小一大截，封面读起来像注释）
+            const base = isPortrait ? fs(FS.body) * 1.1 : FS.heading;
             const fsItem = Math.round(base * (len <= 18 ? 1 : len <= 26 ? 0.92 : 0.84));
             return (
               <div
@@ -179,7 +185,7 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  padding: `${sp(14)}px ${sp(34)}px`,
+                  padding: `${sp(isPortrait ? 20 : 14)}px ${sp(isPortrait ? 40 : 34)}px`,
                   background: GLASS.pill,
                   border: `${BORDER.card}px solid ${alpha(ac, 33)}`,
                   borderRadius: RADIUS.pill,
