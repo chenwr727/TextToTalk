@@ -129,6 +129,21 @@ describe("pagePrompt（Pass 2 逐页展开）", () => {
     const p = pagePrompt(1, "u", "o", "p", "", { layout: "chart", chart: true }, params(), undefined, 3);
     assert.ok(p.includes("type 从 8 种选"));
   });
+
+  /**
+   * anchor 的提示词曾经写的是「第 k 条要点默认锚定到第 k 条字幕」，模型老老实实照做，
+   * 所有要点全被拖到各自字幕开讲——一句字幕常占掉半页，成片前半程只有 1/3 个节点，
+   * 看着像渲染缺内容（实测 9 秒环形页第三个节点到页内 58% 才出现）。
+   * 渲染端已改成「没 anchor 就走页首节奏」，提示词必须同步，否则又被绕回去。
+   */
+  test("anchor 是例外而不是默认：不得再教模型逐条锚定", () => {
+    const p = pagePrompt(1, "u", "o", "p", "", { layout: "points" }, params(), undefined, 3);
+    assert.ok(!p.includes("默认锚定到第 k 条字幕"), "不能再要求第 k 条要点锚定第 k 条字幕");
+    assert.ok(!p.includes("强烈建议显式给出"), "不能再把 anchor 说成默认动作");
+    assert.ok(p.includes("绝大多数要点不要写 anchor"));
+    assert.ok(p.includes("一页最多 1~2 个要点带 anchor"));
+    assert.ok(!p.includes('"anchor":0'), "JSON 样例不应示范 anchor，否则模型照抄");
+  });
 });
 
 describe("fallbackPrompt（兜底直出）", () => {

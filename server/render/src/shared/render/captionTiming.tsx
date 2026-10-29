@@ -17,14 +17,27 @@ export interface SceneTiming {
 export const SceneTimingContext = createContext<SceneTiming | null>(null);
 
 /**
+ * 元素入场的"最后期限"：页内多少比例之前必须全部到场。
+ *
+ * 这条线存在的理由（实测）：元素原来一律跟字幕绑入场，而一句字幕占掉一整页的一半是
+ * 常态。9 秒的环形页两句字幕 -> 第三个节点在页内约 58% 才出现；折叠流程页三张卡里
+ * 第三张同理。于是**成片前半程是缺斤少两的**：环形图只有 1/3 个节点、旁边一片空白，
+ * 观众读到的是"内容缺失/渲染坏了"，而不是"还没长出来"。
+ *
+ * 更糟的是看不出来：`previewCaptureFrames` 取页内 75% 出预览图，预览永远是完整的。
+ *
+ * 所以规则改成：**只有模型显式给了 anchor 的元素才跟字幕严格对齐**，其余元素走
+ * 页首节奏（第 i 个在 baseDelay + i*stagger 帧入场），并由这条线封顶。
+ */
+export const REVEAL_DEADLINE = 0.45;
+
+/**
  * 把「元素序号 / 字幕序号」映射为入场帧。
  *
  * 核心规则：
- * 1. 有 anchor 且在字幕范围内 -> 用该句字幕的起始帧（画面与解说对齐）。
- * 2. 有 anchor 但超出字幕条数 -> 不再全部堆到最后一帧，而是从最后一句字幕起，
- *    按 index * stagger 向后依次错开（避免多个元素同时弹出）。
- * 3. 没 anchor 时：用第 fi 个字幕的起始帧；若 fi 超出字幕，则在最后一句字幕
- *    基础上按 stagger 递延，保证依然有先后节奏而不是挤在同一帧。
+ * 1. 有 anchor 且在字幕范围内 -> 用该句字幕的起始帧（画面与解说对齐，这是 anchor 的用途）。
+ * 2. 有 anchor 但超出字幕条数 -> 退回页首节奏（按 index * stagger 错开）。
+ * 3. 没 anchor -> 页首节奏，且封顶在页内 REVEAL_DEADLINE 之前（见上）。
  */
 export const resolveAnchor = (
   timing: SceneTiming,
@@ -35,14 +48,8 @@ export const resolveAnchor = (
 ): number => {
   const n = timing.captions.length;
   if (!n) return timing.frameAt(fi, bd, st);
-  if (anchor !== undefined) {
-    if (anchor < n) return timing.captions[anchor].startFrame;
-    const last = timing.captions[n - 1].startFrame;
-    return last + (anchor - n + 1) * st;
-  }
-  if (fi < n) return timing.captions[fi].startFrame;
-  const last = timing.captions[n - 1].startFrame;
-  return last + (fi - n + 1) * st;
+  if (anchor !== undefined && anchor < n) return timing.captions[anchor].startFrame;
+  return timing.frameAt(fi, bd, st);
 };
 
 export const useSceneTiming = (): SceneTiming => {

@@ -1,7 +1,12 @@
 import { AbsoluteFill, Sequence, interpolate, useCurrentFrame } from "remotion";
 import { IconView } from "../shared/render/Icon";
 import { CaptionSentence, AudioSentence } from "../components/Caption";
-import { SceneTimingContext, type SceneTiming, type CaptionTiming } from "../shared/render/captionTiming";
+import {
+  REVEAL_DEADLINE,
+  SceneTimingContext,
+  type SceneTiming,
+  type CaptionTiming,
+} from "../shared/render/captionTiming";
 import { accentVars } from "../shared/render/theme";
 import { AnnotationContext } from "../shared/render/annotation";
 import type { PageBodyProps } from "../shared/render/scenes/types";
@@ -14,16 +19,19 @@ const RHYTHM_STAGGER: Record<string, number> = { dense: 12, anchor: 24, breathin
 const DEFAULT_STAGGER = 20;
 
 /**
- * 构造「序号 -> 入场帧」映射。当元素数多于字幕句数时，超出部分从最后一句字幕
- * 起按 stagger 依次错开，避免所有元素在同一帧同时弹出（画面看起来是一次性糊上来）。
+ * 构造「序号 -> 入场帧」映射。
+ *
+ * 历史上这里把序号映射到第 i 句字幕的起始帧，好处是画面对齐解说，代价是**页面在前半程
+ * 是残缺的**（一句字幕常占掉半页，第三个元素就到页内 58% 才出场）。现在改成页首节奏 +
+ * 封顶：`baseDelay + index * stagger`，并且不晚于页内 `REVEAL_DEADLINE`。真正需要"跟这句
+ * 解说一起出现"的元素由模型/AI 给 `anchor` 显式指定，走 resolveAnchor 的字幕分支。
  */
 const buildFrameAt =
-  (captions: CaptionTiming[], fallbackStagger: number) =>
+  (fallbackStagger: number, pageFrames: number) =>
   (index: number, baseDelay = 0, stagger = fallbackStagger): number => {
-    const n = captions.length;
-    if (!n) return baseDelay + index * stagger;
-    if (index < n) return captions[index].startFrame;
-    return captions[n - 1].startFrame + (index - n + 1) * stagger;
+    const start = baseDelay + index * stagger;
+    if (!pageFrames) return start;
+    return Math.min(start, Math.round(pageFrames * REVEAL_DEADLINE));
   };
 
 export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirst, Scene }) => {
@@ -47,7 +55,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
       captions.push({ startFrame: off, endFrame: off + dur, text: s.text });
       off += dur + gapFrames;
     }
-    timing = { captions, pageFrames, stagger, frameAt: buildFrameAt(captions, stagger) };
+    timing = { captions, pageFrames, stagger, frameAt: buildFrameAt(stagger, pageFrames) };
   } else if (page.captions.length) {
     const step = Math.round(pageFrames / page.captions.length);
     const captions: CaptionTiming[] = page.captions.map((c, i) => ({
@@ -55,14 +63,9 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
       endFrame: (i + 1) * step,
       text: c,
     }));
-    timing = { captions, pageFrames, stagger, frameAt: buildFrameAt(captions, stagger) };
+    timing = { captions, pageFrames, stagger, frameAt: buildFrameAt(stagger, pageFrames) };
   } else {
-    timing = {
-      captions: [],
-      pageFrames,
-      stagger,
-      frameAt: (index, baseDelay = 0, st = stagger) => baseDelay + index * st,
-    };
+    timing = { captions: [], pageFrames, stagger, frameAt: buildFrameAt(stagger, pageFrames) };
   }
 
   // effects.threeD：整页 3D 翻转入场（rotateY + 轻微推远），交给父层 perspective 才有效的
