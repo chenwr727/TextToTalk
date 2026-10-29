@@ -7,12 +7,13 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test --test-isolation=none \"src/services/*.test.ts\""
+    "test": "node --import tsx --test --test-isolation=none \"src/services/*.test.ts\"",
+    "tts:smoke": "tsx scripts/tts-smoke.mts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
     "fastify": "^5.12.0",
-    "msedge-tts": "^2.0.7",
+    "msedge-tts": "^2.1.1",
     "playwright-core": "^1.49.1",
     "tsx": "4.19.1"
   },

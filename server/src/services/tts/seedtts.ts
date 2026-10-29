@@ -79,16 +79,31 @@ function synthViaCurl(body: string, headers: Record<string, string>, outPath: st
     let stderr = "";
     let buffer = "";
     const handleLine = parseNdjsonStream((buf) => chunks.push(buf));
+    /*
+     * 只落地一次。
+     *
+     * 之前两条路径都会写文件：先收到结束事件（20000000）时 `handleLine` 写一次并 resolve，
+     * 紧接着 curl 进程 close 又写一次。第二次写入发生在调用方拿到 Promise 之后——
+     * 冒烟脚本合成完就删临时目录，于是那个迟到的 writeFileSync 直接 ENOENT 崩掉整个进程
+     * （`server/src/services/tts/seedtts.ts:104`）。用 settled 钉死第一次结果，后续事件全部忽略。
+     */
+    let settled = false;
+    const finish = (write: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (write) writeFileSync(outPath, Buffer.concat(chunks));
+      resolve();
+    };
 
     child.stdout.on("data", (d: Buffer) => {
       buffer += d.toString("utf8");
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
       for (const line of lines) {
+        if (settled) return;
         if (handleLine(line)) {
           child.kill();
-          writeFileSync(outPath, Buffer.concat(chunks));
-          resolve();
+          finish(true);
           return;
         }
       }
@@ -98,13 +113,18 @@ function synthViaCurl(body: string, headers: Record<string, string>, outPath: st
       stderr += d.toString("utf8");
     });
 
-    child.on("error", (err) => reject(new Error(`Seed-TTS curl 启动失败: ${err.message}`)));
+    child.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(`Seed-TTS curl 启动失败: ${err.message}`));
+    });
     child.on("close", (code) => {
+      if (settled) return;
       if (chunks.length) {
-        writeFileSync(outPath, Buffer.concat(chunks));
-        resolve();
+        finish(true);
         return;
       }
+      settled = true;
       reject(new Error(`Seed-TTS curl 失败 (exit ${code}): ${stderr.slice(0, 300)}`));
     });
   });
