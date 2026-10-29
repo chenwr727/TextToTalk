@@ -265,33 +265,35 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     : Math.min(900 - nodeW / 2 - 30, Math.max(RY + 120, nodeW / 2 + 105));
 
   /*
-   * 竖屏改正圆。
+   * 竖屏环：横半径用可用宽度，竖半径最多拉到 1.3 倍。
    *
-   * 宽约 610、高约 1200 的扁椭圆（RX 305 / RY 600）把三个节点摆成「一个在最上、
-   * 两个在中下方」，中间留出 650px 的空白蛋形，底部还有一整段没用上的虚线弧
-   * ——读起来像一个撑满整页的鬼影，而不是一个「循环」。改成正圆后整个图形缩成
-   * 一个紧凑单元（直径约 660），空白蛋形随之消失。
+   * 原来是 RX 305 / RY 600（1:2）的扁椭圆：三个节点被甩到「一个最上、两个中下」，
+   * 中间空出 650px 的空白蛋形，底部还有一整段没用上的虚线弧——读起来像一个撑满
+   * 整页的鬼影。纯正圆（R=330）虽然形状干净，但环只剩 660 高，纵向占 43% 又太瘪。
+   * 折中：横半径 = 可用宽度半径，竖半径 = min(可用高度半径, 1.3 × 横半径)。
+   * 节点随之分布在 330×429 的椭圆上，环高约 860（占可画区 57%），既是「环」又不像蛋。
    */
   const R = isPortrait ? Math.min(RX, RY) : 0;
+  const RYc = isPortrait ? Math.min(RY, R * 1.3) : RY;
 
   return (
     <AbsoluteFill>
       <PageHeading text={title} />
       <svg
         width={(isPortrait ? R : RX) * 2}
-        height={(isPortrait ? R : RY) * 2}
+        height={(isPortrait ? RYc : RY) * 2}
         style={{
           position: "absolute",
           left: CX - (isPortrait ? R : RX),
-          top: CY - (isPortrait ? R : RY),
+          top: CY - (isPortrait ? RYc : RY),
           opacity: 0.5,
         }}
       >
         <ellipse
           cx={isPortrait ? R : RX}
-          cy={isPortrait ? R : RY}
+          cy={isPortrait ? RYc : RY}
           rx={(isPortrait ? R : RX) - 6}
-          ry={(isPortrait ? R : RY) - 6}
+          ry={(isPortrait ? RYc : RY) - 6}
           fill="none"
           stroke={C.accent}
           strokeOpacity={0.7}
@@ -334,7 +336,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       {list.map((it, i) => {
         const a = (i / Math.max(1, list.length)) * Math.PI * 2 - Math.PI / 2;
         const x = CX + Math.cos(a) * (isPortrait ? R : RX);
-        const y = CY + Math.sin(a) * (isPortrait ? R : RY);
+        const y = CY + Math.sin(a) * (isPortrait ? RYc : RY);
         const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
         const ac = accentOf(i);
         return (
