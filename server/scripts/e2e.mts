@@ -106,6 +106,14 @@ const main = async () => {
     };
     console.log("[e2e] 复用上次生成的分镜，跳过模型调用");
     await renderStills(saved.storyboard);
+    /*
+     * 复用时也要体检。
+     *
+     * 漏掉这一步的后果实测过：连跑三轮"复用分镜调渲染"，控制台里全是 `ok 0X-xxx`，
+     * 一条 fill/空洞都没有——等于零反馈盲调。合成路径（第 3 步）本来就是 render + audit 成对的，
+     * 这里必须一样。
+     */
+    await auditStills(saved.storyboard);
     await renderMp4(saved.storyboard);
     return;
   }

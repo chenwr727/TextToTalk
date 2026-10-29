@@ -45,6 +45,13 @@
 
 ### 修复
 
+- **`E2E_REUSE=1` 复跑静帧时不做体检**。复用分支只调 `renderStills` + `renderMp4`，漏了 `auditStills`，而生成路径是 render + audit 成对的。后果是"复用同一个分镜反复调渲染"时控制台只有 `ok 0X-xxx`、一条 fill/空洞都没有——零反馈盲调（本轮为了验证探针连跑三轮才发现，正好自己撞上）。现在两条路径都会体检。
+
+- **试过「让渲染端把 DOM 几何报回来」替代像素推算，验证失败后撤回**。上一节留的结论是"要判断卡片从哪一行开始，得让 DOM 自己说"，于是加了 `BodyProbe`（`PageHeading` / 字幕条打 `data-role`，`PageBody` 每帧 `console.log` 一条 `TTT_BODY`，`renderStill` 用 `browserLogPath` 落文件，e2e 读回来标"正文顶离正文带顶有多远"）。
+  - **在 `renderStill` 里量不出几何**：Remotion 渲静帧时把画布摆在 `y=-999999`、容器**高度是 0**，实测场景根 `offsetHeight = 0`、`getBoundingClientRect().height = 0`；连带画布**宽度也是 0**，标题因为按 1 列折行量出 461px 高（真实约 110）。`rect.top - rootRect.top` 只能拿到近似的竖向位移，横向完全不可信。
+  - 试过三种口径都不成立：`offsetTop` 累加（`bodyTop` 恒为 null）、全部后代并集（绝对定位的装饰环把值拉到 -655 / -850）、"最大的在流块"（`three_card` 量出 y=90，截图是 y=250；`points` 量出 y=-164）。**这些数与截图对不上，所以一条也没进告警判据。**
+  - 撤回内容：`BodyProbe.tsx` / `bodyGeometry.ts` 删除，`data-role` 标记、`pageIndex` 传参、e2e 里的 `browserLogPath` 与读取逻辑全部回退；仓库状态与上一版一致，只有上面那条 `E2E_REUSE` 修复保留。真要拿可靠几何，得换成"在 studio 预览环境（画布有真实尺寸）里量"，或让每个场景自己报 `contentTop` 这类布局常量——两条都还没做。
+
 - **体检的空洞口径看不出浅色卡片，试过一版「结构识别」后判据没有改**。想解决「卡片顶在标题下、卡内文字偏下」被记成 200px 空洞的问题，加了 `structTop / structVoidPx`：除了墨迹行，**相邻两行同列出现 ≥10 灰度台阶**的行也算"有结构"（卡片描边会产生上千列的台阶，背景装饰环最多百来列）。
   - 这条在 `steps`（彩色顶条）上准：结构行落在 y=249，正是卡顶。但在 `points`（只有一圈 alpha 很低的描边）上要等到卡内图标才出现（y≈388），比真正的卡顶晚 139px——**用它当告警判据会把已经顶在标题下的页面误报成 188px 空洞**。
   - 所以最终只把三个结构量当**诊断输出**：`FrameMetrics` 多三列、`auditVerdict` 多一条 info（"第一处可见结构在 y=…，标题下方空 …px"，并注明这个数偏大不代表真错）。告警判据仍然是墨迹口径的 `voidPx`，行为不变——192 个后端测试全绿就是证据。
