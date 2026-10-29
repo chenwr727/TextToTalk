@@ -24,6 +24,10 @@ type AuditModule = {
     inkBottom: number;
     inkLeft: number;
     inkRight: number;
+    structTop: number;
+    structBottom: number;
+    structVoidPx: number;
+    structVoidAt: number;
   };
   auditVerdict: (
     m: never,
@@ -80,6 +84,24 @@ test("measureInk：稀疏但连续的页面 voidPx 是 0，只有 fill 低", () 
   const m = audit.measureInk(canvas(1000, [[480, 519]]), W, 1000);
   assert.equal(m.fill, 0.04);
   assert.equal(m.voidPx, 0);
+});
+
+test("measureInk：墨迹看不见的浅色卡片，靠「竖向台阶」也能算出结构行起始位置", () => {
+  /*
+   * 真实版面里卡片是 #fff、背景是浅灰，灰度差只有 2~6，墨迹阈值 45 完全看不见。
+   * 这时墨迹口径会以为正文从卡内文字才开始（实测 points 页：卡顶 y=250、文字 y=410），
+   * 结构口径靠"相邻两行同列出现明显台阶"把卡顶找回来。
+   */
+  const h = 700;
+  const g = new Uint8Array(W * h).fill(250);
+  for (let y = 300; y <= 600; y++) for (let x = 10; x < W - 10; x++) g[y * W + x] = 240; // 卡面：差 10，不是墨迹
+  for (let y = 480; y <= 499; y++) for (let x = 10; x < W - 10; x++) g[y * W + x] = 40; // 卡内文字
+  const m = audit.measureInk(g, W, h, { band: { top: 200, bottom: 690 } });
+  assert.equal(m.inkTop, 480, "墨迹口径只能看到文字");
+  assert.equal(m.structTop, 300, "结构口径能看到卡顶");
+  // 台阶记在「变化之后的那一行」：300 从背景变卡面，601 从卡面变回背景
+  assert.equal(m.structBottom, 601, "卡底同样是台阶");
+  assert.ok(m.structVoidPx > 0, "卡面内部既无墨迹也无台阶，仍会被记为空白（所以它只做诊断）");
 });
 
 test("measureInk：按行取背景，竖向渐变不会被当成墨迹", () => {

@@ -25,6 +25,14 @@ export interface FrameMetrics {
   inkBottom: number;
   inkLeft: number;
   inkRight: number;
+  /** 「有结构」的第一行：墨迹行，或者出现明显竖边的行（卡片描边、色块边界） */
+  structTop: number;
+  /** 「有结构」的最后一行 */
+  structBottom: number;
+  /** 结构行之间最长连续空白行的像素数（卡片描边/浅色块也算结构，比 voidPx 准） */
+  structVoidPx: number;
+  /** 那段空白起始行 */
+  structVoidAt: number;
 }
 
 export interface MeasureOptions {
@@ -45,6 +53,15 @@ export interface MeasureOptions {
    * 页标题钉在 y≈90，于是填充率永远 95%，"空白"全落在字幕带里，指标彻底失效。
    */
   band?: { top: number; bottom: number };
+  /**
+   * 「结构边」的灰度差阈值：相邻两行同列相差超过它就算一条竖边。
+   *
+   * 背景是渐变 + 淡装饰环，实测同一行里超过这个差值的列数上限约 112（1920 宽），
+   * 而一张卡的左右描边会占满 700+ 列，所以 10 足够把"卡片"和"背景装饰"分开。
+   */
+  structThreshold?: number;
+  /** 一行里至少要有多少列出现结构边才算「有结构」；默认取内容宽度的 8% */
+  structCols?: number;
 }
 
 /**
@@ -68,6 +85,10 @@ const EMPTY: FrameMetrics = {
   inkBottom: 0,
   inkLeft: 0,
   inkRight: 0,
+  structTop: 0,
+  structBottom: 0,
+  structVoidPx: 0,
+  structVoidAt: 0,
 };
 
 /** 中位数（会就地排序传入的数组副本） */
@@ -90,7 +111,15 @@ export function measureInk(gray: Uint8Array, width: number, height: number, opts
   const bottom = Math.min(height - 1, Math.round(opts.band?.bottom ?? height - 1));
   if (width <= 0 || height <= 0 || gray.length < width * height || bottom < top) return { ...EMPTY };
 
+  const structThreshold = opts.structThreshold ?? 10;
+  // 结构边只在中间这段列上数：两侧 6% 是页面装饰（右下的竖条、渐变边缘），不能算内容
+  const marginX = Math.round(width * 0.06);
+  const sx0 = marginX;
+  const sx1 = Math.max(sx0, width - 1 - marginX);
+  const structCols = Math.max(8, opts.structCols ?? Math.round((sx1 - sx0) * 0.09));
+
   const rowInk = new Uint8Array(height);
+  const rowStruct = new Uint8Array(height);
   let inkTop = -1;
   let inkBottom = -1;
   let inkCount = 0;
@@ -116,6 +145,23 @@ export function measureInk(gray: Uint8Array, width: number, height: number, opts
       if (inkTop < 0) inkTop = y;
       inkBottom = y;
     }
+
+    /*
+     * 结构行 = 有墨迹的行，或者「和上一行比，有一段明显的竖向台阶」的行。
+     *
+     * 后者专治浅色卡片：卡面是 #fff、背景是 #f5f6fa，灰度差只有 2~6，墨迹阈值 45 根本看不见，
+     * 于是一页卡片顶在 y=250、卡内文字在 y=410 的版面会被记成 201px 空洞（实测 points 样例）。
+     * 卡片的左右描边会在同一行上产生上千列的台阶，而背景装饰环最多百来列，所以数"台阶列数"够用。
+     */
+    if (y > top) {
+      const prevStart = rowStart - width;
+      let steps = 0;
+      for (let x = sx0; x <= sx1; x++) {
+        if (Math.abs(gray[rowStart + x] - gray[prevStart + x]) >= structThreshold) steps++;
+      }
+      if (steps >= structCols) rowStruct[y] = 1;
+    }
+    if (rowInk[y]) rowStruct[y] = 1;
   }
   if (inkTop < 0) return { ...EMPTY };
 
@@ -141,6 +187,32 @@ export function measureInk(gray: Uint8Array, width: number, height: number, opts
     }
   }
 
+  // 结构口径：从第一行结构到最后一行的范围内，找最长的连续空行段
+  let structTop = -1;
+  let structBottom = -1;
+  for (let y = top; y <= bottom; y++) {
+    if (rowStruct[y]) {
+      if (structTop < 0) structTop = y;
+      structBottom = y;
+    }
+  }
+  let structVoidPx = 0;
+  let structVoidAt = 0;
+  if (structTop >= 0) {
+    let run2 = 0;
+    for (let y = structTop; y <= structBottom; y++) {
+      if (rowStruct[y]) {
+        run2 = 0;
+      } else {
+        run2++;
+        if (run2 > structVoidPx) {
+          structVoidPx = run2;
+          structVoidAt = y - run2 + 1;
+        }
+      }
+    }
+  }
+
   const bboxH = inkBottom - inkTop + 1;
   const bandH = bottom - top + 1;
   return {
@@ -152,6 +224,10 @@ export function measureInk(gray: Uint8Array, width: number, height: number, opts
     inkBottom,
     inkLeft,
     inkRight,
+    structTop,
+    structBottom,
+    structVoidPx,
+    structVoidAt,
   };
 }
 
@@ -222,6 +298,17 @@ export function auditVerdict(
     out.push({ level: "warn", message: "整帧没有可识别的墨迹（黑屏/空白页？）" });
     return out;
   }
+  /*
+   * 口径说明（重要，别急着改）：
+   * 判据仍然用墨迹口径的 voidPx。「结构行」那套（structTop/structVoidPx）只作为诊断输出，
+   * 因为它对**细浅描边**不可靠：`steps` 这类卡有彩色顶条，结构行能落在 y=249（真正的卡顶）；
+   * 而 `points` 这类卡只有一圈 alpha 很低的描边，结构行要等到卡内图标/文字才出现（y≈388）。
+   * 用它去报"标题下方空白"会把 points 这种已经顶在标题下的页面误报成 188px 空洞。
+   * 想真正判断"卡片从哪开始"，得在渲染端把 DOM 几何报出来，而不是从像素反推。
+   */
+  const inVoid = m.voidPx;
+  const inVoidAt = m.voidAt;
+  const pct = (px: number) => Math.round((px / bandH) * 100);
   if (airy) {
     if (m.fill < AIRY_MIN_FILL) {
       out.push({
@@ -229,19 +316,30 @@ export function auditVerdict(
         message: `这页天生稀疏，但内容只占 ${Math.round(m.fill * 100)}%（不足 ${Math.round(AIRY_MIN_FILL * 100)}%），像是没渲染出来`,
       });
     }
-    if (m.voidPx > bandH * AIRY_MAX_VOID_RATIO) {
+    if (inVoid > bandH * AIRY_MAX_VOID_RATIO) {
       out.push({
         level: "warn",
-        message: `页面内部有 ${m.voidPx}px 连续空白（从 y=${m.voidAt} 起，占正文带 ${Math.round((m.voidPx / bandH) * 100)}%）`,
+        message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）`,
       });
     }
     return out;
   }
-  if (m.voidPx > bandH * 0.15) {
+  if (inVoid > bandH * 0.15) {
     out.push({
       level: "warn",
-      message: `页面内部有 ${m.voidPx}px 连续空白（从 y=${m.voidAt} 起，占正文带 ${Math.round((m.voidPx / bandH) * 100)}%）`,
+      message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）`,
     });
+  }
+  if (m.structTop > 0) {
+    const headGap = m.structTop - b.top;
+    const bottomGap = b.bottom - m.structBottom;
+    // 上空白远大于下空白 = 内容被往下压（标题与正文之间裂开）；上下差不多是刻意居中，不提示
+    if (headGap > bandH * 0.15 && headGap > bottomGap * 1.5) {
+      out.push({
+        level: "info",
+        message: `第一处可见结构在 y=${m.structTop}，标题下方空 ${headGap}px（占正文带 ${pct(headGap)}%）——这个数偏大不代表真错，细浅描边会让它偏晚`,
+      });
+    }
   }
   if (m.fill < 0.3) {
     out.push({ level: "info", message: `内容只占正文带 ${Math.round(m.fill * 100)}%，上下留白很大` });
