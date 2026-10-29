@@ -214,7 +214,7 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const items = page.points;
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { isPortrait, fs, sp, width, contentWidth, contentHeight } = useResponsive();
   const timing = useSceneTiming();
   const list = items;
 
@@ -233,7 +233,14 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
   const BOTTOM_SAFE = (isPortrait ? contentHeight : 1080) - captionReserve - (isPortrait ? sp(24) : 24);
 
-  const CX = isPortrait ? contentWidth / 2 : 960;
+  /*
+   * 圆心必须是画布中心。
+   *
+   * 原来竖屏写 contentWidth / 2＝476，但节点用的是 AbsoluteFill 的绝对 left
+   * （画布坐标，中心是 540）——整个环被整体左移 64px。实测帧：椭圆 x 范围
+   * 185..790，中心 487 而非 540。
+   */
+  const CX = isPortrait ? width / 2 : 960;
   const CY = (HEADER_BOTTOM + BOTTOM_SAFE) / 2;
 
   const N = Math.max(1, list.length);
@@ -257,15 +264,34 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     ? Math.max(nodeW / 2 + (isPortrait ? sp(105) : 105), contentWidth / 2 - nodeW / 2 - (isPortrait ? sp(30) : 30))
     : Math.min(900 - nodeW / 2 - 30, Math.max(RY + 120, nodeW / 2 + 105));
 
+  /*
+   * 竖屏改正圆。
+   *
+   * 宽约 610、高约 1200 的扁椭圆（RX 305 / RY 600）把三个节点摆成「一个在最上、
+   * 两个在中下方」，中间留出 650px 的空白蛋形，底部还有一整段没用上的虚线弧
+   * ——读起来像一个撑满整页的鬼影，而不是一个「循环」。改成正圆后整个图形缩成
+   * 一个紧凑单元（直径约 660），空白蛋形随之消失。
+   */
+  const R = isPortrait ? Math.min(RX, RY) : 0;
+
   return (
     <AbsoluteFill>
       <PageHeading text={title} />
-      <svg width={RX * 2} height={RY * 2} style={{ position: "absolute", left: CX - RX, top: CY - RY, opacity: 0.5 }}>
+      <svg
+        width={(isPortrait ? R : RX) * 2}
+        height={(isPortrait ? R : RY) * 2}
+        style={{
+          position: "absolute",
+          left: CX - (isPortrait ? R : RX),
+          top: CY - (isPortrait ? R : RY),
+          opacity: 0.5,
+        }}
+      >
         <ellipse
-          cx={RX}
-          cy={RY}
-          rx={RX - 6}
-          ry={RY - 6}
+          cx={isPortrait ? R : RX}
+          cy={isPortrait ? R : RY}
+          rx={(isPortrait ? R : RX) - 6}
+          ry={(isPortrait ? R : RY) - 6}
           fill="none"
           stroke={C.accent}
           strokeOpacity={0.7}
@@ -307,8 +333,8 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       </div>
       {list.map((it, i) => {
         const a = (i / Math.max(1, list.length)) * Math.PI * 2 - Math.PI / 2;
-        const x = CX + Math.cos(a) * RX;
-        const y = CY + Math.sin(a) * RY;
+        const x = CX + Math.cos(a) * (isPortrait ? R : RX);
+        const y = CY + Math.sin(a) * (isPortrait ? R : RY);
         const o = springIn(f, fps, resolveAnchor(timing, pointAnchor(it), i), page.motion);
         const ac = accentOf(i);
         return (
@@ -583,9 +609,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                      * 原先左侧节点用 `left: 0` + 行方向，图标被顶到画布最左边（半个圆被切掉），
                      * 而节点尾巴离轴还空着 120px。
                      */
-                    ...(left
-                      ? { right: "50%", paddingRight: sp(18) }
-                      : { left: "50%", paddingLeft: sp(18) }),
+                    ...(left ? { right: "50%", paddingRight: sp(18) } : { left: "50%", paddingLeft: sp(18) }),
                     width: PORTRAIT_NODE_W,
                     transform: "translateY(-50%)",
                     display: "flex",

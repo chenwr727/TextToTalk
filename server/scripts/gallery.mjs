@@ -91,9 +91,16 @@ function runStill(configPath) {
 }
 
 console.log(`[gallery] ${targets.length} 个版式，theme=${theme}，size=${CANVAS_W}x${CANVAS_H}`);
+/*
+ * 取帧位置：默认 60%（入场动画早已结束，看的是"排好了的样子"）。
+ *
+ * 但视频不是停在 60% 的——元素按字幕错开入场，前 1/3 往往只画出一半。
+ * 想验证"开头是不是缺内容"就把这个比例调小，例如 GALLERY_AT=0.25。
+ */
+const at = Math.min(0.95, Math.max(0.02, Number(process.env.GALLERY_AT || 0.6) || 0.6));
 for (const p of targets) {
   const idx = PAGES.indexOf(p);
-  const frame = starts[idx] + Math.round(p.durationSec * FPS * 0.6);
+  const frame = starts[idx] + Math.round(p.durationSec * FPS * at);
   // 同一版式可能有多个样本（四种图表 / 两种表格 / 长短两版要点），命名规则见 gallery-pages
   const name = pageName(p);
   const output = path.join(outDir, `${name}.png`);

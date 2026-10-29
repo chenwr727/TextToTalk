@@ -84,7 +84,43 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
       />
     );
 
-  const body = (
+  /*
+   * 标题本体单独拿出来，因为手绘标注要包的是「标题」，不是「标题 + 装饰线」。
+   * 实测：effects.annotation=underline 时，rough-notation 会把整个列（含装饰线）包起来，
+   * 于是装饰线的两颗圆点被手绘拖得与线重叠，远看像一团涂鸦（竖屏实测 580px 宽的双笔曲线 + 2 个孤点）。
+   * 所以：有标注时它就是装饰本身，不再叠一条主题装饰线。
+   */
+  const titleEl = isPill ? (
+    <div
+      style={{
+        ...type,
+        padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(46) : 46}px`,
+        background: GLASS.pill,
+        border: `${BORDER.card}px solid ${C.accent}`,
+        borderRadius: RADIUS.pill,
+        boxShadow: PILL_SHADOW,
+      }}
+    >
+      {text}
+    </div>
+  ) : t.heading.style === "bar" ? (
+    <div style={{ display: "flex", alignItems: "center", gap: isPortrait ? sp(18) : 18, maxWidth: "100%" }}>
+      <div
+        style={{
+          width: 8,
+          height: size * 1.1,
+          borderRadius: 4,
+          background: ACCENT_GRAD,
+          flexShrink: 0,
+        }}
+      />
+      <div style={{ ...type }}>{text}</div>
+    </div>
+  ) : (
+    <div style={{ ...type }}>{text}</div>
+  );
+
+  return (
     <div
       style={{
         display: "flex",
@@ -95,40 +131,10 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
         opacity: o,
       }}
     >
-      {isPill ? (
-        <div
-          style={{
-            ...type,
-            padding: `${isPortrait ? sp(16) : 16}px ${isPortrait ? sp(46) : 46}px`,
-            background: GLASS.pill,
-            border: `${BORDER.card}px solid ${C.accent}`,
-            borderRadius: RADIUS.pill,
-            boxShadow: PILL_SHADOW,
-          }}
-        >
-          {text}
-        </div>
-      ) : t.heading.style === "bar" ? (
-        <div style={{ display: "flex", alignItems: "center", gap: isPortrait ? sp(18) : 18, maxWidth: "100%" }}>
-          <div
-            style={{
-              width: 8,
-              height: size * 1.1,
-              borderRadius: 4,
-              background: ACCENT_GRAD,
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ ...type }}>{text}</div>
-        </div>
-      ) : (
-        <div style={{ ...type }}>{text}</div>
-      )}
-      {rule}
+      {annotate ? <Annotated kind={annotate}>{titleEl}</Annotated> : titleEl}
+      {annotate ? null : rule}
     </div>
   );
-
-  return annotate ? <Annotated kind={annotate}>{body}</Annotated> : body;
 };
 
 /**

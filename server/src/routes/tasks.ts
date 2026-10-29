@@ -36,7 +36,13 @@ export function registerTaskRoutes(app: FastifyInstance) {
       patchTask(taskId, { params: merged });
     }
 
-    patchTask(taskId, { status: "RENDERING", progress: 0 });
+    /*
+     * 重新渲染必须先把上一次的 error 清掉。
+     * 实测：第一次 edge 配音失败（返回 403）→ 改 dashscope 重渲成功，
+     * 任务 status 已是 DONE，但 error 字段还挂着上一次的「TTS 全部 8 句合成失败」，
+     * 前端会在成功视频上面继续提示报错。
+     */
+    patchTask(taskId, { status: "RENDERING", progress: 0, error: null });
     void renderTaskInBackground(taskId);
     return reply.send(getTask(taskId));
   });

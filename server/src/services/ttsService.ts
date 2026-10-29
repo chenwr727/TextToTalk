@@ -143,7 +143,17 @@ export async function generateTts(
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, items.length) }, () => worker()));
 
   if (failed === items.length && items.length > 0) {
-    throw new Error(`TTS 全部 ${items.length} 句合成失败，无法渲染配音`);
+    /*
+     * 报错里必须带上引擎名和可选引擎。
+     *
+     * 实测：默认引擎 edge 对 speech.platform.bing.com 的 WebSocket 现在直接 403，
+     * 一句「TTS 全部 8 句合成失败」根本看不出是哪个引擎坏了、该换什么。
+     */
+    const others = Object.keys(ttsEngines).filter((id) => id !== eng.id);
+    const hint = others.length
+      ? `（当前引擎：${eng.id}；可尝试切换到 ${others.join(" / ")}）`
+      : `（当前引擎：${eng.id}）`;
+    throw new Error(`TTS 全部 ${items.length} 句合成失败，无法渲染配音${hint}`);
   } else if (failed > 0) {
     console.warn(`[tts] 有 ${failed}/${items.length} 句 TTS 合成失败，成片将缺少对应旁白`);
   }

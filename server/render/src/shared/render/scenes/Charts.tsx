@@ -66,7 +66,6 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const timing = useSceneTiming();
   const dataMax = Math.max(...values);
   const { top: axisTop, ticks } = axisScale(dataMax);
   const max = axisTop;
@@ -144,7 +143,16 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
           </div>
         ))}
         {values.map((v, i) => {
-          const g = springIn(f, fps, timing.frameAt(i, 0, 18), "spring");
+          /*
+           * 柱子不跟字幕走。
+           *
+           * 原来用 timing.frameAt(i, 0, 18)：第 i 根柱等第 i 句字幕开讲。
+           * 实测（2 根柱 / 2 句字幕）：第二根要等到第二句字幕（约 4.5s）才开始长，
+           * t=13s 只长到 17%，几乎看不见，只剩一个「24」数字漂在基线上——
+           * 整张图读起来像「第二个数据缺失/为 0」。一张图是一个数据单元，
+           * 应该整体入场：统一从本页起笔，只做 7 帧微错开；顺便尊重 page.motion。
+           */
+          const g = springIn(f, fps, 4 + i * 7, page.motion);
           const h = (v / max) * barMaxH;
           const a = accentOf(i);
           return (
@@ -229,11 +237,11 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
     H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-    /*
-     * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
-     * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
-     * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
-     */
+  /*
+   * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
+   * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
+   * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
+   */
   const PAD_T = isPortrait ? sp(60) : 40;
   const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD_T - BOTTOM, H - BOTTOM);
   const n = values.length;
@@ -480,11 +488,11 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
     H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-    /*
-     * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
-     * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
-     * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
-     */
+  /*
+   * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
+   * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
+   * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
+   */
   const PAD_T = isPortrait ? sp(60) : 40;
   const { max, ticks: yTicks } = yAxisOf(Math.max(...values) || 1, H - PAD_T - BOTTOM, H - BOTTOM);
   const n = values.length;
@@ -709,7 +717,6 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
-  const timing = useSceneTiming();
   const pal = SERIES;
   const maxTotal = Math.max(...labels.map((_, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0))) || 1;
   const n = labels.length;
@@ -784,7 +791,8 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
           </div>
         ))}
         {labels.map((label, i) => {
-          const grow = springIn(f, fps, timing.frameAt(i, 0, 18), "spring");
+          // 同 BarChart：堆叠柱的每一列也是同一个数据单元，不能拆到各句字幕上
+          const grow = springIn(f, fps, 4 + i * 7, page.motion);
           const totalH = (series.reduce((a, s) => a + (s.values[i] || 0), 0) / stackTop) * barMaxH;
           return (
             <div key={i} style={{ position: "relative", width: barW, height: chartH }}>
@@ -903,17 +911,16 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
-  const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1500,
     // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
     H = isPortrait ? 900 : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
-    /*
-     * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
-     * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
-     * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
-     */
+  /*
+   * PAD 原来同时当左右内边距和**顶部内边距**用（ys 里写的是 H-PAD-BOTTOM），
+   * 于是 SVG 顶部那 110px 永远是空的：绘图区只占画布 30%，
+   * 标题下沿到最高网格线之间空出 200px 纯白。顶部内边距单独给一个小值。
+   */
   const PAD_T = isPortrait ? sp(60) : 40;
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -971,7 +978,8 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
         ))}
         <line x1={PAD} y1={PAD} x2={PAD} y2={H - BOTTOM} stroke={C.ink} strokeOpacity={0.16} strokeWidth={3} />
         {points.map((p, i) => {
-          const o = springIn(f, fps, timing.frameAt(i, 20, 12), "spring");
+          // 散点同理：按字幕分批会让图在前半段看起来只有一半数据
+          const o = springIn(f, fps, 12 + i * 4, page.motion);
           return (
             <g key={i} opacity={o}>
               <circle
