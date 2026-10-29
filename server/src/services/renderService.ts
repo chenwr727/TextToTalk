@@ -17,6 +17,12 @@ const RENDER_DIR = renderDir;
 
 mkdirSync(OUT_DIR, { recursive: true });
 
+/** 渲染期的页：在原始分镜上挂了配音时长与句间隔 */
+export type TimedPage = Storyboard["pages"][number] & {
+  sentences?: { text: string; seconds: number; audioUrl: string }[];
+  sentenceGap?: number;
+};
+
 export async function renderTaskSync(
   taskId: string,
   storyboard: Storyboard,
@@ -33,6 +39,13 @@ export async function renderTaskSync(
     engine?: string;
     ttsSpeed?: number;
     ttsVolume?: number;
+    /**
+     * 回调拿到「真正入渲染的页」（已挂上配音时长）。
+     *
+     * 给不了这个回调，外部就只能拿原始分镜去算页边界——
+     * 而配音开启时每页时长是由配音决定的，算出来的帧号会落在别的页上（实测差一整页）。
+     */
+    onPages?: (pages: TimedPage[]) => void;
   },
 ): Promise<string> {
   const setStage = (p: number) => onProgress?.(Math.min(0.98, p));
@@ -74,6 +87,8 @@ export async function renderTaskSync(
     }
     return { ...p, sentences, sentenceGap: tts.sentenceGap };
   });
+
+  opts?.onPages?.(pages);
 
   setStage(0.12);
   const output = path.join(OUT_DIR, `${taskId}.mp4`);

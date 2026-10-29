@@ -12,13 +12,21 @@
  * 产物：
  *   server/out/e2e/storyboard.json   真实分镜（可直接拖进 web 端复盘）
  *   server/out/e2e/<i>-<layout>.png  每页静帧
+ *
+ * 自动体检（默认开启，`E2E_NO_AUDIT=1` 关掉）：
+ *   静帧与成片抽帧都会算「墨迹 bbox 占比 / bbox 内最长连续空白 / 墨迹密度」。
+ *   这套指标是上一轮量真片时临时写的：它抓到过一个 bbox 填充率 65%、
+ *   但页面中间有 620px 空洞的 quote 页。只看填充率会把这种页当成正常页。
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { generateFromPlan, generateOutline } from "../src/services/storyboardGenerator.js";
+import type { TimedPage } from "../src/services/renderService.js";
+import { measureInk, auditVerdict, bodyBand, type FrameMetrics } from "../src/services/frameAudit.js";
+import { TRANSITION_FRAME_MAP } from "../../shared/types.js";
 import type { Storyboard, VideoParams } from "../src/types.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -43,9 +51,12 @@ const PROMPT = process.env.E2E_PROMPT_FILE
   ? readFileSync(path.resolve(repoRoot, process.env.E2E_PROMPT_FILE), "utf-8")
   : DEFAULT_PROMPT;
 
+// 竖屏（1080×1920）：`E2E_PORTRAIT=1`。版式修复大多是竖屏专属的，得能按竖屏跑一遍
+const PORTRAIT = !!process.env.E2E_PORTRAIT;
+
 const params: VideoParams = {
-  width: 1920,
-  height: 1080,
+  width: PORTRAIT ? 1080 : 1920,
+  height: PORTRAIT ? 1920 : 1080,
   fps: FPS,
   tone: "casual",
   narration: false,
@@ -71,6 +82,21 @@ const runRender = (configPath: string) =>
 
 const main = async () => {
   mkdirSync(outDir, { recursive: true });
+
+  // 只体检已有成片（不重新生成/渲染）：
+  //   E2E_AUDIT_MP4=server/out/xxx.mp4 npx tsx server/scripts/e2e.mts
+  // 页时长从同名的 `<mp4>.pages.json` 读（渲染时会自动写出）。
+  if (process.env.E2E_AUDIT_MP4) {
+    // 路径先按当前目录找，找不到再往仓库根目录算：
+    // 这个脚本习惯在 server/ 下跑，`out/x.mp4` 是相对 server/ 的
+    const given = process.env.E2E_AUDIT_MP4;
+    const mp4 = existsSync(path.resolve(given)) ? path.resolve(given) : path.resolve(repoRoot, given);
+    const pagesJson = process.env.E2E_AUDIT_PAGES || `${mp4}.pages.json`;
+    if (!existsSync(pagesJson)) throw new Error(`找不到页时长文件 ${pagesJson}（可用 E2E_AUDIT_PAGES 指定）`);
+    const pages = JSON.parse(readFileSync(pagesJson, "utf-8")) as TimedPage[];
+    await auditMp4(pages, mp4);
+    return;
+  }
 
   // ---- 1. 真实生成 ----------------------------------------------------------
   // E2E_REUSE=1：复用上次生成的分镜，只重跑静帧（反复调渲染时省额度与时间）
@@ -190,13 +216,14 @@ const main = async () => {
     ),
   );
 
+  // ---- 3. 真实静帧 ----------------------------------------------------------
+  // E2E_NO_STILLS=1 只跳过静帧这一步；成片仍要走（曾经写成 return，连 MP4 一起跳过了）
   if (process.env.E2E_NO_STILLS) {
     console.log("\n[e2e] 已跳过静帧（E2E_NO_STILLS=1）");
-    return;
+  } else {
+    await renderStills(storyboard);
+    await auditStills(storyboard);
   }
-
-  // ---- 3. 真实静帧 ----------------------------------------------------------
-  await renderStills(storyboard);
 
   await renderMp4(storyboard);
 };
@@ -208,26 +235,249 @@ const renderMp4 = async (storyboard: Storyboard) => {
     console.log("\n[e2e] 开始配音与成片渲染（这一步最慢）…");
     const taskId = `e2e-${Date.now()}`;
     const t = Date.now();
-    const outMp4 = await renderTaskSync(
-      taskId,
-      storyboard,
-      FPS,
-      true,
-      false,
-      (p) => {
-        if (Math.round(p * 100) % 20 === 0) console.log(`  进度 ${Math.round(p * 100)}%`);
+    /** 渲染时真正用的页（带配音时长）——后面抽帧体检靠它对齐页边界 */
+    let timedPages: TimedPage[] = [];
+    const opts = {
+      theme: params.theme,
+      width: params.width,
+      height: params.height,
+      voice: process.env.E2E_VOICE,
+      engine: process.env.E2E_ENGINE,
+      onPages: (pages: TimedPage[]) => {
+        timedPages = pages;
       },
-      (w) => console.log(`  ⚠ ${w}`),
-      {
-        theme: params.theme,
-        width: params.width,
-        height: params.height,
-        voice: process.env.E2E_VOICE,
-        engine: process.env.E2E_ENGINE,
-      },
-    );
+    };
+    const renderOnce = (sb: Storyboard) =>
+      renderTaskSync(
+        taskId,
+        sb,
+        FPS,
+        true,
+        false,
+        (p) => {
+          if (Math.round(p * 100) % 20 === 0) console.log(`  进度 ${Math.round(p * 100)}%`);
+        },
+        (w) => console.log(`  ⚠ ${w}`),
+        opts,
+      );
+    // Remotion 是按 HTTP 地址去拉配音音频的（`${publicBaseUrl}/api/media/...`），
+    // 后端不在就跑出 ECONNREFUSED —— 这一步自己把后端拉起来，让 `E2E_MP4=1` 保持一条命令。
+    const api = await ensureApi();
+    let outMp4: string;
+    try {
+      outMp4 = await renderOnce(storyboard);
+    } catch (e) {
+      const msg = (e as Error).message;
+      /*
+       * 配音引擎挂掉时不要让整条验证链断在最后一步。
+       *
+       * 实测：edge 引擎被上游 403 挡掉后，`TTS 全部 N 句合成失败` 会直接抛出，
+       * 于是"验证渲染"这件事整个跑不下去——而版式问题跟有没有配音无关。
+       * 所以这里退一步：去掉 sentences（时长回落到 durationSec）重渲一次静音版，
+       * 明确打印降级，避免把"配音失败"当成"渲染失败"。
+       */
+      if (!/TTS 全部|合成失败/.test(msg) || process.env.E2E_NO_SILENT_FALLBACK) throw e;
+      console.log(`\n[e2e] ⚠ 配音全部失败，降级为静音成片继续验证版式：${msg.slice(0, 120)}`);
+      const silent: Storyboard = {
+        ...storyboard,
+        pages: storyboard.pages.map((p) => ({ ...p, sentences: undefined })),
+      };
+      outMp4 = await renderOnce(silent);
+    } finally {
+      api?.kill();
+    }
     console.log(`[e2e] MP4 完成（${((Date.now() - t) / 1000).toFixed(0)}s）-> ${outMp4}`);
+    // 存下「真正入渲染的页时长」，下次可以 E2E_AUDIT_MP4 直接复盘而不用重渲
+    if (timedPages.length) {
+      writeFileSync(`${outMp4}.pages.json`, JSON.stringify(timedPages, null, 2), "utf-8");
+    }
+    await auditMp4(timedPages.length ? timedPages : (storyboard.pages as TimedPage[]), outMp4);
   }
+};
+
+/* ------------------------------------------------------------ 后端守护 */
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const probe = async (url: string): Promise<boolean> => {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(1500) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * 确保后端在它自己认为的端口上跑着（已在跑就不动）。
+ *
+ * 返回我们自己拉起来的子进程（没拉就返回 null），由调用方 finally 关掉。
+ */
+const ensureApi = async (): Promise<import("node:child_process").ChildProcess | null> => {
+  const port = Number(process.env.PORT || 4000);
+  const health = `http://127.0.0.1:${port}/api/health`;
+  if (await probe(health)) {
+    console.log(`[e2e] 沿用已在跑的后端（:${port}）`);
+    return null;
+  }
+  console.log(`[e2e] 为了让 Remotion 拉得到配音音频，临时起一个后端（:${port}）…`);
+  const child = spawn(process.execPath, ["--import", "tsx", "src/index.ts"], {
+    cwd: path.join(repoRoot, "server"),
+    stdio: "ignore",
+    windowsHide: true,
+    env: { ...process.env, PORT: String(port) },
+  });
+  for (let i = 0; i < 60; i++) {
+    if (await probe(health)) return child;
+    if (child.exitCode !== null) break;
+    await sleep(500);
+  }
+  child.kill();
+  throw new Error(`后端没能在 :${port} 起来（端口被占？）`);
+};
+
+/* ---------------------------------------------------------------- 体检 */
+
+const FFMPEG = process.env.E2E_FFMPEG || "ffmpeg";
+
+const runFfmpeg = (args: string[]) =>
+  new Promise<void>((resolve, reject) => {
+    const child = spawn(FFMPEG, args, {
+      stdio: ["ignore", "ignore", "pipe"],
+      windowsHide: true,
+      shell: process.platform === "win32",
+    });
+    let err = "";
+    child.stderr.on("data", (c) => (err += c.toString()));
+    child.on("error", reject);
+    child.on("close", (code) =>
+      code === 0 ? resolve() : reject(new Error(`ffmpeg exit ${code}: ${err.slice(-300)}`)),
+    );
+  });
+
+/**
+ * 用 ffmpeg 把画面导成灰度原始字节再自己算指标。
+ *
+ * 不自带 PNG 解码器：`server` 包没有图像库，而 ffmpeg 是渲染链路的硬依赖，
+ * `-f rawvideo -pix_fmt gray` 出来就是"每像素 1 字节、逐行"的裸数据，直接可以算。
+ */
+const extractGray = async (input: string, seekSec: number | null, w: number, h: number): Promise<Uint8Array | null> => {
+  const tmp = path.join(outDir, `.audit-${Date.now()}-${Math.random().toString(36).slice(2)}.raw`);
+  const args = ["-v", "error"];
+  if (seekSec !== null) args.push("-ss", seekSec.toFixed(3));
+  args.push("-i", input, "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "gray", tmp);
+  try {
+    await runFfmpeg(args);
+    const buf = readFileSync(tmp);
+    if (buf.length < w * h) return null;
+    return new Uint8Array(buf.subarray(0, w * h));
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+};
+
+const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+const reportOne = (label: string, m: FrameMetrics, w: number, h: number, portrait: boolean) => {
+  const verdicts = auditVerdict(m, w, h, portrait, bodyBand(w, h));
+  const bad = verdicts.some((v) => v.level === "warn");
+  console.log(
+    `  ${bad ? "\u2717" : "\u00b7"} ${label.padEnd(24)} fill ${pct(m.fill).padStart(4)}  \u7a7a\u6d1e ${String(m.voidPx).padStart(4)}px  \u5bc6\u5ea6 ${pct(m.inkRatio).padStart(4)}`,
+  );
+  for (const v of verdicts) console.log(`      ${v.level === "warn" ? "!" : "-"} ${v.message}`);
+  return bad;
+};
+
+/** 静帧体检：每页一张，取 mid 帧（与 renderStills 的取帧位置一致） */
+const auditStills = async (storyboard: Storyboard) => {
+  if (process.env.E2E_NO_AUDIT) {
+    console.log("\n[e2e] \u5df2\u8df3\u8fc7\u9759\u5e27\u4f53\u68c0\uff08E2E_NO_AUDIT=1\uff09");
+    return;
+  }
+  const portrait = params.height > params.width;
+  console.log(
+    "\n[e2e] \u9759\u5e27\u4f53\u68c0\uff08\u58a8\u8ff9 bbox / \u5185\u90e8\u7a7a\u6d1e / \u5bc6\u5ea6\uff09\u2026",
+  );
+  let warned = 0;
+  for (let i = 0; i < storyboard.pages.length; i++) {
+    const page = storyboard.pages[i];
+    const png = path.join(outDir, `${params.theme}-${String(i + 1).padStart(2, "0")}-${page.layout}.png`);
+    if (!existsSync(png)) {
+      console.log(`  ? ${String(i + 1).padStart(2, "0")}-${page.layout} \u7f3a\u9759\u5e27`);
+      continue;
+    }
+    const gray = await extractGray(png, null, params.width, params.height);
+    if (!gray) continue;
+    const bad = reportOne(
+      `${String(i + 1).padStart(2, "0")}-${page.layout}/${page.art ?? "-"}`,
+      measureInk(gray, params.width, params.height, { band: bodyBand(params.width, params.height) }),
+      params.width,
+      params.height,
+      portrait,
+    );
+    if (bad) warned++;
+  }
+  console.log(`[e2e] \u9759\u5e27\u4f53\u68c0\u5b8c\u6210\uff1a${warned} \u9875\u6709\u544a\u8b66`);
+};
+
+/**
+ * 成片体检：每页抽 30% / 60% / 85% 三个时点。
+ *
+ * 30% 是"前半程有没有缺内容"的检查点（入场绑字幕那批问题全在页内 30% 才显形）；
+ * 85% 是"排好了的样子"。页边界按 DynamicVideo 的算法重算：有 sentences 用配音时长，
+ * 否则用 durationSec，再扣掉转场重叠——不跟成片对齐的话，抽到的帧可能落在转场里。
+ */
+const auditMp4 = async (pages: TimedPage[], mp4: string) => {
+  if (process.env.E2E_NO_AUDIT) return;
+  const portrait = params.height > params.width;
+  const TF = TRANSITION_FRAME_MAP as unknown as Record<string, number>;
+  const durs = pages.map((p) =>
+    p.sentences && p.sentences.length
+      ? p.sentences.reduce((a: number, s: { seconds: number }) => a + Math.max(1, Math.round(s.seconds * FPS)), 0) +
+        Math.round((p.sentenceGap || 0) * FPS) * Math.max(0, p.sentences.length - 1)
+      : Math.round((p.durationSec || 4) * FPS),
+  );
+  const starts: number[] = [];
+  let off = 0;
+  pages.forEach((p, i) => {
+    starts.push(off);
+    const next = pages[i + 1];
+    off += durs[i] - (next ? (TF[next.transition ?? "fade"] ?? 12) : 0);
+  });
+
+  console.log("\n[e2e] 成片体检（每页 30%/60%/85% 三个时点，取中位数）…");
+  const band = bodyBand(params.width, params.height);
+  let warned = 0;
+  for (let i = 0; i < pages.length; i++) {
+    const label = `${String(i + 1).padStart(2, "0")}-${pages[i].layout}/${pages[i].art ?? "-"}`;
+    const samples: FrameMetrics[] = [];
+    for (const frac of [0.3, 0.6, 0.85]) {
+      const frame = starts[i] + Math.min(durs[i] - 2, Math.max(2, Math.round(durs[i] * frac)));
+      const gray = await extractGray(mp4, frame / FPS, params.width, params.height);
+      if (!gray) continue;
+      samples.push(measureInk(gray, params.width, params.height, { band }));
+    }
+    if (!samples.length) continue;
+    /*
+     * 取三个采样点的中位数，而不是逐点报。
+     *
+     * 实测：背景装饰（右下角那排竖条、大色块）在某些帧里会碰到正文带边界——
+     * chart 页第 1374 帧量出 71%，第 1370 帧却是 91%（ink 一直延到 x=1079、y=1690），那是装饰不是内容。
+     * 单帧会误报，三点取中位数就稳；三点差异大时另外提一句，让人去看图。
+     */
+    const fills = samples.map((s) => s.fill).sort((a, b) => a - b);
+    const median = fills[fills.length >> 1];
+    const spread = Math.round((fills[fills.length - 1] - fills[0]) * 100);
+    const worstVoid = samples.reduce((best, s) => (s.voidPx > best.voidPx ? s : best), samples[0]);
+    const m: FrameMetrics = { ...worstVoid, fill: median };
+    if (spread > 8) {
+      console.log(
+        `  ! ${label} 三个采样点差异 ${spread}pp（${fills.map((f) => Math.round(f * 100)).join("/")}%），可能有装饰或动画干扰，请看图`,
+      );
+    }
+    if (reportOne(label, m, params.width, params.height, portrait)) warned++;
+  }
+  console.log(`[e2e] 成片体检完成：${warned} 页有告警`);
 };
 
 const renderStills = async (storyboard: Storyboard) => {
