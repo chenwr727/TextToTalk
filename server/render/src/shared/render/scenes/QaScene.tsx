@@ -5,6 +5,7 @@ import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve, estLines, portraitFill } from "../responsive";
+import { surplusGap } from "../fit";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -26,8 +27,8 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 竖屏稀疏页放大：一问一答这类内容量最少的页，实测只占可用内容带的 20%，
    * 上下各一大片空白。先估自然高度，再按目标填充率放大字号与间距。
    */
-  const zoom = (() => {
-    if (!isPortrait) return 1;
+  const { zoom, qaSurplus } = (() => {
+    if (!isPortrait) return { zoom: 1, qaSurplus: 0 };
     /*
      * 内宽要按「放大后的」内边距和问号圆章算。
      *
@@ -59,7 +60,17 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     const qChars = Array.from(question).length;
     const qFitCap = qChars > 0 ? (qInnerW * 0.92) / (qChars * qFs) : 2.35;
     const cap = Math.max(1.2, Math.min(2.35, qFitCap));
-    return portraitFill(qH + sp(32) + answersH, band, { max: cap, target: 0.62 });
+    const naturalH = qH + sp(32) + answersH;
+    const zoomNow = portraitFill(naturalH, band, { max: cap, target: 0.62 });
+    /*
+     * 字号封顶在「问句不折行」，一问两答的页实测只占可用带 38%。
+     * 剩下的竖向空间交给问答之间的间距（与 points 同一口径）。
+     */
+    const surplus = surplusGap(naturalH * zoomNow, band, Math.max(2, answers.length), {
+      target: 0.78,
+      maxGap: sp(120),
+    });
+    return { zoom: zoomNow, qaSurplus: surplus };
   })();
   /** 间距跟字号放大但更克制：字放大 1.5 倍时留白也放大 1.5 倍会显得散 */
   const zi = Math.min(zoom, 1.3);
@@ -127,8 +138,8 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: isPortrait ? sp(24 * zi) : SPACE.md,
-            marginTop: isPortrait ? sp(32 * zi) : SPACE.lg,
+            gap: isPortrait ? sp(24 * zi) + qaSurplus : SPACE.md,
+            marginTop: isPortrait ? sp(32 * zi) + qaSurplus : SPACE.lg,
           }}
         >
           {answers.map((p, i) => {

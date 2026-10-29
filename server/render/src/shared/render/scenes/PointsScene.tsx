@@ -309,10 +309,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * （画布 54%），两侧各空 436px，文字右边还留 94px 死区。给内容带的 90% 兜底，
    * 卡宽就只在一个窄区间里浮动，整页看起来是"铺满的一条"，而不是居中的小票条。
    */
-  const uniformW = Math.max(
-    Math.min(singleColW, Math.ceil(Math.max(...needW) + 96)),
-    Math.round(singleColW * 0.9),
-  );
+  const uniformW = Math.max(Math.min(singleColW, Math.ceil(Math.max(...needW) + 96)), Math.round(singleColW * 0.9));
 
   const estH = estHeightOf(scale);
   /**
@@ -323,9 +320,24 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const portraitGap = (() => {
     if (!isPortrait || points.length < 2) return 0;
-    const want = availH * 0.62 - estH;
+    /*
+     * 目标填充率 0.78 不是 0.62。
+     *
+     * 原来用 0.62，但 estH 估算偏保守（实测渲染高度比估算低 ~10%），
+     * 两边一相消：三条短要点的页实测只到 42%。把目标提到 0.78、
+     * 间距封顶 150px，字号不动（不会折出孤字），靠间距把内容带铺到 60%+。
+     */
+    const want = availH * 0.78 - estH;
     const extra = want / (points.length - 1);
-    return Math.round(Math.min(sp(scale.gap) * 1.2, Math.max(0, extra)));
+    /*
+     * 间距上限放宽到 sp(150)。
+     *
+     * 原来封在 sp(gap) * 1.2（约 26px）：三条短要点的页字号已经放到 1.6
+     * 倍（再大就折行折出孤字），剩下的竖向空间只能靠间距吃下去，而
+     * 上限只能多给 26px/档 —— 实测正文只占可用带的 38%。放宽到 150px
+     * 后，三档卡片能铺到 60% 以上，而且字号不变（不会多出孤字）。
+     */
+    return Math.round(Math.min(sp(150), Math.max(0, extra)));
   })();
 
   const twoCol = texts.length >= 4 && estHeightOf(baseScale) > availH * 0.95;

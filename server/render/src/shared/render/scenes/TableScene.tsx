@@ -58,20 +58,34 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const colWidths = baseWidths.map((w) => Math.round(w * fitW));
   const totalW = colWidths.reduce((a, b) => a + b, 0);
   // 竖屏整张表只有 265px 高（占画布 14%），像贴了张邮票：允许更大的放大系数
-  const fitFs = Math.min(isPortrait ? 1.6 : 1.3, fitW);
-  // 竖屏行高下限 80 -> 120：1920 高的画布里 67px 的行高等于一条细缝
-  const minCellH = Math.round((isPortrait ? sp(120) : 66) * Math.min(1.22, fitW));
+  /*
+   * 字号上限跟着行高一起放宽（1.6 -> 1.85）。
+   *
+   * 行高变成 220px 后，34px 的字在里面显得像「浮在空格里」。
+   * 字号只受列宽（fitW）和这个上限双重约束，列宽没变，
+   * 所以这一档只是把“字太小”那一头补上；真溢出就会折行，而行高有余量。
+   */
+  const fitFs = Math.min(isPortrait ? 1.85 : 1.3, fitW);
+  /*
+   * 行高不只是“下限”，竖屏还要按剩余空间往上长。
+   *
+   * 原来死定 sp(120) * min(1.22, fitW) ≈ 124px：三行的表只有 4*124 = 496px，
+   * 可用带却有 ~1480px —— 实测整张表只占 29%，上下各空一大片。
+   * 竖屏没有“列多”的压力，行高就该去吃剩余高度（目标 62%），
+   * 封顶 sp(260) 避免两三行的表被拉成一屏字段。
+   */
+  const nRows = 1 + rows.length;
+  const band = height - contentTop - captionReserve;
+  const baseCellH = Math.round((isPortrait ? sp(120) : 66) * Math.min(1.22, fitW));
+  const minCellH = isPortrait ? Math.round(Math.min(sp(260), Math.max(baseCellH, (band * 0.62) / nRows))) : baseCellH;
   const startX = (DESIGN_WIDTH - totalW) / 2;
   // 表格垂直位置：竖屏在画布正中；横屏在「标题下沿」与「字幕带」之间居中
-  const tableH = (1 + rows.length) * minCellH;
+  const tableH = nRows * minCellH;
   /*
    * 居中的“可用带”必须扣掉字幕条：只按 contentTop..height 算会把表格整体往下推半个
    * 字幕高度（实测表格原先落在 490..850：上面空 240、下面只剩 75）。
    */
-  const band = height - contentTop - captionReserve;
-  const startY = isPortrait
-    ? (height - tableH) / 2
-    : contentTop + Math.max(0, (band - tableH) / 2);
+  const startY = isPortrait ? (height - tableH) / 2 : contentTop + Math.max(0, (band - tableH) / 2);
   /**
    * 数值格子拆成「数字 + 单位」两段。
    *
@@ -171,34 +185,32 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             <div key={`r${ri}`} style={{ display: "flex", flexDirection: "row", alignItems: "stretch" }}>
               {r.map((cell, ci) => (
                 <div key={`c${ri}-${ci}`} style={dataCellStyle(ci, ry, zebra)}>
-                  {numericCol(ci) ? (
-                    (() => {
-                      const { num, unit } = splitNumUnit(String(cell ?? ""));
-                      const uw = unitWidthOf(ci);
-                      return (
-                        <>
-                          <span>{num}</span>
-                          {unit ? (
-                            <span
-                              style={{
-                                // 定宽尾部单位：不参与数字的右对齐，但能把整列数字推成一条线
-                                display: "inline-block",
-                                minWidth: `${uw}ch`,
-                                marginLeft: isPortrait ? sp(8) : 8,
-                                fontSize: "0.72em",
-                                fontWeight: FW.regular,
-                                color: C.sub,
-                              }}
-                            >
-                              {unit}
-                            </span>
-                          ) : null}
-                        </>
-                      );
-                    })()
-                  ) : (
-                    cell
-                  )}
+                  {numericCol(ci)
+                    ? (() => {
+                        const { num, unit } = splitNumUnit(String(cell ?? ""));
+                        const uw = unitWidthOf(ci);
+                        return (
+                          <>
+                            <span>{num}</span>
+                            {unit ? (
+                              <span
+                                style={{
+                                  // 定宽尾部单位：不参与数字的右对齐，但能把整列数字推成一条线
+                                  display: "inline-block",
+                                  minWidth: `${uw}ch`,
+                                  marginLeft: isPortrait ? sp(8) : 8,
+                                  fontSize: "0.72em",
+                                  fontWeight: FW.regular,
+                                  color: C.sub,
+                                }}
+                              >
+                                {unit}
+                              </span>
+                            ) : null}
+                          </>
+                        );
+                      })()
+                    : cell}
                 </div>
               ))}
             </div>

@@ -50,3 +50,28 @@ export const portraitFill = (
   const raw = (bandH * target) / contentH;
   return Math.min(max, Math.max(min, Number(raw.toFixed(3))));
 };
+
+/**
+ * 竖屏"把富余高度摊到元素间距"的每档增量。
+ *
+ * 字号放大有硬上限（再大就折行、折出孤字，比空着更难看），于是稀疏页剩下的竖向空间
+ * 只能靠间距吃下去。散在好几个版式里各写一遍时，公式和上限总是走样——`points` 原来
+ * 把上限写成 `sp(gap) * 1.2`（约 26px），三条短要点的页把字号放到 1.6 倍后实测仍只占
+ * 可用带的 38%。
+ *
+ * 这里统一成「补到 target 填充率，每档最多 maxGap」：
+ * - contentH 已经到 target：返回 0（不硬撑）；
+ * - 元素少于 2 个：没有"档"可摊，返回 0。
+ */
+export const surplusGap = (
+  contentH: number,
+  bandH: number,
+  count: number,
+  opts: { target?: number; maxGap?: number } = {},
+): number => {
+  const { target = 0.78, maxGap = 150 } = opts;
+  if (!(count > 1) || !(contentH > 0) || !(bandH > 0)) return 0;
+  const want = bandH * target - contentH;
+  if (want <= 0) return 0;
+  return Math.round(Math.min(maxGap, want / (count - 1)));
+};
