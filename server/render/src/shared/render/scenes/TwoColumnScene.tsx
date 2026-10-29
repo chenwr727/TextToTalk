@@ -31,6 +31,14 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const half = Math.ceil(points.length / 2);
   const columns = [points.slice(0, half), points.slice(half)].filter((list) => list.length > 0);
 
+  /*
+   * 横屏把卡片块撑到正文带的 74%：卡高由内容决定时整块只有 350 高，
+   * 贴着标题排之后下面会空出一大片（体检：空洞 280px -> 修好顶部又变成底部 330px 空白）。
+   * 两列的卡改成 flex:1 平分这块高度，卡内文字仍居中对齐。
+   */
+  const bandH = Math.max(0, (isPortrait ? contentHeight : 1080) - contentTop - captionReserve);
+  const blockH = isPortrait ? undefined : Math.round(bandH * 0.74);
+
   // 可用带：标题底 .. 字幕条顶（横竖两个方向同一套算法）
   const availH = Math.max(
     360,
@@ -88,7 +96,14 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     springIn(f, fps, resolveAnchor(timing, list[0] ? pointAnchor(list[0]) : undefined, index), page.motion);
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        // 横屏贴标题排：标题绝对定位在顶部、内容却相对整块画布居中，实测中间白出 280px
+        justifyContent: isPortrait ? "center" : "flex-start",
+        alignItems: "center",
+        flexDirection: "column",
+      }}
+    >
       <PageHeading text={title} />
       <div
         style={{
@@ -101,6 +116,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           alignItems: isPortrait ? "stretch" : "center",
           justifyContent: "center",
           maxHeight: isPortrait ? undefined : availH,
+          height: blockH,
         }}
       >
         {columns.map((list, ci) => {
@@ -114,6 +130,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 flexDirection: "column",
                 gap,
                 justifyContent: "center",
+                height: blockH ? "100%" : undefined,
                 /*
                  * 分界：横屏画一条竖向虚线，竖屏改成横向。
                  * 两列卡片本身长得一样，没有这条分隔线，观众只会看到"两列卡片"，
@@ -138,11 +155,12 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     pad={isPortrait ? sp(24) : SPACE.md}
                     style={{
                       flexShrink: 0,
+                      flex: blockH ? 1 : undefined,
                       opacity: t,
                       transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px)`,
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", marginTop: "auto", marginBottom: "auto" }}>
                       <IconTile
                         name={pointIcon(p, i)}
                         accent={ac}

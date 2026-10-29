@@ -3,7 +3,7 @@ import { alpha, C, FONT, FW, RADIUS, SPACE, CARD_TYPE, pickCardFont, accentOf, s
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { ICON_KEYS } from "../Icon";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { linesByPunct } from "../cjk";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
@@ -25,9 +25,16 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
+  /*
+   * 横屏三卡按正文带高度撑高：卡高写死 356 时，标题下的空间全被浪费（体检报空洞 238px）。
+   * 卡片内部本来就是 `justifyContent: center`，变高只会让图标+正文更居中，不会溢出。
+   */
+  const bandH = Math.max(0, contentHeight - contentTop - captionReserve);
+  const cardH = isPortrait ? undefined : Math.round(Math.min(bandH * 0.74, CARD_H * 1.55));
   const timing = useSceneTiming();
 
   const padX = isPortrait ? sp(CARD_TYPE.padX) : CARD_TYPE.padX;
@@ -35,7 +42,8 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const textW = isPortrait ? contentWidth - padX * 2 : CARD_W - padX * 2;
   const ICON_BOX = isPortrait ? sp(CARD_TYPE.iconBox) : CARD_TYPE.iconBox;
   const ICON_GAP = 18;
-  const textAreaH = isPortrait ? sp(240) : CARD_H - padY * 2 - ICON_BOX - ICON_GAP;
+  // 用撑高后的卡高算正文可用高度，否则卡变高了字号还按 356 选，白空间只是变多
+  const textAreaH = isPortrait ? sp(240) : Math.max(CARD_H, cardH ?? CARD_H) - padY * 2 - ICON_BOX - ICON_GAP;
 
   /** 横屏卡加宽到 520 后，全局阶梯顶格 34 偏小；本版式单独延到 40 */
   const FS_STEPS = isPortrait ? CARD_TYPE.fsCandidates : ([40, 36, 32, 28, 24] as const);
@@ -87,7 +95,14 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const sc = { ...base, fs: cardFs };
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        // 横屏贴标题排：标题是绝对定位的，内容若相对整块画布居中，标题下方会白出 238px
+        justifyContent: isPortrait ? "center" : "flex-start",
+        alignItems: "center",
+        flexDirection: "column",
+      }}
+    >
       <PageHeading text={title} />
       <div
         style={{
@@ -97,7 +112,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           gap: isPortrait ? gapPortrait || portraitGap : 48,
           // 竖屏的 PageHeading 是绝对定位在顶部，这里再往下推 170 会把整组压到偏下，
           // 实测上方空 550px、下方只剩 330px；交给居中即可，marginTop 归零
-          marginTop: isPortrait ? 0 : 170,
+          marginTop: isPortrait ? 0 : contentTop,
         }}
       >
         {[0, 1, 2].map((i) => {
@@ -126,7 +141,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   width: isPortrait ? contentWidth : CARD_W,
                   // 竖屏改由内容撑高：固定套用横屏卡高会在高画布里留下大片空白，
                   // 而且一旦文案变长就溢出卡片（改字号缩放的实测就是这个现象）
-                  height: isPortrait ? undefined : CARD_H,
+                  height: isPortrait ? undefined : cardH,
                   minHeight: isPortrait ? sp(150) : undefined,
                   boxSizing: "border-box",
                 }}
