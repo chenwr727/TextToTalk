@@ -161,6 +161,31 @@ export interface AuditVerdict {
 }
 
 /**
+ * "天生稀疏"的版式：封面 / 章节页 / 收尾页。
+ *
+ * 这三页只有标题或一句结论，留白是设计的一部分，不该被"内容只占正文带 24%"反复提醒——
+ * 上一轮刚把封面的标题放大到一行能放下的最大值，体检却还在对着它喊稀疏，
+ * 下一个人看到就会继续改，改到把留白填满为止。
+ *
+ * 所以对这几页换一套判据：
+ * - 填充率下限 15%（而不是 30%）：低于 15% 才说明这页根本没渲染出东西
+ * - 内部空洞上限 25%（而不是 15%）：标题与要点之间天然有大段空白
+ * - 不做横向占用检查：章节页的大号序号本来只占中间一小块
+ */
+export const AIRY_LAYOUTS: ReadonlySet<string> = new Set(["title", "section", "end"]);
+
+/** 这类版式在填充率低于它时仍要报警（说明不是"设计留白"而是"没渲染出来"） */
+const AIRY_MIN_FILL = 0.15;
+/** 这类版式的内部空洞上限 */
+const AIRY_MAX_VOID_RATIO = 0.25;
+
+export interface VerdictOptions {
+  band?: { top: number; bottom: number };
+  /** 版式名（`title` / `points` / `chart` …），用来放宽天生稀疏的页面 */
+  layout?: string;
+}
+
+/**
  * 把指标翻成一句人话。
  *
  * 阈值都是这一轮"量真片"踩出来的：内部空洞 >15% 正文带高就能肉眼看出断层
@@ -173,13 +198,29 @@ export function auditVerdict(
   width: number,
   height: number,
   isPortrait: boolean,
-  band?: { top: number; bottom: number },
+  opts: VerdictOptions = {},
 ): AuditVerdict[] {
-  const b = band ?? bodyBand(width, height);
+  const b = opts.band ?? bodyBand(width, height);
   const bandH = Math.max(1, b.bottom - b.top + 1);
+  const airy = !!opts.layout && AIRY_LAYOUTS.has(opts.layout);
   const out: AuditVerdict[] = [];
   if (m.fill <= 0) {
     out.push({ level: "warn", message: "整帧没有可识别的墨迹（黑屏/空白页？）" });
+    return out;
+  }
+  if (airy) {
+    if (m.fill < AIRY_MIN_FILL) {
+      out.push({
+        level: "warn",
+        message: `这页天生稀疏，但内容只占 ${Math.round(m.fill * 100)}%（不足 ${Math.round(AIRY_MIN_FILL * 100)}%），像是没渲染出来`,
+      });
+    }
+    if (m.voidPx > bandH * AIRY_MAX_VOID_RATIO) {
+      out.push({
+        level: "warn",
+        message: `页面内部有 ${m.voidPx}px 连续空白（从 y=${m.voidAt} 起，占正文带 ${Math.round((m.voidPx / bandH) * 100)}%）`,
+      });
+    }
     return out;
   }
   if (m.voidPx > bandH * 0.15) {

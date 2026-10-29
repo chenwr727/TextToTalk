@@ -378,8 +378,8 @@ const extractGray = async (input: string, seekSec: number | null, w: number, h: 
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-const reportOne = (label: string, m: FrameMetrics, w: number, h: number, portrait: boolean) => {
-  const verdicts = auditVerdict(m, w, h, portrait, bodyBand(w, h));
+const reportOne = (label: string, m: FrameMetrics, w: number, h: number, portrait: boolean, layout?: string) => {
+  const verdicts = auditVerdict(m, w, h, portrait, { band: bodyBand(w, h), layout });
   const bad = verdicts.some((v) => v.level === "warn");
   console.log(
     `  ${bad ? "\u2717" : "\u00b7"} ${label.padEnd(24)} fill ${pct(m.fill).padStart(4)}  \u7a7a\u6d1e ${String(m.voidPx).padStart(4)}px  \u5bc6\u5ea6 ${pct(m.inkRatio).padStart(4)}`,
@@ -414,6 +414,7 @@ const auditStills = async (storyboard: Storyboard) => {
       params.width,
       params.height,
       portrait,
+      page.layout,
     );
     if (bad) warned++;
   }
@@ -475,7 +476,7 @@ const auditMp4 = async (pages: TimedPage[], mp4: string) => {
         `  ! ${label} 三个采样点差异 ${spread}pp（${fills.map((f) => Math.round(f * 100)).join("/")}%），可能有装饰或动画干扰，请看图`,
       );
     }
-    if (reportOne(label, m, params.width, params.height, portrait)) warned++;
+    if (reportOne(label, m, params.width, params.height, portrait, pages[i].layout)) warned++;
   }
   console.log(`[e2e] 成片体检完成：${warned} 页有告警`);
 };

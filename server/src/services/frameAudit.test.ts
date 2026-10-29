@@ -25,7 +25,14 @@ type AuditModule = {
     inkLeft: number;
     inkRight: number;
   };
-  auditVerdict: (m: never, w: number, h: number, portrait: boolean) => { level: string; message: string }[];
+  auditVerdict: (
+    m: never,
+    w: number,
+    h: number,
+    portrait: boolean,
+    opts?: { layout?: string; band?: { top: number; bottom: number } },
+  ) => { level: string; message: string }[];
+  AIRY_LAYOUTS: ReadonlySet<string>;
 };
 const audit = ((auditNs as unknown as { default?: AuditModule }).default ?? auditNs) as unknown as AuditModule;
 
@@ -55,7 +62,14 @@ test("measureInk：单块内容只占它自己的高度", () => {
 });
 
 test("measureInk：两块内容之间的空白被记为内部空洞", () => {
-  const m = audit.measureInk(canvas(1000, [[100, 199], [800, 899]]), W, 1000);
+  const m = audit.measureInk(
+    canvas(1000, [
+      [100, 199],
+      [800, 899],
+    ]),
+    W,
+    1000,
+  );
   assert.equal(m.fill, 0.8, "bbox 从 100 到 899，占 80%");
   assert.equal(m.voidPx, 600, "200..799 共 600 行空白");
   assert.equal(m.voidAt, 200);
@@ -92,7 +106,14 @@ test("measureInk：inkRatio 反映 bbox 内的密度", () => {
 });
 
 test("auditVerdict：内部空洞超过正文带 15% 要报警，稀疏只提示", () => {
-  const holey = audit.measureInk(canvas(1000, [[100, 199], [800, 899]]), W, 1000);
+  const holey = audit.measureInk(
+    canvas(1000, [
+      [100, 199],
+      [800, 899],
+    ]),
+    W,
+    1000,
+  );
   const v1 = audit.auditVerdict(holey as never, W, 1000, true);
   assert.ok(
     v1.some((v) => v.level === "warn" && v.message.includes("连续空白")),
@@ -101,7 +122,67 @@ test("auditVerdict：内部空洞超过正文带 15% 要报警，稀疏只提示
 
   const sparse = audit.measureInk(canvas(1000, [[480, 519]]), W, 1000);
   const v2 = audit.auditVerdict(sparse as never, W, 1000, true);
-  assert.ok(v2.every((v) => v.level === "info"), "稀疏不该 warn");
+  assert.ok(
+    v2.every((v) => v.level === "info"),
+    "稀疏不该 warn",
+  );
+});
+
+test("auditVerdict：天生稀疏的版式（封面/章节/收尾）不再提示稀疏，但没渲染出来仍要报警", () => {
+  // 封面实测 fill 24%、内部空洞 87px —— 改之前会吐一条"内容只占 24%"的 info
+  const cover = audit.measureInk(canvas(1000, [[400, 639]]), W, 1000);
+  assert.ok(Math.abs(cover.fill - 0.24) < 0.005, "造出来的 fill 应是 24%");
+  const none = audit.auditVerdict(cover as never, W, 1000, true, { layout: "title" });
+  assert.equal(none.length, 0, "封面留白是设计的一部分，不该再提示");
+
+  // 同一张图，换成普通内容页就该提示稀疏
+  const regular = audit.auditVerdict(cover as never, W, 1000, true, { layout: "points" });
+  assert.ok(
+    regular.some((v) => v.level === "info" && v.message.includes("上下留白")),
+    "内容页 24% 仍要提示",
+  );
+
+  // 封面只有 5% 说明标题根本没出来
+  const broken = audit.measureInk(canvas(1000, [[480, 529]]), W, 1000);
+  const v = audit.auditVerdict(broken as never, W, 1000, true, { layout: "title" });
+  assert.ok(
+    v.some((x) => x.level === "warn" && x.message.includes("没渲染出来")),
+    "稀疏页低于 15% 必须是 warn",
+  );
+});
+
+test("auditVerdict：稀疏版式的空洞上限放宽到 25%，但大断层仍然报警", () => {
+  // 标题在 300..339、要点在 700..739：中间 360px 空白 = 正文带 47% > 25%
+  const gap = audit.measureInk(
+    canvas(1000, [
+      [300, 339],
+      [700, 739],
+    ]),
+    W,
+    1000,
+  );
+  const v = audit.auditVerdict(gap as never, W, 1000, true, { layout: "end" });
+  assert.ok(
+    v.some((x) => x.level === "warn" && x.message.includes("连续空白")),
+    "47% 的洞即便在收尾页也要报",
+  );
+
+  // 空洞比例是相对"正文带"算的，不是整幅图：100×1000 走竖屏带 109..880（772px），
+  // 所以 180px 空白 = 23%，低于放宽后的 25%
+  const ok = audit.measureInk(
+    canvas(1000, [
+      [300, 339],
+      [520, 559],
+    ]),
+    W,
+    1000,
+  );
+  const v2 = audit.auditVerdict(ok as never, W, 1000, true, { layout: "end" });
+  assert.equal(v2.length, 0, "180px/772px = 23% 的洞在收尾页允许");
+});
+
+test("AIRY_LAYOUTS：只登记封面/章节/收尾三页", () => {
+  assert.deepEqual([...(audit.AIRY_LAYOUTS as ReadonlySet<string>)].sort(), ["end", "section", "title"]);
 });
 
 test("measureInk：band 之外的内容不参与判断（页标题/字幕条不算内容）", () => {
@@ -120,7 +201,7 @@ test("measureInk：band 之外的内容不参与判断（页标题/字幕条不�
   assert.equal(banded.inkTop, 400, "标题被排除");
   assert.equal(banded.inkBottom, 500, "字幕条被排除");
   assert.equal(banded.voidPx, 0, "正文带内没有洞");
-  assert.ok(Math.abs(banded.fill - (101 / 601)) < 0.001, "fill 相对正文带高度算");
+  assert.ok(Math.abs(banded.fill - 101 / 601) < 0.001, "fill 相对正文带高度算");
 });
 
 test("bodyBand：竖屏与横屏各给出不含标题/字幕的正文带", () => {
