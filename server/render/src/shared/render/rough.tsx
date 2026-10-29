@@ -26,6 +26,7 @@ export const HandHighlight: React.FC<{
   progress: number;
 }> = ({ children, color = "#ffd54a", progress }) => {
   const [ref, rect] = useMeasure<HTMLSpanElement>();
+  if (typeof window !== "undefined") console.log("[dbg-underline] w=" + (rect?.w ?? -1) + " h=" + (rect?.h ?? -1));
   const w = rect?.w ?? 0;
   const h = rect?.h ?? 0;
   const padX = 6;
@@ -81,7 +82,17 @@ export const HandUnderline: React.FC<{
   const padX = 8;
   const barW = w + padX * 2;
   const sw = strokeWidth ?? Math.max(6, h * 0.18);
-  const y = h + 4;
+  /*
+   * 笔画「贴在被量那一层的底边」——用 `top: 100%` 锚在字形盒上，不再用 `y = h + 4` 从外层盒子顶往下量。
+   *
+   * 实测教训：stats 页的大号数字 96px、行盒 139px，`y = h + 4` 落在行盒下面 4px ——
+   * 而盒子外面紧跟着就是下一行，那条手绘线于是横穿在说明文字第一行上
+   * （`12% → 68%：一次真实的五人团队对照实验` 被划掉），数字本身反倒没有下划线。
+   * 换成相对字形盒的底边之后，外层盒子多高都不影响笔画位置。
+   */
+  const lift = Math.round(sw * 0.7);
+  const svgH = sw * 2 + 12;
+  const y = 0;
   const safeProgress = Math.max(0, Math.min(1, progress));
 
   const lines: React.ReactNode[] = [];
@@ -104,25 +115,26 @@ export const HandUnderline: React.FC<{
   }
 
   return (
-    <span style={{ position: "relative", display: "inline-block", whiteSpace: "pre-wrap" }}>
-      <span ref={ref} style={{ position: "relative" }}>
+    <span style={{ position: "relative", display: "inline-block", whiteSpace: "pre-wrap", lineHeight: 1 }}>
+      <span ref={ref} style={{ position: "relative", display: "inline-block", lineHeight: 1 }}>
         {children}
+        {rect && safeProgress > 0 && (
+          <svg
+            width={barW}
+            height={svgH}
+            style={{
+              position: "absolute",
+              left: -padX,
+              top: "100%",
+              marginTop: -lift,
+              overflow: "visible",
+              pointerEvents: "none",
+            }}
+          >
+            {lines}
+          </svg>
+        )}
       </span>
-      {rect && safeProgress > 0 && (
-        <svg
-          width={barW}
-          height={sw * 2 + 12}
-          style={{
-            position: "absolute",
-            left: -padX,
-            top: 0,
-            overflow: "visible",
-            pointerEvents: "none",
-          }}
-        >
-          {lines}
-        </svg>
-      )}
     </span>
   );
 };
