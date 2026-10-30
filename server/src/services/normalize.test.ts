@@ -6,6 +6,7 @@ import {
   captionOverlap,
   captionOverlapInfo,
   collectStoryboardWarnings,
+  deriveLayout,
   extractJson,
   normalizeAccent,
   normalizeArt,
@@ -354,6 +355,63 @@ describe("normalizePage：chart / table / map", () => {
       1,
     );
     assert.equal(page.map?.routes?.length, 1);
+  });
+});
+
+describe("deriveLayout：模型不给版式时按内容推，别整片退化成 points", () => {
+  const base = { index: 1, points: 3, hasChart: false, hasTable: false, hasSides: false };
+
+  test("内容专属版式优先：table / chart / 左右对比", () => {
+    assert.equal(deriveLayout({ ...base, hasTable: true }), "table");
+    assert.equal(deriveLayout({ ...base, hasChart: true }), "chart");
+    assert.equal(deriveLayout({ ...base, hasSides: true }), "comparison");
+    // 表格优先于图表：两者都有时以表格为准（表格能装下数字，图表装不下单元格）
+    assert.equal(deriveLayout({ ...base, hasTable: true, hasChart: true }), "table");
+  });
+
+  test("3 条要点在 points / three_card / steps 之间轮换", () => {
+    const got = [0, 1, 2, 3].map((index) => deriveLayout({ ...base, index }));
+    assert.deepEqual(got, ["points", "three_card", "steps", "points"]);
+  });
+
+  test("避开最近两页用过的版式：不会连续三页一样", () => {
+    // 最近两页是 points / three_card，3 条要点只剩 steps 可选
+    assert.equal(deriveLayout({ ...base, index: 0, recent: ["points", "three_card"] }), "steps");
+    // 候选全都被用过时回落到轮换，而不是无解
+    assert.equal(deriveLayout({ ...base, index: 0, recent: ["points", "three_card", "steps"] }), "points");
+  });
+
+  test("≥4 条要点在 points / two_column 之间轮换，1~2 条固定 points", () => {
+    assert.equal(deriveLayout({ ...base, index: 0, points: 4 }), "points");
+    assert.equal(deriveLayout({ ...base, index: 1, points: 4 }), "two_column");
+    assert.equal(deriveLayout({ ...base, index: 1, points: 2 }), "points");
+    assert.equal(deriveLayout({ ...base, index: 1, points: 0 }), "points");
+  });
+
+  test("显式 layout 一律不动：推导只补空缺", () => {
+    assert.equal(normalizePage({ layout: "qa", points: ["甲", "乙", "丙"] }, 1).layout, "qa");
+    // 非法 layout 才算空缺
+    assert.notEqual(normalizePage({ layout: "mechanism", points: ["甲", "乙", "丙"] }, 1).layout, "mechanism");
+  });
+
+  test("兜底分镜（整片没写 layout）不再全是一样的版式", () => {
+    const sb = normalizeDirect({
+      pages: [
+        { title: "封面", captions: ["开场"] },
+        { title: "三件事", points: ["甲", "乙", "丙"] },
+        { title: "又一个三件事", points: ["甲", "乙", "丙"] },
+        { title: "四件事", points: ["甲", "乙", "丙", "丁"] },
+        { title: "对比", points: ["甲", "乙"], sides: { a: "左", b: "右" } },
+      ],
+    });
+    const layouts = sb.pages.map((p) => p.layout);
+    // 封面没有要点 + 1 条字幕，只能 points；后面跟着的内容页各自不同
+    assert.equal(layouts[0], "points");
+    assert.deepEqual(layouts.slice(1), ["steps", "three_card", "two_column", "comparison"]);
+    // 相邻三页不撞版式（这是这条修复的实质目的）
+    for (let i = 2; i < layouts.length; i++) {
+      assert.ok(!(layouts[i] === layouts[i - 1] && layouts[i] === layouts[i - 2]), `第 ${i + 1} 页与前两页版式相同`);
+    }
   });
 });
 

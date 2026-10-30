@@ -307,8 +307,7 @@ const ROLES: PageRole[] = [
 /** 把任意值当对象读（非对象当空对象）——供 parseJson 调用方使用 */
 export const asRecord = (v: unknown): Record<string, unknown> => (isRecord(v) ? v : {});
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 const oneOf = <T extends string>(v: unknown, list: readonly T[]): T | null =>
   typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : null;
@@ -376,6 +375,46 @@ const LAYOUT_IDS: Layout[] = [
 ];
 export function normalizeLayout(l: unknown): Layout {
   return oneOf(l, LAYOUT_IDS) ?? "points";
+}
+
+/**
+ * 模型没给版式时，按内容推一个。
+ *
+ * 为什么需要：`normalizeLayout` 的兜底是 `points`，而"走兜底一次性生成"的那条路径里模型
+ * 经常整片不给 `layout` —— 实测出现过 6 页全是 `points`，分镜退化成一条要点列表，
+ * 图表/表格数据照样渲成要点（因为 `chart`/`table` 字段本身为空，场景注册表也只能落到 PointsScene）。
+ *
+ * 规则按"内容能不能装进这个版式"排，能装的里面**避开最近两页用过的**，这样同一份内容
+ * 不会连续三页长得一样：
+ * - 有 table / chart / 左右对比 → 只能是它们（内容专属）
+ * - 3 条要点 → three_card / steps / points 轮换
+ * - ≥4 条要点 → two_column / points 轮换（two_column 会把要点对半分两栏）
+ * - 1~2 条 → points
+ *
+ * 注意：只在**没有合法 layout** 时调用。用户/AI 显式写了的版式一律不动。
+ */
+export function deriveLayout(input: {
+  index: number;
+  points: number;
+  hasChart: boolean;
+  hasTable: boolean;
+  hasSides: boolean;
+  /** 最近两页已经用过的版式，用来避免连续重复 */
+  recent?: Layout[];
+}): Layout {
+  const { index, points, hasChart, hasTable, hasSides } = input;
+  const recent = input.recent ?? [];
+  if (hasTable) return "table";
+  if (hasChart) return "chart";
+  if (hasSides) return "comparison";
+  const pick = (candidates: Layout[]): Layout => {
+    const fresh = candidates.filter((l) => !recent.includes(l));
+    const pool = fresh.length ? fresh : candidates;
+    return pool[index % pool.length];
+  };
+  if (points === 3) return pick(["points", "three_card", "steps"]);
+  if (points >= 4) return pick(["points", "two_column"]);
+  return "points";
 }
 
 /** 页面主色序号：非法/越界一律丢弃（回落到主题默认主色），不做猜测 */
@@ -724,6 +763,8 @@ export function normalizePage(
   effects?: PageEffects,
   /** 归一化过程发现的问题（供重试提示使用，不进入产物） */
   diagnostics?: string[],
+  /** 最近两页用过的版式：仅在模型没给合法 layout 时用来避开连续重复（见 deriveLayout） */
+  recentLayouts?: Layout[],
 ): StoryPage {
   /*
    * 外部（LLM / 手改分镜）传进来的是任意值，一律按 unknown 接。
@@ -735,7 +776,22 @@ export function normalizePage(
   const table = normalizeTable(p.table);
   const rawSvg = normalizeCustomSvg(p.customSvg);
   const artVal = normalizeArt(art ?? p.art ?? null);
-  const layoutVal = normalizeLayout(layout ?? p.layout ?? "points");
+  /*
+   * 模型没给（或给了非法值）时按内容推版式，而不是一律回到 points。
+   * 实测：走兜底生成时曾经 6 页全是 points，整片退化成要点列表。
+   */
+  const explicitLayout = oneOf(layout ?? p.layout, LAYOUT_IDS);
+  const rawPoints = Array.isArray(p.points) ? (p.points as unknown[]).filter((x) => x != null).length : 0;
+  const layoutVal =
+    explicitLayout ??
+    deriveLayout({
+      index: i,
+      points: rawPoints,
+      hasChart: !!chart,
+      hasTable: !!table,
+      hasSides: !!(p.sides ?? p.comparisonSides),
+      recent: recentLayouts,
+    });
   const customSvg = rawSvg && layoutVal !== "title" && layoutVal !== "end" && !chart && !table ? rawSvg : null;
   const hasSvg = !!customSvg;
   const finalArt = hasSvg ? null : artVal;
@@ -804,11 +860,35 @@ export function normalizePage(
 
 export function normalizeDirect(input: unknown): Storyboard {
   const pages = isRecord(input) ? input : {};
+  const list = (Array.isArray(pages.pages) ? (pages.pages as unknown[]) : []).slice(0, 10);
+  /*
+   * 逐页归一化，并把"最近两页的版式"传下去。
+   * 兜底生成那条路模型常常整片不写 layout；没有这个上下文时 deriveLayout 只能按 index 轮换，
+   * 有了它，相邻三页不会撞成同一个版式（实测曾经 6 页全是 points）。
+   */
+  const out: StoryPage[] = [];
+  list.forEach((p, i) => {
+    const recent = out.slice(-2).map((x) => x.layout ?? "points");
+    out.push(
+      normalizePage(
+        p,
+        i,
+        /* layout */ undefined,
+        /* art */ undefined,
+        /* role */ undefined,
+        /* icon */ undefined,
+        /* rhythm */ undefined,
+        /* transition */ undefined,
+        /* motion */ undefined,
+        /* effects */ undefined,
+        /* diagnostics */ undefined,
+        /* recentLayouts */ recent,
+      ),
+    );
+  });
   return {
     projectTitle: String(pages.projectTitle ?? "我的讲解").slice(0, 22),
-    pages: (Array.isArray(pages.pages) ? (pages.pages as unknown[]) : [])
-      .slice(0, 10)
-      .map((p, i) => normalizePage(p, i)),
+    pages: out,
   };
 }
 
