@@ -45,6 +45,29 @@
 
 ### 修复
 
+- **体检终于拿到了"正文块真实几何"：`renderStill` 里画布分两步就位，之前所有 DOM 测量都是废的**。在 `useEffect` 里量，舞台还是 `0×0`、挂在 `top: -999999`（实测标题按 1 列折行量出 461px 高、`offsetHeight = 0`）；**让出一个宏任务（`setTimeout(…, 0)`）后再量，舞台就是 `1920×1080 @ top 0`**，几何与截图完全一致（three_card：标题底 206、正文 250..587，截图里卡片正是 250..585）。之前两轮 DOM 探针因此全部回滚，这次是第三次，靠这条时序差异才成立。
+  - 探针（`BodyProbe`）只报三个数：标题下沿、正文块上下沿、字幕条上沿。防两类误量：**铺满整页的布局骨架**（每个场景外层都有 `flex: 1` 容器，box 是 0..1080）与**标题容器**（two_column / three_card 把含标题的整块内容包在静态竖列里，量出来正文顶=标题顶 90）都排除。
+  - e2e 与 gallery 都在渲染时写浏览器日志（`browserLogPath`），静帧体检顺带把几何打印出来并行判据。
+
+- **体检判据换成 DOM 几何：告警 12 页 → 8 页，而且是"两边都变准"**。`fill` / `voidPx` 是墨迹口径，看不见浅色卡片与网格线，**既能误报也能漏报**；现在位置判据用「标题底→正文顶」与「正文底→正文带底」，墨迹空洞降为提示（仍在日志里，标注"这条不算告警"）。
+  - 消除 5 页误报：`chart-line` / `chart-area`（空洞 117px，但正文 245..874、上下都贴着）、`points-loop`、`points-quote`、`points-custom_svg_grid`。
+  - **暴露出 2 页以前根本没报的真问题**：`three_card` 墨迹空洞只有 41px（不告警），实际正文止于 587、带底 920，下半截空 333px；`stats` 同理空 250px。
+  - 竖屏与稀疏版式（title/section/end）判据不变。
+
+- **横屏 `points-timeline` 改成竖排时间轴**。原来的水平轴是一条 8px 细线 + 80px 圆，只占正文带中间 230px（实测正文 376..704，标题下空 170px、带底又空 216px），1920×1080 里看着像一根线漂在屏幕中间。节点 ≤4 时改走竖排（轴线从正文带顶拉到字幕条上、节点左右交替、圆 96px），≥5 时仍用水平轴。竖屏路径完全不动。
+
+- **横屏 6 个版式把"正文带高度"算错了，内容整体偏下**。根因基本一致：用 `useResponsive().contentHeight`（已扣安全区）或写死的 `760`/`1080 - 90` 去算带高，再交给 `justifyContent: center`（相对整块画布居中）。改成用 `useVideoConfig().height`、从 `contentTop` 起笔、把块拉高到带高：
+  - `table` / `table-numeric`：行高按带高 0.86 均分（封顶 190），表格 415..772 → 250 起笔、填满（标题下沉 209px 的问题消失）。
+  - `points-flow`：卡片高度 0.62 → 0.86 倍行带，容器从 `contentTop` 起笔。
+  - `chart-pyramid`：每层高度改为带高均分（原先 `min(内容, 均分)` 三层只有 450px）。
+  - `steps` / `stats` / `three_card`：单行卡高 0.74 → 0.92、上限 420/470 → 520，`three_card` 另修行带高度口径（`contentHeight` → 画布高，卡高 337 → 620）。
+
+- **`points-custom_svg` 的底部空白是内容纵横比决定的，没硬填**。样例里 AI 画的示意图是 6.4:1（1700×264），等比放进 1872 宽的带里只能有 264px 高，要把 620px 的带填满就得横向拉到 3400px（越界）或纵向拉伸（变形）。这页仍是告警状态，**明确记成遗留项**，没有为了消警去改阈值。
+
+- **兜底分镜整片退化成 `points`**。`normalizeLayout` 的兜底是 `points`，而"一次性生成全部分镜"那条路径模型经常整片不写 `layout`——实测出现过 6 页全是 `points`。新增 `deriveLayout`：按内容推版式（`table` / `chart` / 左右对比 / 3 条要点在 `points`/`three_card`/`steps` 间轮换 / ≥4 条在 `points`/`two_column` 间轮换），并避开最近两页用过的版式。显式写了合法 `layout` 一律不动。附 6 项单测（含"相邻三页不撞版式"）。
+
+- **`qwen-audio` 引擎默认关闭**。`qwen-audio-3.0-tts-flash` 只能用免费额度，本仓库账号的免费额度已用完，实测仍是 `HTTP 403 AllocationQuota.FreeTierOnly`（错误已翻成人话）。`server/tts.config.json` 改为 `enabled: false` 并留 `_note` 说明；`docs/TTS.md` 写明开通付费额度后把 `enabled` 改回 `true`。冒烟验证：`edge` / `dashscope` / `seedtts` 三个引擎实测均正常出声（26KB / 203KB / 27KB）。
+
 - **横屏 `points`（单列）与 `qa` 同样把内容按整块画布居中，标题下方裂开 160~180px**。这两个版式的 `AbsoluteFill` 是 `justifyContent: center`，而 `PageHeading` 绝对定位、不占文档流，于是"居中"是相对 1080 高的画布算的——标题和正文看上去是两段。
   - `points` 单列：卡片高度改为由正文带推出（`cardMinH`，上限 260），卡片从 `contentTop` 起笔、堆满到字幕条上方，卡内图标+文字用 `marginTop/marginBottom: auto` 垂直居中。实测 gallery 样例页：fill **79% → 98%**，空洞 **201px → 80px**，`points-long` 空洞 134px → 58px（两页都不再告警）。
   - `qa`：问卡跟着标题（`marginTop: contentTop`），答案卡列 `flex: 1` 分掉剩余高度、在剩余高度里居中，单张卡高度封顶 260px（否则一句答案会被拉成 430px 高的空面板——第一版就是这样，看着像没装东西）。实测 fill **63% → 82%**，空洞 162px → 144px（这条仍在告警阈值内，见下方口径说明）。
