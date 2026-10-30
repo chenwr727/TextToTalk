@@ -11,14 +11,19 @@
 
 ## 支持的模型
 
-| 引擎 ID      | 名称                      | 密钥             | 说明                                          |
-| ------------ | ------------------------- | ---------------- | --------------------------------------------- |
-| `edge`       | Edge 在线语音             | 免密钥           | 微软 Edge 在线合成，开箱即用                  |
-| `dashscope`  | 阿里云百炼 CosyVoice      | 需 `DASHSCOPE_*` | 支持方言、声音复刻                            |
-| `qwen-audio` | 阿里云百炼 Qwen-Audio-TTS | 需 `DASHSCOPE_*` | 支持情感标签、多语言                          |
-| `seedtts`    | 火山引擎 Seed-TTS         | 需 `SEED_TTS_*`  | 豆包语音合成大模型 2.0，HTTP Chunked 单向流式 |
+| 引擎 ID      | 名称                      | 密钥             | 说明                                           |
+| ------------ | ------------------------- | ---------------- | ---------------------------------------------- |
+| `edge`       | Edge 在线语音             | 免密钥           | 微软 Edge 在线合成，开箱即用                   |
+| `dashscope`  | 阿里云百炼 CosyVoice      | 需 `DASHSCOPE_*` | 支持方言、声音复刻                             |
+| `qwen-audio` | 阿里云百炼 Qwen-Audio-TTS | 需 `DASHSCOPE_*` | 支持情感标签、多语言；**默认关闭**，见下方说明 |
+| `seedtts`    | 火山引擎 Seed-TTS         | 需 `SEED_TTS_*`  | 豆包语音合成大模型 2.0，HTTP Chunked 单向流式  |
 
 > `dashscope` 与 `qwen-audio` 共用阿里云百炼的密钥与工作空间。
+>
+> **`qwen-audio` 默认关闭（`enabled: false`）**：`qwen-audio-3.0-tts-flash` 只能用账号的免费额度，
+> 免费额度用完后 DashScope 会返回 `HTTP 403 AllocationQuota.FreeTierOnly`（本仓 2026-10-30 实测）。
+> 在百炼控制台为该模型开通付费额度后，把 `server/tts.config.json` 里它的 `enabled` 改回 `true` 即可恢复。
+> 想先确认能不能出声：`pnpm -C server exec tsx scripts/tts-smoke.mts qwen-audio`。
 > 未配置 `DASHSCOPE_*` 时，这两个引擎会自动隐藏，仅保留 Edge。
 > 未配置 `SEED_TTS_API_KEY` 时，Seed-TTS 引擎同样自动隐藏。
 

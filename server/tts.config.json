@@ -38,7 +38,8 @@
     {
       "id": "qwen-audio",
       "name": "阿里云百炼 Qwen-Audio-TTS",
-      "enabled": true,
+      "_note": "默认关闭：该模型目前只能用免费额度，账号的免费额度已用完（DashScope 返回 403 AllocationQuota.FreeTierOnly，2026-10-30 实测）。在百炼控制台开通付费额度后把 enabled 改回 true 即可。",
+      "enabled": false,
       "type": "dashscope",
       "model": "qwen-audio-3.0-tts-flash",
       "sampleRate": 24000,
