@@ -850,6 +850,23 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
   const FS_CANDIDATES = [FS.body, 32, 28, 25, 22];
   const nodeFs = FS_CANDIDATES.find((fsz) => Math.ceil(maxChars / Math.max(1, Math.floor(TEXT_W / fsz))) <= 2) ?? 22;
 
+  /*
+   * 标签字号要按「格子内宽 - 图标 - 内边距」反推，且不允许折行。
+   *
+   * 原来用的 `nodeFs` 是按「两行放得下」选的，配合 `whiteSpace: normal`：竖屏实测
+   * 「低频低痛：设备领用」被折成「设备领 / 用」——中文随处可断，最后一个字孤悬在第二行。
+   * 现在反过来：先算出「最长标签单行放得下」的字号，再 `nowrap`。
+   */
+  const GRID_W = isPortrait ? contentWidth : 1180;
+  const cellPad = isPortrait ? sp(28) : 28;
+  const chipPadX = isPortrait ? sp(26) : 26;
+  const iconW = (isPortrait ? sp(28) : 28) + (isPortrait ? sp(14) : 14);
+  const cellInnerW = GRID_W / 2 - cellPad * 2 - chipPadX * 2 - iconW - (isPortrait ? sp(SPACE.md) : SPACE.md);
+  const labelChars = Math.max(1, ...list.map((it, i) => Array.from(pointText(it, i)).length));
+  /* 1.02：CJK 字宽≈em，留 2% 余量避免贴着边界折行 */
+  const labelFs =
+    [nodeFs, nodeFs - 2, nodeFs - 4, nodeFs - 6, 26, 24, 22].find((fsz) => labelChars * fsz * 1.02 <= cellInnerW) ?? 22;
+
   const GRID_H = isPortrait ? 1000 : 520;
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
@@ -928,7 +945,7 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
                       color: "#fff",
                       borderRadius: RADIUS.chip,
                       padding: `${isPortrait ? sp(20) : 20}px ${isPortrait ? sp(26) : 26}px`,
-                      fontSize: nodeFs,
+                      fontSize: labelFs,
                       fontWeight: FW.bold,
                       fontFamily: FONT,
                       textAlign: "center",
@@ -936,7 +953,8 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
                       boxShadow: SOLID_SHADOW,
                       // 不再拉满整宽：标签自己多宽就多宽，居中后四周留白均匀
                       maxWidth: "100%",
-                      whiteSpace: "normal",
+                      /* 单行：字号已经按最长标签反推过，再折行就会把中文词拆开 */
+                      whiteSpace: "nowrap",
                       overflow: "hidden",
                       boxSizing: "border-box",
                     }}

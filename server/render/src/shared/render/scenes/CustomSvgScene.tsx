@@ -619,6 +619,180 @@ export function buildLandscapeCards(
 }
 
 /**
+ * 竖屏“2×2 / 两行对照”重排：每行一对卡片，两行上下堆叠。
+ *
+ * 为什么需要它：样例里那张「两行两列对照」图是 740×320（≈2.3:1），
+ * 竖屏只能按宽等比缩到 920 宽 → 397 高，实测正文 692..1069（只占带的 26%），
+ * 整张图像一张邮票漂在画布中间。
+ *
+ * 为什么不能用 buildPortraitChain：它要求每列只有 1 个节点（链），
+ * 而对照图是每列 2 个节点（网格）；强行竖排会把「旧流程 / 11 道审批」叠在一行。
+ * 而它和链又确实是同一类东西：每行是一组“左→右”的对照，所以只要把**行**（而不是列）
+ * 当成堆叠单元，左右配对关系就完整保留下来了。
+ *
+ * 识别不了就返回 null（退回等比缩放），宁可不排也不排错。
+ */
+export function buildPortraitPairRows(
+  els: SvgElement[],
+  box: { x: number; y: number; w: number; h: number },
+): ChainLayout | null {
+  if (els.length < 3) return null;
+  const bs = els.map(elementBounds);
+  const area = (b: Bounds) => Math.max(b.maxX - b.minX, 0) * Math.max(b.maxY - b.minY, 0);
+
+  const nodeIdx = els
+    .map((el, i) => ({ el, i, b: bs[i] }))
+    .filter(
+      ({ el, b }) =>
+        (el.type === "rect" || el.type === "circle" || el.type === "ellipse") &&
+        b.maxX - b.minX >= 50 &&
+        b.maxY - b.minY >= 50,
+    );
+  if (nodeIdx.length < 4 || nodeIdx.length > 8) return null;
+
+  /* 按 y 区间聚成行（与 buildPortraitChain 按 x 聚列对称） */
+  type Row = { minX: number; minY: number; maxX: number; maxY: number; nodes: number[] };
+  const rows: Row[] = [];
+  for (const n of nodeIdx.slice().sort((a, b) => a.b.minY - b.b.minY)) {
+    const last = rows[rows.length - 1];
+    const overlap = last ? Math.min(last.maxY, n.b.maxY) - Math.max(last.minY, n.b.minY) : -1;
+    const narrow = last ? Math.min(last.maxY - last.minY, n.b.maxY - n.b.minY) : 0;
+    if (last && overlap > narrow * 0.5) {
+      last.minX = Math.min(last.minX, n.b.minX);
+      last.maxX = Math.max(last.maxX, n.b.maxX);
+      last.minY = Math.min(last.minY, n.b.minY);
+      last.maxY = Math.max(last.maxY, n.b.maxY);
+      last.nodes.push(n.i);
+    } else {
+      rows.push({ minX: n.b.minX, minY: n.b.minY, maxX: n.b.maxX, maxY: n.b.maxY, nodes: [n.i] });
+    }
+  }
+  /* 每行恰好 2 个节点（对照的两边），2~3 行才值得重排 */
+  if (rows.length < 2 || rows.length > 3) return null;
+  if (rows.some((r) => r.nodes.length !== 2)) return null;
+  for (let r = 1; r < rows.length; r++) if (rows[r].minY < rows[r - 1].maxY) return null;
+  /* 两边节点宽度差不多才能画成一对卡片 */
+  for (const r of rows) {
+    const [a, b] = r.nodes.map((i) => bs[i]);
+    const wa = a.maxX - a.minX;
+    const wb = b.maxX - b.minX;
+    if (Math.max(wa, wb) / Math.max(1, Math.min(wa, wb)) > 1.4) return null;
+  }
+
+  /* 图元归属：文字等归入包住它的那个节点 */
+  const nodeSet = new Set(nodeIdx.map((n) => n.i));
+  const inNode = new Map<number, number>(); // el index -> node index
+  for (let i = 0; i < els.length; i++) {
+    if (nodeSet.has(i)) continue;
+    const b = bs[i];
+    const cxm = (b.minX + b.maxX) / 2;
+    const cym = (b.minY + b.maxY) / 2;
+    const owner = nodeIdx.find((n) => cxm >= n.b.minX && cxm <= n.b.maxX && cym >= n.b.minY && cym <= n.b.maxY);
+    if (owner) inNode.set(i, owner.i);
+  }
+  const minNodeArea = Math.min(...nodeIdx.map((n) => area(n.b)));
+  /* 行内的横向连线当箭头；列与列之间的竖向连线不是这张图的语义，丢掉；
+     其余图元（图例、自由曲线、没归属的大图元）让整次重排放弃 */
+  let connectorStroke: string | undefined;
+  let connectorW = 4;
+  for (let i = 0; i < els.length; i++) {
+    if (nodeSet.has(i) || inNode.has(i)) continue;
+    const b = bs[i];
+    const w = b.maxX - b.minX;
+    const h = b.maxY - b.minY;
+    const thin = h <= Math.max(24, w * 0.35) && w >= 30;
+    if (thin && els[i].type === "line") {
+      connectorStroke = connectorStroke ?? els[i].stroke;
+      connectorW = Math.max(connectorW, els[i].strokeWidth ?? 4);
+      continue;
+    }
+    if (area(b) <= minNodeArea * 0.25) continue; // 小装饰（箭头三角、圆点）
+    return null;
+  }
+
+  /* 排版：每行一对卡片，R 行均分高度 */
+  const R = rows.length;
+  const ARROW_W = 56;
+  const rowGap = Math.round(Math.min(box.h * 0.06, 90));
+  const rowH = Math.floor((box.h - (R - 1) * rowGap) / R);
+  const cardW = Math.floor((box.w - ARROW_W) / 2);
+  const cardH = Math.floor(Math.min(rowH, cardW * 0.92));
+  const stroke = connectorStroke ?? accentOf(0);
+  const strokeW = connectorW;
+  const out: SvgElement[] = [];
+
+  rows.forEach((row, ri) => {
+    const rowY = box.y + ri * (rowH + rowGap) + Math.floor((rowH - cardH) / 2);
+    row.nodes.forEach((nodeElIdx, side) => {
+      const nodeEl = els[nodeElIdx];
+      const nb = bs[nodeElIdx];
+      const cardX = box.x + side * (cardW + ARROW_W);
+      out.push({
+        type: "rect",
+        x: cardX,
+        y: rowY,
+        width: cardW,
+        height: cardH,
+        rx: Math.min(32, (nodeEl.type === "rect" ? (nodeEl.rx ?? 24) : 24) * 1.3),
+        fill: nodeEl.fill ?? "none",
+        stroke: nodeEl.stroke,
+        strokeWidth: nodeEl.strokeWidth,
+      });
+      /* 卡内内容等比放大后居中（与横屏大卡同一套系数） */
+      const nw = Math.max(nb.maxX - nb.minX, 1);
+      const nh = Math.max(nb.maxY - nb.minY, 1);
+      const s = Math.max(0.6, Math.min((cardW * 0.74) / nw, (cardH * 0.58) / nh, 2.6));
+      const bcx = (nb.minX + nb.maxX) / 2;
+      const bcy = (nb.minY + nb.maxY) / 2;
+      const dx = cardX + cardW / 2 - bcx * s;
+      const dy = rowY + cardH / 2 - bcy * s;
+      for (const [i, owner] of inNode) {
+        if (owner !== nodeElIdx) continue;
+        const el = els[i];
+        const next: SvgElement = { ...el };
+        const sx = (v: number | undefined) => (typeof v === "number" ? v * s + dx : v);
+        const sy = (v: number | undefined) => (typeof v === "number" ? v * s + dy : v);
+        if (el.type === "text" || el.type === "rect") {
+          next.x = sx(el.x);
+          next.y = sy(el.y);
+        }
+        if (el.type === "circle" || el.type === "ellipse") {
+          next.cx = sx(el.cx);
+          next.cy = sy(el.cy);
+        }
+        if (el.type === "line") {
+          next.x1 = sx(el.x1);
+          next.y1 = sy(el.y1);
+          next.x2 = sx(el.x2);
+          next.y2 = sy(el.y2);
+        }
+        if (el.type !== "text" && el.type !== "line") {
+          if (typeof el.r === "number") next.r = el.r * s;
+          if (typeof el.rx === "number") next.rx = el.rx * s;
+          if (typeof el.ry === "number") next.ry = el.ry * s;
+          if (typeof el.width === "number") next.width = el.width * s;
+          if (typeof el.height === "number") next.height = el.height * s;
+        }
+        if (el.type === "text") next.fontSize = Math.min(104, (el.fontSize ?? 28) * s);
+        out.push(next);
+      }
+    });
+    /* 行内箭头：左卡 → 右卡 */
+    const y = rowY + cardH / 2;
+    const x1 = box.x + cardW + 10;
+    const x2 = box.x + cardW + ARROW_W - 10;
+    out.push({ type: "line", x1, y1: y, x2, y2: y, stroke, strokeWidth: Math.min(10, strokeW * 1.5) });
+    out.push({
+      type: "polygon",
+      points: `${x2 - 16},${y - 10} ${x2 - 16},${y + 10} ${x2},${y}`,
+      fill: stroke,
+    });
+  });
+
+  return { els: out, rows: R, rowH };
+}
+
+/**
  * 竖屏安全区的高度要跟着内容的纵横比走。
  *
  * 第一版把高度写死成 `contentHeight * 0.56`：一张 3.2:1 的宽流程图塞进高盒子后
@@ -689,8 +863,16 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, subtitles, fps }) =
     if (contentH >= landBand.h * 0.55) return null;
     return buildLandscapeCards(spec, landBand);
   }, [spec, isPortrait, landBand]);
+  /*
+   * 竖屏第二条重排路：链识别不了时，试一下「两行对照」（每行一对卡片）。
+   * 样例 `points-custom_svg_grid` 就是这类：等比缩放后只占带的 26%，重排后能铺满。
+   */
+  const pairs = useMemo(
+    () => (isPortrait && !chain ? buildPortraitPairRows(spec, portraitBand) : null),
+    [spec, isPortrait, chain, portraitBand],
+  );
   const safe = isPortrait
-    ? chain
+    ? chain || pairs
       ? portraitBand
       : (() => {
           const w = portraitBand.w;
@@ -705,10 +887,10 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, subtitles, fps }) =
     : landCards
       ? { x: 0, y: 0, w: canvas.w, h: canvas.h }
       : SAFE;
-  const rendered = chain ? chain.els : landCards ? landCards.els : spec;
+  const rendered = chain ? chain.els : pairs ? pairs.els : landCards ? landCards.els : spec;
   const { scale, tx, ty } = useMemo(
-    () => (chain || landCards ? { scale: 1, tx: 0, ty: 0 } : computeFitTransform(spec, safe)),
-    [spec, safe, chain, landCards],
+    () => (chain || pairs || landCards ? { scale: 1, tx: 0, ty: 0 } : computeFitTransform(spec, safe)),
+    [spec, safe, chain, pairs, landCards],
   );
 
   return (

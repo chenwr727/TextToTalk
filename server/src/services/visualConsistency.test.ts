@@ -124,7 +124,7 @@ test("竖屏的横向流程图必须重排成竖列，而不是等比缩小", ()
   );
   assert.match(
     src,
-    /chain \|\| landCards \? \{ scale: 1, tx: 0, ty: 0 \} : computeFitTransform\(spec, safe\)/,
+    /chain \|\| pairs \|\| landCards \? \{ scale: 1, tx: 0, ty: 0 \} : computeFitTransform\(spec, safe\)/,
     "识别成链（含横屏重排）后不再叠加 fit 变换（坐标已是画布坐标）",
   );
   assert.match(src, /portraitSafeH\(spec, w, portraitBand\.h\)/, "识别不了链的复杂图必须退回等比缩放");
@@ -155,6 +155,36 @@ test("横屏极端横图要能重排成一排大卡（不变形也不越界）",
     /const cardH = Math\.floor\(Math\.min\(box\.h \* 0\.92, cardW \* 1\.15\)\)/,
     "卡片高度受带高与宽度双重约束",
   );
+});
+
+test("竖屏的两行对照图要堆叠成「每行一对卡片」", () => {
+  const src = read("shared/render/scenes/CustomSvgScene.tsx");
+  /*
+   * 2×2 对照图（样例 740×320）在竖屏只能按宽等比缩到 920×397，
+   * 实测正文 692..1069（只占带的 26%）。它没法当链竖排（每列 2 个节点），
+   * 但可以把「行」当堆叠单元：每行保留左→右配对，两行上下排。
+   */
+  assert.match(src, /export function buildPortraitPairRows\(/, "对照图重排应是可测试的纯函数");
+  assert.match(
+    src,
+    /isPortrait && !chain \? buildPortraitPairRows\(spec, portraitBand\)/,
+    "链识别不了时要试一下对照图重排",
+  );
+  assert.match(src, /if \(rows\.some\(\(r\) => r\.nodes\.length !== 2\)\) return null/, "每行必须恰好两个节点");
+  assert.match(src, /const cardW = Math\.floor\(\(box\.w - ARROW_W\) \/ 2\)/, "每行两张卡片平分带宽");
+  assert.match(src, /const rowH = Math\.floor\(\(box\.h - \(R - 1\) \* rowGap\) \/ R\)/, "行高按带高平分");
+});
+
+test("生成式版式要拿到现成的正文带", () => {
+  /*
+   * 只透传 portrait/width/height 时，AI 写的页面在竖屏上只占 884..1199（上下各空 800+）。
+   * 把「已算好的正文目标盒子」透绩下去，它才能直接用 height 铺满；这条防的是接口被改回去。
+   */
+  const src = read("shared/render/code/GeneratedPage.tsx");
+  assert.match(src, /useHeadingMetrics/);
+  assert.match(src, /useCaptionReserve/);
+  assert.match(src, /band=\{band\}/, "正文带要作为 prop 传给生成代码");
+  assert.match(src, /bottom: Math\.round\(height - Math\.max\(captionReserve/, "带底要扣掉字幕预留");
 });
 
 test("字幕字号独立于正文缩放（竖屏上前者要更大）", () => {

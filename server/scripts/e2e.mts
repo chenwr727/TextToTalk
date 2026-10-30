@@ -417,14 +417,6 @@ const readBodyGeometry = (logPath: string): BodyGeometry | null => {
   return last;
 };
 
-/**
- * 标题与正文之间允许的最大空隙（px）。
- *
- * 来源：正常页面里标题下沿 ≈ 206、正文顶 ≈ 250，空隙 44px（风格上就是“标题下面留一点气”）。
- * 超过 120px 就不是气了，是内容漂到了画布中间——这正是 points / qa 两个版式曾经的 bug（标题下 160~180px 的洞）。
- */
-const HEAD_GAP_LIMIT = 120;
-
 const reportOne = (
   label: string,
   m: FrameMetrics,
@@ -449,7 +441,14 @@ const reportOne = (
    * 布局几何（渲染端回传）：像素口径分不清“卡片顶在标题下、卡内文字偏下”与“整块内容漂在画布中间”——
    * 两者墨迹口径可能都是 200px 空洞。这里直接量 DOM：标题底 → 正文顶的真实距离。
    */
-  let layoutBad = false;
+  /*
+   * 不再在这里自己判「标题底 → 正文顶 > 120」。
+   *
+   * 那一段是判据的副本：它没带竖屏的双路径规则，于是同一张尾页
+   * 在 gallery 里「不告警」、在 e2e 里叫「空隙 471px 超标」。判据统一交给
+   * `auditVerdict`（已接收 DOM 几何 + 版式 + 横竖屏），这里只负责把数字打出来。
+   */
+  const layoutBad = false;
   /*
    * 没标题的页（封面/章节/尾页）也要把几何打出来：
    * 之前只打「标题底 → 正文顶」，标题为空就什么都不说，看着像探针没跑通。
@@ -461,11 +460,8 @@ const reportOne = (
     console.log(`      - 无标题（正文 ${geom.bodyTop}..${geom.bodyBottom}${tail}）`);
   } else if (geom && geom.headingBottom != null && geom.bodyTop != null) {
     const gap = Math.round(geom.bodyTop - geom.headingBottom);
-    layoutBad = gap > HEAD_GAP_LIMIT;
     const tail = geom.captionTop != null ? `，末尾正文底 ${geom.bodyBottom} / 字幕顶 ${geom.captionTop}` : "";
-    console.log(
-      `      ${layoutBad ? "!" : "-"} 标题底 ${geom.headingBottom} → 正文顶 ${geom.bodyTop}（空隙 ${gap}px${layoutBad ? `，超过 ${HEAD_GAP_LIMIT}px` : ""}）${tail}`,
-    );
+    console.log(`      - 标题底 ${geom.headingBottom} → 正文顶 ${geom.bodyTop}（空隙 ${gap}px）${tail}`);
   }
   return bad || layoutBad;
 };

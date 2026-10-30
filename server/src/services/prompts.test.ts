@@ -201,4 +201,11 @@ describe("code 版式的竖屏契约", () => {
     const p = codePrompt();
     assert.match(p, /flexWrap/);
   });
+
+  test("给出已算好的正文带 band，并要求竖向占满 80%", () => {
+    const p = codePrompt();
+    assert.match(p, /\bband\b/);
+    assert.match(p, /band\.bottom/);
+    assert.match(p, /0\.8/);
+  });
 });

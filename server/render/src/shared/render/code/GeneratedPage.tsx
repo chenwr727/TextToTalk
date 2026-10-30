@@ -3,7 +3,8 @@ import { AbsoluteFill, interpolate, Sequence, spring, useCurrentFrame, useVideoC
 import type { StoryPage } from "../props";
 import { Kit } from "./kit";
 import { PointsScene } from "../scenes/PointsScene";
-import { useResponsive } from "../responsive";
+import { useCaptionReserve, useResponsive } from "../responsive";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 
 /**
  * 注入给生成代码的 remotion 能力面。
@@ -78,14 +79,47 @@ export const GeneratedPage: React.FC<{
    * 把 portrait / 画布尺寸透传下去，生成代码才有机会自己分支；
    * 不知道这几个字段的老代码照旧工作（值被忽略）。
    */
-  const { isPortrait, width, height } = useResponsive();
+  const { isPortrait, width, height, safeX } = useResponsive();
+  /*
+   * 把「正文带」也透绩给生成代码。
+   *
+   * 只透传 portrait/width/height 不够：实测那一页用的是
+   * 「横屏坐标系的绝对定位（top: 380 之类）」，投到 1920 高的竖屏画布上只占
+   * 884..1199（上下各空 800 多像素）。给它一个**现成的目标盒子**（含标题底、字幕顶），
+   * 它才能直接 `height: band.bottom - band.top` 铺满，不必去猜两个方向各自的安全区。
+   */
+  const { contentTop } = useHeadingMetrics();
+  const captionReserve = useCaptionReserve(
+    props.subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []),
+  );
+  const band = useMemo(
+    () => ({
+      top: Math.round(contentTop),
+      bottom: Math.round(height - Math.max(captionReserve, isPortrait ? 120 : 200)),
+      left: Math.round(isPortrait ? safeX : 120),
+      right: Math.round(width - (isPortrait ? safeX : 120)),
+    }),
+    [contentTop, height, captionReserve, isPortrait, safeX, width],
+  );
   const comp = useMemo(() => (page.code ? compilePage(page.code) : null), [page.code]);
   const fallback = <PointsScene {...props} />;
   if (!comp) return fallback;
   const Generated = comp;
+  /*
+   * 标题由渲染端统一画（与其他版式同一套样式与位置）。
+   *
+   * 实测：只告诉 AI「可以用 Kit.Heading」时，它常常不画标题——成片里这一页第一笔就是「第 1 步」卡片，
+   * 而其他 29 页都有一个胶囊标题，切过来像漏了一层。
+   * 兼容：历史代码里自己写了 `Kit.Heading` 的页面不再重复画标题。
+   */
+  const drawsOwnHeading = /Kit\.Heading/.test(page.code ?? "");
   return (
     <CodeErrorBoundary fallback={fallback}>
-      <Generated page={page} portrait={isPortrait} width={width} height={height} />
+      <AbsoluteFill>
+        {!drawsOwnHeading && <PageHeading text={page.title} />}
+        <Generated page={page} portrait={isPortrait} width={width} height={height} band={band} />
+      </AbsoluteFill>
     </CodeErrorBoundary>
   );
 };

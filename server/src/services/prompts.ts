@@ -96,10 +96,10 @@ const MAP_DESC = `map：本页是否用「地图」来可视化（可选，默�
  * 注意所有反引号与 ${} 都要转义——它是模板字符串内部的字面文本。
  */
 const CODE_PAGE_DESC = `code：本页版式为「生成式版式」，由你直接写一页 React 组件来画（放在 JSON 的 "code" 字段，是**字符串**，换行写成 \\n）。规则（违反任意一条，服务端会拒绝并整页降级成 points）：
-1. 必须 \`export default\` 一个函数组件，props 是 \`{ page, portrait, width, height }\`（\`page.title\` / \`page.points\` / \`page.captions\` 可取内容；\`portrait\` 为 true 时画布是竖屏 1080×1920）。
+1. 必须 \`export default\` 一个函数组件，props 是 \`{ page, portrait, width, height, band }\`（\`page.title\` / \`page.points\` / \`page.captions\` 可取内容；\`portrait\` 为 true 时画布是竖屏 1080×1920；**\`band\` 是已算好的正文目标盒子** \`{ top, bottom, left, right }\`，已避开标题与字幕）。
 2. 你只拿得到三个参数：\`React\`、\`remotion\`、\`Kit\`。**严禁 import / require / eval / Function / fetch / window / document / setTimeout / setInterval / Math.random / Date**。
 3. 动画必须由 \`remotion.useCurrentFrame()\` + \`remotion.interpolate()\` 或 \`remotion.spring()\` 驱动，保证同一帧永远得到同一画面。
-4. 横屏画布 1920×1080：绝对定位排布，内容避开顶部标题区（y<150）与底部字幕区（y>880），主内容放在 y:260~760。同一页也会被渲染成竖屏 1080×1920（\`portrait === true\`，内容带 y:280~1640、可用宽度仅 952），所以**不要写死横向宽度**：多用 \`flex: 1\`、\`flexWrap: "wrap"\`、百分比宽度，让同一份代码在两个方向都排得下；确有必要再用 \`portrait\` 分支。
+4. **位置必须从 \`width\` / \`height\` / \`band\` 推出来，不得写只对 1920×1080 成立的常量**。同一页会被渲染成横屏与竖屏两个方向（竖屏可用宽度仅 952）：\`top: 380\` 这种写法投到竖屏上就是一条漂在中间的窄带子（实测正文只占 884..1199，上下各空 800+像素）。用 \`band\` 定位：主容器 \`left: band.left, right: width - band.right, top: band.top\`，**竖向至少占满 \`(band.bottom - band.top) * 0.8\`**（竖屏约 1180px、横屏约 570px）；用 \`display: "flex", flexDirection: "column", justifyContent: "space-between"\` 或 \`flex: 1\` 让卡片自己长高，不要把内容摆在上半就完事；宽度一律用 \`band.left/right\`、百分比或 \`flexWrap: "wrap"\`，不要写死像素值。
 5. **颜色和字号一律用 Kit 令牌，不要写死十六进制**：\`Kit.C.ink\` / \`Kit.C.sub\` / \`Kit.C.accent\` / \`Kit.C.muted\`、\`Kit.accent(i)\`（i=0~5 调色板）、\`Kit.FS.hero|title|heading|body|label\`、\`Kit.alpha(色值, 百分比)\`。这样浅色与深色主题都能正常显示。
 6. 可直接用：\`<Kit.Heading text={...}/>\`（页面标题，与其它版式同一套样式）、\`<Kit.Card accentIndex={i}>...</Kit.Card>\`、\`<Kit.Stat value="80℃" label="起始温度" accentIndex={0}/>\`、\`<Kit.Pill text="..." icon="trend"/>\`、\`<Kit.Text size={Kit.FS.body} color={Kit.C.sub}>...</Kit.Text>\`、\`<Kit.Row gap={40}>...</Kit.Row>\`、\`<Kit.Col gap={24}>...</Kit.Col>\`、\`<Kit.Icon name="trend" size={48}/>\`。
 7. 不要把 captions 画进画面（字幕由渲染端统一叠加）；元素总数 ≤ 20 个，宁可少而清楚。
