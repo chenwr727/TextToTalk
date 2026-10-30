@@ -34,7 +34,12 @@ type AuditModule = {
     w: number,
     h: number,
     portrait: boolean,
-    opts?: { layout?: string; band?: { top: number; bottom: number } },
+    opts?: {
+      layout?: string;
+      band?: { top: number; bottom: number };
+      /* DOM 几何：渲染端回传的正文块位置（见 frameAudit.ts 的 BodyGeometryInput） */
+      geometry?: { headingBottom: number | null; bodyTop: number | null; bodyBottom: number | null } | null;
+    },
   ) => { level: string; message: string }[];
   AIRY_LAYOUTS: ReadonlySet<string>;
 };

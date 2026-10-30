@@ -617,7 +617,6 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const V_DOT = isPortrait ? sp(60) : 96;
   const V_ICON = isPortrait ? sp(32) : 52;
   const V_AXIS_W = isPortrait ? 8 : 10;
-  const V_PAD = isPortrait ? sp(18) : 28;
   const V_GAP = isPortrait ? sp(16) : 24;
   /*
    * 横屏也走竖排时机：少数量（≤4）时。
