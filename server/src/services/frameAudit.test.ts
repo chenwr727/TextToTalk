@@ -173,6 +173,67 @@ test("auditVerdict：天生稀疏的版式（封面/章节/收尾）不再提示
   );
 });
 
+test("auditVerdict：有 DOM 几何时布局判据以它为准，像素空洞降为提示", () => {
+  /*
+   * 这两组数字都是全 30 页样例里量出来的：
+   * - chart-line：墨迹空洞 117px（占带 16%，会告警），但正文顶 245、底 874——
+   *   那 117px 是图表网格线的留白，页面并不空（fill 93%）。
+   * - table：墨迹空洞 242px，正文顶 415、标题底 206——确实是内容漂在中间。
+   */
+  const chartLine = audit.measureInk(canvas(1000, [[245, 874]]), W, 1000);
+  const withGeo = audit.auditVerdict(chartLine as never, W, 1000, true, {
+    geometry: { headingBottom: 206, bodyTop: 245, bodyBottom: 874 },
+  });
+  assert.ok(
+    withGeo.every((v) => v.level === "info"),
+    `几何正常时不该告警，实际：${JSON.stringify(withGeo)}`,
+  );
+
+  const table = audit.measureInk(canvas(1000, [[415, 772]]), W, 1000);
+  const tableGeo = audit.auditVerdict(table as never, W, 1000, true, {
+    geometry: { headingBottom: 206, bodyTop: 415, bodyBottom: 772 },
+  });
+  assert.ok(
+    tableGeo.some((v) => v.level === "warn" && v.message.includes("标题与正文")),
+    `标题与正文之间空 209px 必须告警，实际：${JSON.stringify(tableGeo)}`,
+  );
+});
+
+test("auditVerdict：正文底到带底的空白也要管（墨迹口径看不见这段）", () => {
+  /*
+   * three_card 实测：墨迹空洞只有 41px（所以改前不告警），
+   * 但正文止于 587、带底 920，下半截空了 333px。
+   */
+  const m = audit.measureInk(canvas(1000, [[250, 587]]), W, 1000);
+  const v = audit.auditVerdict(m as never, W, 1000, true, {
+    band: { top: 200, bottom: 920 },
+    geometry: { headingBottom: 206, bodyTop: 250, bodyBottom: 587 },
+  });
+  assert.ok(
+    v.some((x) => x.level === "warn" && x.message.includes("下半截")),
+    `333px 底部留白必须告警，实际：${JSON.stringify(v)}`,
+  );
+  // 没有几何时退回像素口径，且在消息里说明可能是误报
+  const noGeo = audit.auditVerdict(
+    audit.measureInk(
+      canvas(1000, [
+        [200, 320],
+        [600, 720],
+      ]),
+      W,
+      1000,
+    ) as never,
+    W,
+    1000,
+    true,
+    { band: { top: 200, bottom: 920 } },
+  );
+  assert.ok(
+    noGeo.some((x) => x.level === "warn" && x.message.includes("没拿到 DOM 几何")),
+    `缺几何时要说明口径局限，实际：${JSON.stringify(noGeo)}`,
+  );
+});
+
 test("auditVerdict：稀疏版式的空洞上限放宽到 25%，但大断层仍然报警", () => {
   // 标题在 300..339、要点在 700..739：中间 360px 空白 = 正文带 47% > 25%
   const gap = audit.measureInk(

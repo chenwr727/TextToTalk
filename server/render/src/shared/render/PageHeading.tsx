@@ -122,6 +122,8 @@ export const HeadingContent: React.FC<{ text: string; inline?: boolean }> = ({ t
 
   return (
     <div
+      // 体检探针靠这个标记把标题从"正文几何"里排除（标题绝对定位、不占文档流）
+      data-role="heading"
       style={{
         display: "flex",
         flexDirection: "column",

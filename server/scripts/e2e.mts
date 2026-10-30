@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import { generateFromPlan, generateOutline } from "../src/services/storyboardGenerator.js";
 import type { TimedPage } from "../src/services/renderService.js";
 import { measureInk, auditVerdict, bodyBand, robustSpread, type FrameMetrics } from "../src/services/frameAudit.js";
+import type { BodyGeometry } from "../render/src/shared/render/bodyGeometry.js";
 import { TRANSITION_FRAME_MAP } from "../../shared/types.js";
 import type { Storyboard, VideoParams } from "../src/types.js";
 
@@ -386,14 +387,74 @@ const extractGray = async (input: string, seekSec: number | null, w: number, h: 
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
-const reportOne = (label: string, m: FrameMetrics, w: number, h: number, portrait: boolean, layout?: string) => {
+/**
+ * 从浏览器日志里取最后一条 `TTT_BODY`（渲染端 BodyProbe 回传的真实几何）。
+ * 没有就返回 null——不猜、不补默认值。
+ */
+const readBodyGeometry = (logPath: string): BodyGeometry | null => {
+  if (!existsSync(logPath)) return null;
+  let last: BodyGeometry | null = null;
+  for (const line of readFileSync(logPath, "utf8").split("\n")) {
+    const text = line.trim();
+    if (!text) continue;
+    let msg = text;
+    try {
+      const outer = JSON.parse(text) as { text?: string };
+      if (typeof outer.text === "string") msg = outer.text;
+    } catch {
+      /* 非 JSON 行当纯文本处理 */
+    }
+    const at = msg.indexOf("TTT_BODY ");
+    if (at < 0) continue;
+    try {
+      const g = JSON.parse(msg.slice(at + "TTT_BODY ".length)) as BodyGeometry;
+      if (g.bodyTop == null) continue;
+      last = g;
+    } catch {
+      /* 截断行跳过 */
+    }
+  }
+  return last;
+};
+
+/**
+ * 标题与正文之间允许的最大空隙（px）。
+ *
+ * 来源：正常页面里标题下沿 ≈ 206、正文顶 ≈ 250，空隙 44px（风格上就是“标题下面留一点气”）。
+ * 超过 120px 就不是气了，是内容漂到了画布中间——这正是 points / qa 两个版式曾经的 bug（标题下 160~180px 的洞）。
+ */
+const HEAD_GAP_LIMIT = 120;
+
+const reportOne = (
+  label: string,
+  m: FrameMetrics,
+  w: number,
+  h: number,
+  portrait: boolean,
+  layout?: string,
+  geom?: BodyGeometry | null,
+) => {
   const verdicts = auditVerdict(m, w, h, portrait, { band: bodyBand(w, h), layout });
   const bad = verdicts.some((v) => v.level === "warn");
   console.log(
-    `  ${bad ? "\u2717" : "\u00b7"} ${label.padEnd(24)} fill ${pct(m.fill).padStart(4)}  \u7a7a\u6d1e ${String(m.voidPx).padStart(4)}px  \u5bc6\u5ea6 ${pct(m.inkRatio).padStart(4)}`,
+    `  ${bad ? "✗" : "·"} ${label.padEnd(24)} fill ${pct(m.fill).padStart(4)}  空洞 ${String(m.voidPx).padStart(4)}px  密度 ${pct(m.inkRatio).padStart(4)}`,
   );
   for (const v of verdicts) console.log(`      ${v.level === "warn" ? "!" : "-"} ${v.message}`);
-  return bad;
+
+  /*
+   * 布局几何（渲染端回传）：像素口径分不清“卡片顶在标题下、卡内文字偏下”与“整块内容漂在画布中间”——
+   * 两者墨迹口径可能都是 200px 空洞。这里直接量 DOM：标题底 → 正文顶的真实距离。
+   */
+  let layoutBad = false;
+  if (geom && geom.headingBottom != null && geom.bodyTop != null) {
+    const gap = Math.round(geom.bodyTop - geom.headingBottom);
+    layoutBad = gap > HEAD_GAP_LIMIT;
+    const tail = geom.captionTop != null ? `，末尾正文底 ${geom.bodyBottom} / 字幕顶 ${geom.captionTop}` : "";
+    console.log(
+      `      ${layoutBad ? "!" : "-"} 标题底 ${geom.headingBottom} → 正文顶 ${geom.bodyTop}（空隙 ${gap}px${layoutBad ? `，超过 ${HEAD_GAP_LIMIT}px` : ""}）${tail}`,
+    );
+  }
+  return bad || layoutBad;
 };
 
 /** 静帧体检：每页一张，取 mid 帧（与 renderStills 的取帧位置一致） */
@@ -416,6 +477,7 @@ const auditStills = async (storyboard: Storyboard) => {
     }
     const gray = await extractGray(png, null, params.width, params.height);
     if (!gray) continue;
+    const geom = readBodyGeometry(path.join(outDir, `${String(i + 1).padStart(2, "0")}-${page.layout}.browser.log`));
     const bad = reportOne(
       `${String(i + 1).padStart(2, "0")}-${page.layout}/${page.art ?? "-"}`,
       measureInk(gray, params.width, params.height, { band: bodyBand(params.width, params.height) }),
@@ -423,6 +485,7 @@ const auditStills = async (storyboard: Storyboard) => {
       params.height,
       portrait,
       page.layout,
+      geom,
     );
     if (bad) warned++;
   }
@@ -539,6 +602,13 @@ const renderStills = async (storyboard: Storyboard) => {
     const outPng = path.join(outDir, `${params.theme}-${name}.png`);
     const configPath = path.join(outDir, `${name}.still.json`);
     /*
+     * 浏览器日志：渲染端 BodyProbe 会把「标题底 / 正文顶底 / 字幕顶」以 TTT_BODY 报回来。
+     * 这是唯一可靠的正文几何（像素口径看不见浅色卡片）。
+     * 先删旧文件：日志是 append 写入，不删会把上一轮的结果当成这一轮的。
+     */
+    const browserLogPath = path.join(outDir, `${name}.browser.log`);
+    rmSync(browserLogPath, { force: true });
+    /*
      * 先删旧图。
      *
      * 不加这一步的话，渲染失败时体检会去量上一次跑留下的那张图——
@@ -555,7 +625,7 @@ const renderStills = async (storyboard: Storyboard) => {
         output: outPng,
         inputProps,
         frame,
-        options: { gl: process.env.RENDER_GL || "swiftshader" },
+        options: { gl: process.env.RENDER_GL || "swiftshader", browserLogPath },
       }),
     );
     const ts = Date.now();

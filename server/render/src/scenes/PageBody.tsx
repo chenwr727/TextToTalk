@@ -1,4 +1,6 @@
+import { useRef } from "react";
 import { AbsoluteFill, Sequence, interpolate, useCurrentFrame } from "remotion";
+import { BodyProbe } from "../shared/render/BodyProbe";
 import { IconView } from "../shared/render/Icon";
 import { CaptionSentence, AudioSentence } from "../components/Caption";
 import {
@@ -34,8 +36,9 @@ const buildFrameAt =
     return Math.min(start, Math.round(pageFrames * REVEAL_DEADLINE));
   };
 
-export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirst, Scene }) => {
+export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirst, Scene, pageIndex }) => {
   const f = useCurrentFrame();
+  const sceneRef = useRef<HTMLDivElement | null>(null);
   const gapFrames = Math.round((page.sentenceGap || 0) * fps);
   const pageFrames =
     page.sentences && page.sentences.length
@@ -88,7 +91,8 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
       {!isFirst && page.icon ? <IconView icon={page.icon} /> : null}
       <div style={{ position: "absolute", inset: 0, perspective: 1600 }}>
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", ...flip }}>
-          <div style={{ position: "absolute", inset: 0 }}>
+          <div ref={sceneRef} style={{ position: "absolute", inset: 0 }}>
+            <BodyProbe pageIndex={pageIndex} sceneRef={sceneRef} />
             <SceneTimingContext.Provider value={timing}>
               <AnnotationContext.Provider value={page.effects?.annotation}>
                 <Scene page={page} fps={fps} subtitles={subtitles} isFirst={isFirst} />

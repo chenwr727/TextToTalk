@@ -269,11 +269,31 @@ const AIRY_MIN_FILL = 0.15;
 /** 这类版式的内部空洞上限 */
 const AIRY_MAX_VOID_RATIO = 0.25;
 
+/**
+ * 渲染端回传的正文块几何（见 render/src/shared/render/bodyGeometry.ts）。
+ * 有它就不靠墨迹去猜“内容从哪开始”了——那一直是这套体检的死穴。
+ */
+export interface BodyGeometryInput {
+  /** 标题下沿；没标题为 null */
+  headingBottom: number | null;
+  /** 正文块上沿；量不到为 null */
+  bodyTop: number | null;
+  /** 正文块下沿 */
+  bodyBottom: number | null;
+}
+
 export interface VerdictOptions {
   band?: { top: number; bottom: number };
   /** 版式名（`title` / `points` / `chart` …），用来放宽天生稀疏的页面 */
   layout?: string;
+  /** 有 DOM 几何时，布局判据以它为准，像素空洞降为提示 */
+  geometry?: BodyGeometryInput | null;
 }
+
+/** 标题底 → 正文顶允许的最大空隙（正常页面实测 12~91px） */
+export const HEAD_GAP_LIMIT = 120;
+/** 正文底 → 正文带底允许的最大空白（正常页面实测 0~150px；720px 带里留超过 200px 就是下半截空着） */
+export const BOTTOM_AIR_LIMIT = 200;
 
 /**
  * 把指标翻成一句人话。
@@ -309,6 +329,15 @@ export function auditVerdict(
   const inVoid = m.voidPx;
   const inVoidAt = m.voidAt;
   const pct = (px: number) => Math.round((px / bandH) * 100);
+  /*
+   * 有 DOM 几何时，布局判据换成“标题底→正文顶”与“正文底→带底”：
+   * 这是布局真值，而墨迹口径看不见浅色卡片。
+   * 实测对比（全 30 页）：
+   * - `chart-line` / `chart-area` 墨迹空洞 117px（告警），但 DOM 间隙只有 12px、正文底 874（离带底 46px）——那 117px 是图表里的网格线留白，假警。
+   * - `three_card` 墨迹空洞只有 41px（不告警），但正文 250..587，下半截空 333px——真的空，墨迹口径完全看不见。
+   */
+  const geo = opts.geometry ?? null;
+  const hasGeo = !!geo && geo.bodyTop != null && geo.bodyBottom != null;
   if (airy) {
     if (m.fill < AIRY_MIN_FILL) {
       out.push({
@@ -324,10 +353,38 @@ export function auditVerdict(
     }
     return out;
   }
-  if (inVoid > bandH * 0.15) {
+  if (hasGeo) {
+    const top = geo.bodyTop as number;
+    const bottom = geo.bodyBottom as number;
+    const headGap = geo.headingBottom != null ? Math.round(top - geo.headingBottom) : null;
+    if (headGap != null && headGap > HEAD_GAP_LIMIT) {
+      out.push({
+        level: "warn",
+        message: `标题与正文之间空了 ${headGap}px（标题底 ${geo.headingBottom} → 正文顶 ${top}），内容漂在了画布中间`,
+      });
+    }
+    const bottomAir = Math.round(b.bottom - bottom);
+    if (bottomAir > BOTTOM_AIR_LIMIT) {
+      out.push({
+        level: "warn",
+        message: `正文底到正文带底还空着 ${bottomAir}px（正文止于 y=${bottom}，带底 ${b.bottom}），下半截没用上`,
+      });
+    }
+    /*
+     * 几何已经把位置说清楚了，墨迹空洞只作为提示：
+     * 它量的是“正文块内部”的连续空行，而图表网格线、卡片描边
+     * 这类浅色结构本来就看不见，报成告警只会把人往错的地方引。
+     */
+    if (inVoid > bandH * 0.15) {
+      out.push({
+        level: "info",
+        message: `正文块内部有 ${inVoid}px 连续空行（从 y=${inVoidAt} 起）；位置判据以 DOM 几何为准，这条不算告警`,
+      });
+    }
+  } else if (inVoid > bandH * 0.15) {
     out.push({
       level: "warn",
-      message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）`,
+      message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）；没拿到 DOM 几何，这条可能是浅色结构引起的误报`,
     });
   }
   if (m.structTop > 0) {

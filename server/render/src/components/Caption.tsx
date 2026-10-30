@@ -62,6 +62,8 @@ export const CaptionSentence: React.FC<{ text: string; durFrames: number; karaok
 
   return (
     <div
+      // 体检探针靠这个标记把字幕条排除在"正文几何"之外
+      data-role="caption"
       style={{
         position: "absolute",
         bottom: sp(CAPTION_METRICS.bottom),

@@ -22,4 +22,6 @@ export interface SceneMatch {
 
 export interface PageBodyProps extends SceneProps {
   Scene: SceneRenderer;
+  /** 这页在分镜里的序号：只给体检探针用（回传的几何要能对上页面） */
+  pageIndex: number;
 }

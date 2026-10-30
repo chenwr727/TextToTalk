@@ -15,7 +15,7 @@
  * 输出：server/out/gallery/<theme>/<layout>.png
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
@@ -105,6 +105,13 @@ for (const p of targets) {
   const name = pageName(p);
   const output = path.join(outDir, `${name}.png`);
   const configPath = path.join(outDir, `${name}.still.json`);
+  /*
+   * 浏览器日志：BodyProbe 用 TTT_BODY 前缀把「标题底 / 正文顶 / 字幕顶」报回来。
+   * 这是唯一可靠的正文几何来源——像素口径看不见浅色卡片，DOM 才是布局本身。
+   * 先删旧文件：日志是 append 写入，不删就会把上一轮的结果当成这一轮的。
+   */
+  const logPath = path.join(outDir, `${name}.browser.log`);
+  rmSync(logPath, { force: true });
   writeFileSync(
     configPath,
     JSON.stringify(
@@ -115,7 +122,7 @@ for (const p of targets) {
         output,
         inputProps,
         frame,
-        options: { gl: "swiftshader" },
+        options: { gl: "swiftshader", browserLogPath: logPath },
       },
       null,
       2,
