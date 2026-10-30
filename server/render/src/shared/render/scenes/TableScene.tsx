@@ -38,7 +38,7 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const headers = page.table!.headers;
   const rows = page.table!.rows;
   const f = useCurrentFrame();
-  const { fps, height: canvasH } = useVideoConfig();
+  const { fps, height: canvasH, width: canvasW } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const { contentTop } = useHeadingMetrics();
   const captionReserve = useCaptionReserve(
@@ -91,7 +91,14 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
      */
     Math.min(isPortrait ? sp(340) : 190, Math.max(baseCellH, (bandH * 0.86) / nRows)),
   );
-  const startX = (DESIGN_WIDTH - totalW) / 2;
+  /*
+   * 居中要用**画布宽**，不能用 `DESIGN_WIDTH`。
+   *
+   * 竖屏 `DESIGN_WIDTH = contentWidth`（1080-2×80 = 920），但 `left` 是相对 AbsoluteFill的
+   * 画布坐标系计算的：于是表格被摆到 x≈2，实测左边距 16px、右边距 132px，
+   * 整张表差不多贴在左边上。横屏 `DESIGN_WIDTH` 恰好就是 1920，所以一直没暴露。
+   */
+  const startX = (canvasW - totalW) / 2;
   // 表格垂直位置：竖屏在画布正中；横屏在「标题下沿」与「字幕带」之间居中
   const tableH = nRows * minCellH;
   /*
