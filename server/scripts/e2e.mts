@@ -434,7 +434,11 @@ const reportOne = (
   layout?: string,
   geom?: BodyGeometry | null,
 ) => {
-  const verdicts = auditVerdict(m, w, h, portrait, { band: bodyBand(w, h), layout });
+  /*
+   * 几何也要传进判据。
+   * 之前只打印不传，于是 e2e 的告警还是像素口径，与 gallery 体检不一致。
+   */
+  const verdicts = auditVerdict(m, w, h, portrait, { band: bodyBand(w, h), layout, geometry: geom });
   const bad = verdicts.some((v) => v.level === "warn");
   console.log(
     `  ${bad ? "✗" : "·"} ${label.padEnd(24)} fill ${pct(m.fill).padStart(4)}  空洞 ${String(m.voidPx).padStart(4)}px  密度 ${pct(m.inkRatio).padStart(4)}`,
@@ -446,7 +450,16 @@ const reportOne = (
    * 两者墨迹口径可能都是 200px 空洞。这里直接量 DOM：标题底 → 正文顶的真实距离。
    */
   let layoutBad = false;
-  if (geom && geom.headingBottom != null && geom.bodyTop != null) {
+  /*
+   * 没标题的页（封面/章节/尾页）也要把几何打出来：
+   * 之前只打「标题底 → 正文顶」，标题为空就什么都不说，看着像探针没跑通。
+   */
+  if (geom && geom.bodyTop == null && geom.bodyBottom == null) {
+    console.log(`      - （探针没量到正文块）`);
+  } else if (geom && geom.headingBottom == null && geom.bodyTop != null) {
+    const tail = geom.captionTop != null ? `，字幕顶 ${geom.captionTop}` : "";
+    console.log(`      - 无标题（正文 ${geom.bodyTop}..${geom.bodyBottom}${tail}）`);
+  } else if (geom && geom.headingBottom != null && geom.bodyTop != null) {
     const gap = Math.round(geom.bodyTop - geom.headingBottom);
     layoutBad = gap > HEAD_GAP_LIMIT;
     const tail = geom.captionTop != null ? `，末尾正文底 ${geom.bodyBottom} / 字幕顶 ${geom.captionTop}` : "";

@@ -37,7 +37,8 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 两列的卡改成 flex:1 平分这块高度，卡内文字仍居中对齐。
    */
   const bandH = Math.max(0, (isPortrait ? contentHeight : 1080) - contentTop - captionReserve);
-  const blockH = isPortrait ? undefined : Math.round(bandH * 0.74);
+  /* 竖屏也贴标题排：实测改前正文 506..1415（标题下空 330px） */
+  const blockH = Math.round(bandH * (isPortrait ? 0.92 : 0.74));
 
   // 可用带：标题底 .. 字幕条顶（横竖两个方向同一套算法）
   const availH = Math.max(
@@ -99,7 +100,7 @@ export const TwoColumnScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     <AbsoluteFill
       style={{
         // 横屏贴标题排：标题绝对定位在顶部、内容却相对整块画布居中，实测中间白出 280px
-        justifyContent: isPortrait ? "center" : "flex-start",
+        justifyContent: "flex-start",
         alignItems: "center",
         flexDirection: "column",
       }}

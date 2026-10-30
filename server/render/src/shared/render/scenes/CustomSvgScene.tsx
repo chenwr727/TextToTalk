@@ -452,6 +452,173 @@ export function buildPortraitChain(
 }
 
 /**
+ * 横屏重排：把「单行节点链」重画成一排等宽大卡。
+ *
+ * 为什么要重排：AI 画的流程图纵横比很极端（样例 1700×264 ≈ 6.4:1），
+ * 等比塞进 1872×620 的正文带里只能有 264px 高，要填满就得拉到 3400px 宽（越界）
+ * 或者纵向拉伸（变形）。而三张 592×558 的卡片 + 箭头本来就是一个正常的
+ * 「流程卡」版式，既保证不变形也把带填满。
+ *
+ * 节点链的识别逻辑与 buildPortraitChain 完全一致（那份代码正在生产上跑，不拆开担风险）。
+ * 差别只在排版：每列一张卡、沿 x 排开、卡内内容等比放大后居中。
+ */
+export function buildLandscapeCards(
+  els: SvgElement[],
+  box: { x: number; y: number; w: number; h: number },
+): ChainLayout | null {
+  if (els.length < 2) return null;
+  const bs = els.map(elementBounds);
+  const area = (b: Bounds) => Math.max(b.maxX - b.minX, 0) * Math.max(b.maxY - b.minY, 0);
+
+  const nodeIdx = els
+    .map((el, i) => ({ el, i, b: bs[i] }))
+    .filter(
+      ({ el, b }) =>
+        (el.type === "rect" || el.type === "circle" || el.type === "ellipse") &&
+        b.maxX - b.minX >= 50 &&
+        b.maxY - b.minY >= 50,
+    );
+  if (nodeIdx.length < 2) return null;
+
+  const cols: { minX: number; minY: number; maxX: number; maxY: number; nodes: number[] }[] = [];
+  for (const n of nodeIdx.slice().sort((a, b) => a.b.minX - b.b.minX)) {
+    const last = cols[cols.length - 1];
+    const overlap = last ? Math.min(last.maxX, n.b.maxX) - Math.max(last.minX, n.b.minX) : -1;
+    const narrow = last ? Math.min(last.maxX - last.minX, n.b.maxX - n.b.minX) : 0;
+    if (last && overlap > narrow * 0.5) {
+      last.minX = Math.min(last.minX, n.b.minX);
+      last.maxX = Math.max(last.maxX, n.b.maxX);
+      last.minY = Math.min(last.minY, n.b.minY);
+      last.maxY = Math.max(last.maxY, n.b.maxY);
+      last.nodes.push(n.i);
+    } else {
+      cols.push({ minX: n.b.minX, minY: n.b.minY, maxX: n.b.maxX, maxY: n.b.maxY, nodes: [n.i] });
+    }
+  }
+  if (cols.length < 2 || cols.length > 4) return null;
+  for (let c = 1; c < cols.length; c++) if (cols[c].minX < cols[c - 1].maxX) return null;
+  if (cols.some((c) => c.nodes.length !== 1)) return null;
+
+  const inCol = new Set<number>();
+  for (const col of cols) {
+    for (let i = 0; i < els.length; i++) {
+      if (inCol.has(i) || col.nodes.includes(i)) continue;
+      const b = bs[i];
+      const cxm = (b.minX + b.maxX) / 2;
+      const cym = (b.minY + b.maxY) / 2;
+      if (cxm >= col.minX && cxm <= col.maxX && cym >= col.minY && cym <= col.maxY) inCol.add(i);
+    }
+  }
+  const nodeSet = new Set(nodeIdx.map((n) => n.i));
+  const minNodeArea = Math.min(...nodeIdx.map((n) => area(n.b)));
+  const connectors: { idx: number; col: number }[] = [];
+  for (let i = 0; i < els.length; i++) {
+    if (nodeSet.has(i) || inCol.has(i)) continue;
+    const b = bs[i];
+    const w = b.maxX - b.minX;
+    const h = b.maxY - b.minY;
+    const thin = h <= Math.max(24, w * 0.35) && w >= 30;
+    if (thin) {
+      const cxm = (b.minX + b.maxX) / 2;
+      const col = cols.findIndex((c, ci) => ci < cols.length - 1 && cxm >= c.maxX - 1 && cxm <= cols[ci + 1].minX + 1);
+      if (col >= 0) {
+        connectors.push({ idx: i, col });
+        continue;
+      }
+    }
+    if (area(b) <= minNodeArea * 0.25) continue;
+    return null;
+  }
+
+  const N = cols.length;
+  const ARROW_W = 64;
+  const cardW = Math.floor((box.w - (N - 1) * ARROW_W) / N);
+  const cardH = Math.floor(Math.min(box.h * 0.92, cardW * 1.15));
+  const cardY = box.y + Math.floor((box.h - cardH) / 2);
+  const stroke = connectors.length ? (els[connectors[0].idx].stroke ?? accentOf(0)) : accentOf(0);
+  const strokeW = connectors.length ? (els[connectors[0].idx].strokeWidth ?? 4) : 4;
+  const out: SvgElement[] = [];
+
+  cols.forEach((col, ci) => {
+    const cardX = box.x + ci * (cardW + ARROW_W);
+    const nodeEl = els[col.nodes[0]];
+    /* 卡片底：沿用原节点的 fill / stroke / 圆角，只把尺寸换成卡片尺寸 */
+    out.push({
+      type: "rect",
+      x: cardX,
+      y: cardY,
+      width: cardW,
+      height: cardH,
+      rx: Math.min(36, (nodeEl.type === "rect" ? (nodeEl.rx ?? 24) : 24) * 1.4),
+      fill: nodeEl.fill ?? "none",
+      stroke: nodeEl.stroke,
+      strokeWidth: nodeEl.strokeWidth,
+    });
+    /* 卡内内容（文字/小图标）：等比放大后居中 */
+    const colW = Math.max(col.maxX - col.minX, 1);
+    const colH = Math.max(col.maxY - col.minY, 1);
+    const s = Math.max(0.6, Math.min((cardW * 0.78) / colW, (cardH * 0.6) / colH, 2.6));
+    const bcx = (col.minX + col.maxX) / 2;
+    const bcy = (col.minY + col.maxY) / 2;
+    const dx = cardX + cardW / 2 - bcx * s;
+    const dy = cardY + cardH / 2 - bcy * s;
+    const members = new Set<number>();
+    for (const i of col.nodes) members.add(i);
+    for (const i of inCol) {
+      const b = bs[i];
+      const cxm = (b.minX + b.maxX) / 2;
+      const cym = (b.minY + b.maxY) / 2;
+      if (cxm >= col.minX && cxm <= col.maxX && cym >= col.minY && cym <= col.maxY) members.add(i);
+    }
+    for (const i of members) {
+      if (col.nodes.includes(i)) continue; // 节点矩形已被卡片底代替
+      const el = els[i];
+      const next: SvgElement = { ...el };
+      const sx = (v: number | undefined) => (typeof v === "number" ? v * s + dx : v);
+      const sy = (v: number | undefined) => (typeof v === "number" ? v * s + dy : v);
+      if (el.type === "text" || el.type === "rect") {
+        next.x = sx(el.x);
+        next.y = sy(el.y);
+      }
+      if (el.type === "circle" || el.type === "ellipse") {
+        next.cx = sx(el.cx);
+        next.cy = sy(el.cy);
+      }
+      if (el.type === "line") {
+        next.x1 = sx(el.x1);
+        next.y1 = sy(el.y1);
+        next.x2 = sx(el.x2);
+        next.y2 = sy(el.y2);
+      }
+      if (el.type !== "text" && el.type !== "line") {
+        if (typeof el.r === "number") next.r = el.r * s;
+        if (typeof el.rx === "number") next.rx = el.rx * s;
+        if (typeof el.ry === "number") next.ry = el.ry * s;
+        if (typeof el.width === "number") next.width = el.width * s;
+        if (typeof el.height === "number") next.height = el.height * s;
+      }
+      if (el.type === "text") {
+        next.fontSize = Math.min(96, (el.fontSize ?? 28) * s);
+      }
+      out.push(next);
+    }
+    if (ci < N - 1) {
+      const y = cardY + cardH / 2;
+      const x1 = cardX + cardW + 8;
+      const x2 = cardX + cardW + ARROW_W - 8;
+      out.push({ type: "line", x1, y1: y, x2, y2: y, stroke, strokeWidth: Math.min(10, strokeW * 1.6) });
+      out.push({
+        type: "polygon",
+        points: `${x2 - 16},${y - 10} ${x2 - 16},${y + 10} ${x2},${y}`,
+        fill: stroke,
+      });
+    }
+  });
+
+  return { els: out, rows: 1, rowH: cardH };
+}
+
+/**
  * 竖屏安全区的高度要跟着内容的纵横比走。
  *
  * 第一版把高度写死成 `contentHeight * 0.56`：一张 3.2:1 的宽流程图塞进高盒子后
@@ -502,6 +669,26 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, subtitles, fps }) =
     () => (isPortrait ? buildPortraitChain(spec, portraitBand) : null),
     [spec, isPortrait, portraitBand],
   );
+  /*
+   * 横屏也要一条「重排路」。
+   *
+   * 等比缩放对极端横图无能为力（样例 6.4:1，只能占正文带的 43%）；
+   * 这种情况下改成「一排等宽大卡 + 箭头」，既不变形也不越界。
+   * 仅在「等比缩放后内容高度不足带高一半」时才重排，否则保持 AI 原图。
+   */
+  const landBand = useMemo(() => {
+    const top = Math.round(contentTop + 16);
+    const bottom = Math.round(CANVAS.h - Math.max(captionReserve, 200) - 80);
+    return { x: 40, y: top, w: CANVAS.w - 80, h: Math.max(320, bottom - top) };
+  }, [contentTop, captionReserve]);
+  const landCards = useMemo(() => {
+    if (isPortrait) return null;
+    const bs = spec.map(elementBounds);
+    const fit = computeFitTransform(spec, SAFE);
+    const contentH = (Math.max(...bs.map((b) => b.maxY)) - Math.min(...bs.map((b) => b.minY))) * fit.scale;
+    if (contentH >= landBand.h * 0.55) return null;
+    return buildLandscapeCards(spec, landBand);
+  }, [spec, isPortrait, landBand]);
   const safe = isPortrait
     ? chain
       ? portraitBand
@@ -515,11 +702,13 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, subtitles, fps }) =
             h,
           };
         })()
-    : SAFE;
-  const rendered = chain ? chain.els : spec;
+    : landCards
+      ? { x: 0, y: 0, w: canvas.w, h: canvas.h }
+      : SAFE;
+  const rendered = chain ? chain.els : landCards ? landCards.els : spec;
   const { scale, tx, ty } = useMemo(
-    () => (chain ? { scale: 1, tx: 0, ty: 0 } : computeFitTransform(spec, safe)),
-    [spec, safe, chain],
+    () => (chain || landCards ? { scale: 1, tx: 0, ty: 0 } : computeFitTransform(spec, safe)),
+    [spec, safe, chain, landCards],
   );
 
   return (

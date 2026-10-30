@@ -37,6 +37,14 @@ export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const statRowH =
     !isPortrait && points.length > 0 && points.length <= 4 ? Math.min(520, Math.round(bandH * 0.92)) : undefined;
+  /*
+   * 竖屏卡片高度：单列每行一张（portraitCols=1），把正文带按张数分。
+   * 实测改前正文 518..1402（带 1440px 只用了 61%），上下各空 340/288。
+   */
+  const portraitCardH =
+    isPortrait && points.length > 0 && points.length <= 4
+      ? Math.max(sp(220), Math.min(sp(430), Math.round((bandH * 0.94 - sp(24) * (points.length - 1)) / points.length)))
+      : undefined;
 
   const extractNum = (s: string): { num: string; rest: string } => {
     const m = s.match(/[-+]?\d+(?:\.\d+)?\s*[%％倍xX]?/);
@@ -53,7 +61,12 @@ export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
       style={{
         // 竖屏也贴标题排：卡片只有 3 张时，原来的垂直居中会在标题下方留 400px+ 的空洞；
         // 5 张以上单列可能排不下，这时退回居中，宁可上下留白也不要压到字幕条
-        justifyContent: isPortrait ? "center" : "flex-start",
+        /*
+         * 竖屏也改成从上往下排（原来是 center）。
+         * `marginTop: contentTop` 在 `justifyContent: center` 下是无效的：子元素的 margin box
+         * 还是被整块画布居中，竖屏实测正文落在 473..1448（标题下空 297px）。
+         */
+        justifyContent: "flex-start",
         alignItems: "center",
         flexDirection: "column",
       }}
@@ -96,6 +109,7 @@ export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   ? `0 1 calc(${100 / portraitCols}% - 12px)`
                   : `0 1 calc(${100 / Math.max(1, points.length)}% - 24px)`,
                 minWidth: isPortrait ? 0 : 300,
+                height: portraitCardH,
                 textAlign: "center",
                 opacity: t,
                 transform: `translateY(${interpolate(t, [0, 1], [40, 0])}px)`,

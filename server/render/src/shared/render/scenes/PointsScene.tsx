@@ -221,8 +221,8 @@ const PointCard: React.FC<CardProps> = ({
 export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const points = page.points;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
+  const { fps, height: canvasH } = useVideoConfig();
+  const { isPortrait, fs, sp, contentWidth } = useResponsive();
   const timing = useSceneTiming();
   const { contentTop } = useHeadingMetrics();
 
@@ -250,7 +250,12 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
-  const availH = (isPortrait ? contentHeight : 1080) - padTop - captionReserve;
+  /*
+   * 用画布高算正文带。
+   * `contentHeight` 已经扣过 safeY*2（竖屏 1920-160=1760），拿它再去减 contentTop 会重复扣：
+   * 竖屏实际带 250..1690=1440，这里只算出 1280（实测），直接少了 160px。
+   */
+  const availH = canvasH - padTop - captionReserve;
 
   const boxW = singleColW;
   const parseX = (padStr: string) => Number(padStr.split(" ")[1]?.replace("px", "") ?? "28") * 2;
@@ -366,7 +371,23 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 上限 260：一句话的卡片长到 260 已经足够宽松，再高就只是在卡片里塞空气。
    */
   const cardMinH = isPortrait
-    ? undefined
+    ? /*
+       * 竖屏也要把卡片拉高。
+       *
+       * 原来竖屏靠字号放大 + 间距填空（字号上限 1.6 防孤字、间距封顶 150px），
+       * 实测正文只到 493..1247（占带 51%），上下各空 300+。
+       * 卡片高度本来就是空间（文字在卡内居中），拿它去填最安全：不会折出孤字。
+       * 上限 sp(360)：三条要点时每张卡约 380px，再高就是卡里塞空气。
+       */
+      Math.max(
+        0,
+        Math.round(
+          Math.min(
+            sp(360),
+            (availH * 0.94 - (scale.gap + portraitGap) * Math.max(0, points.length - 1)) / Math.max(1, points.length),
+          ),
+        ),
+      )
     : Math.max(
         0,
         Math.round(Math.min(260, (availH - scale.gap * Math.max(0, points.length - 1)) / Math.max(1, points.length))),
@@ -405,7 +426,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             fontFamily: FONT,
             // 竖屏画布高达 1920，内容却只有三四行：沿用横屏"顶部留 300 多"的写法，
             // 结果内容全挤在上半屏、下半屏一片空白。竖屏改为在标题与字幕之间垂直居中
-            paddingTop: isPortrait ? SPACE.lg : padTop,
+            paddingTop: padTop,
             paddingBottom: captionReserve,
             flex: isPortrait ? 1 : undefined,
             display: "flex",
@@ -437,7 +458,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         style={{
           width: isPortrait ? contentWidth : singleColW,
           fontFamily: FONT,
-          paddingTop: isPortrait ? SPACE.lg : padTop,
+          paddingTop: padTop,
           paddingBottom: captionReserve,
           /*
            * 横屏改成“顶到标题下 + 卡片长高”（与 steps / stats / three_card / two_column 同一套）。
@@ -448,7 +469,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
            * 现在卡片高度由正文带推出（见 cardMinH），文字在卡内居中，卡片堆满整个带。
            */
           flex: 1,
-          justifyContent: isPortrait ? "center" : "flex-start",
+          justifyContent: "flex-start",
           display: "flex",
           flexDirection: "column",
           gap: isPortrait ? sp(scale.gap) + portraitGap : scale.gap,

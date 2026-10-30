@@ -294,6 +294,8 @@ export interface VerdictOptions {
 export const HEAD_GAP_LIMIT = 120;
 /** 正文底 → 正文带底允许的最大空白（正常页面实测 0~150px；720px 带里留超过 200px 就是下半截空着） */
 export const BOTTOM_AIR_LIMIT = 200;
+/** 竖屏「整页居中」路径的对称容忍度（相对正文带高） */
+export const PORTRAIT_CENTER_TOLERANCE = 0.25;
 
 /**
  * 把指标翻成一句人话。
@@ -336,8 +338,17 @@ export function auditVerdict(
    * - `chart-line` / `chart-area` 墨迹空洞 117px（告警），但 DOM 间隙只有 12px、正文底 874（离带底 46px）——那 117px 是图表里的网格线留白，假警。
    * - `three_card` 墨迹空洞只有 41px（不告警），但正文 250..587，下半截空 333px——真的空，墨迹口径完全看不见。
    */
+  /*
+   * 生成式版式（`code`）不做位置判据。
+   *
+   * 这类页的内容是模型现写的绝对定位组件，排在哪里、占多大都由那段代码决定；
+   * 模板侧没有可改的（它连自己的坐标系都是 1920×1080 硬编码）。
+   * 实测：竖屏 code-generated 正文 884..1199，带高 1482，标题底 820 —— 按位置判据必报告警，
+   * 但改不动，只会让人习惯忽略告警。面积/内部空洞照常报。
+   */
+  const opaque = opts.layout === "code";
   const geo = opts.geometry ?? null;
-  const hasGeo = !!geo && geo.bodyTop != null && geo.bodyBottom != null;
+  const hasGeo = !!geo && geo.bodyTop != null && geo.bodyBottom != null && !opaque;
   if (airy) {
     /*
      * fill 是相对正文带面积的，而正文带高度随方向变：
@@ -360,6 +371,12 @@ export function auditVerdict(
     }
     return out;
   }
+  if (opaque && geo && geo.bodyTop != null) {
+    out.push({
+      level: "info",
+      message: `生成式版式：正文 ${geo.bodyTop}..${geo.bodyBottom}（位置由模型写的代码决定，不做位置判据）`,
+    });
+  }
   if (hasGeo) {
     const top = geo.bodyTop as number;
     const bottom = geo.bodyBottom as number;
@@ -367,16 +384,34 @@ export function auditVerdict(
     const bottomAir = Math.round(b.bottom - bottom);
     if (isPortrait) {
       /*
-       * 竖屏不做位置判据。
-       *
-       * 竖屏构图本来就是整页居中（正文带 1482px，内容居中才不会上重下轻），
-       * 把横屏那套「标题下空 ≤ 120px」搬过去，24/30 页正常页面全会报警（实测）；
-       * 改成「上下留白是否对称」也不行——code-generated 这类自带构图的页面，
-       * 标题就在块里，量出来天然不对称。
-       * 竖屏继续用像素口径（内部空洞/填充率），几何数值只打印不判。
+       * 竖屏两种构图都合法，只要不是「上重下轻 / 越界 / 两头不贴」：
+       *   A. 贴标题排（与横屏同口径）：标题下空 ≤ HEAD_GAP_LIMIT 且 带底空 ≤ BOTTOM_AIR_LIMIT
+       *   B. 整页居中：上下留白差 ≤ 带高的 25%
+       * 竖屏带有 1482px，只用 A 会把居中构图全报成告警（实测 24/30 页）；
+       * 只用 B 又会放过「整组偏下」的页面。两条路任一满足即通过。
        */
-      void bottom;
-      void top;
+      if (bottom > b.bottom) {
+        out.push({
+          level: "warn",
+          message: `正文底 y=${bottom} 越过了正文带底 ${b.bottom}，压到字幕条上了`,
+        });
+      } else if (geo.headingBottom != null && top < geo.headingBottom) {
+        out.push({
+          level: "warn",
+          message: `正文顶 y=${top} 高过标题底 ${geo.headingBottom}，两者重叠了`,
+        });
+      } else {
+        const topAir = headGap ?? Math.round(top - b.top);
+        const hugOk = (headGap == null || headGap <= HEAD_GAP_LIMIT) && bottomAir <= BOTTOM_AIR_LIMIT;
+        const centeredOk = Math.abs(topAir - bottomAir) <= bandH * PORTRAIT_CENTER_TOLERANCE;
+        if (!hugOk && !centeredOk) {
+          const side = topAir > bottomAir ? "偏下" : "偏上";
+          out.push({
+            level: "warn",
+            message: `竖屏内容${side}：标题下空 ${topAir}px、带底空 ${bottomAir}px（带高 ${bandH}px），既没贴标题也不居中`,
+          });
+        }
+      }
     } else {
       if (headGap != null && headGap > HEAD_GAP_LIMIT) {
         out.push({

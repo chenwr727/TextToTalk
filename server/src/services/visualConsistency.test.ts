@@ -124,8 +124,8 @@ test("竖屏的横向流程图必须重排成竖列，而不是等比缩小", ()
   );
   assert.match(
     src,
-    /chain \? \{ scale: 1, tx: 0, ty: 0 \} : computeFitTransform\(spec, safe\)/,
-    "识别成链后不再叠加 fit 变换（坐标已是画布坐标）",
+    /chain \|\| landCards \? \{ scale: 1, tx: 0, ty: 0 \} : computeFitTransform\(spec, safe\)/,
+    "识别成链（含横屏重排）后不再叠加 fit 变换（坐标已是画布坐标）",
   );
   assert.match(src, /portraitSafeH\(spec, w, portraitBand\.h\)/, "识别不了链的复杂图必须退回等比缩放");
   // 复杂图放弃重排的三个闸门，少一个就会把多行图排错
@@ -135,6 +135,26 @@ test("竖屏的横向流程图必须重排成竖列，而不是等比缩小", ()
   // （read() 会剥掉注释，所以这里数 return null 的条数，而不是匹配注释文案）
   const gates = src.match(/return null;/g)?.length ?? 0;
   assert.ok(gates >= 4, `buildPortraitChain 应有 ≥4 个放弃重排的闸门，当前 ${gates}`);
+});
+
+test("横屏极端横图要能重排成一排大卡（不变形也不越界）", () => {
+  const src = read("shared/render/scenes/CustomSvgScene.tsx");
+  /*
+   * 样例里那张流程图是 1700×264（≈6.4:1），等比塞进 1872×620 的带只能 264px 高，
+   * 实测正文 378..642、下半截空 278px。解法是按节点数重画成等宽大卡。
+   */
+  assert.match(src, /export function buildLandscapeCards\(/, "横屏重排逻辑应是可测试的纯函数");
+  assert.match(
+    src,
+    /if \(contentH >= landBand\.h \* 0\.55\) return null;/,
+    "只有等比缩放后内容高度不足带高一半时才重排，否则保持 AI 原图",
+  );
+  assert.match(src, /const cardW = Math\.floor\(\(box\.w - \(N - 1\) \* ARROW_W\) \/ N\)/, "卡片宽度按正文带平分");
+  assert.match(
+    src,
+    /const cardH = Math\.floor\(Math\.min\(box\.h \* 0\.92, cardW \* 1\.15\)\)/,
+    "卡片高度受带高与宽度双重约束",
+  );
 });
 
 test("字幕字号独立于正文缩放（竖屏上前者要更大）", () => {

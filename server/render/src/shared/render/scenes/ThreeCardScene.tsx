@@ -41,6 +41,12 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const { height: canvasH } = useVideoConfig();
   const bandH = Math.max(0, canvasH - contentTop - captionReserve);
   const cardH = isPortrait ? undefined : Math.round(Math.min(bandH * 0.92, CARD_H * 1.55));
+  /*
+   * 竖屏卡高：三张单列，把正文带按张数分（实测改前 626..1294，只占 45%）。
+   */
+  const portraitCardH = isPortrait
+    ? Math.max(sp(180), Math.min(sp(420), Math.round((bandH * 0.94 - sp(28) * 2) / 3)))
+    : undefined;
   const timing = useSceneTiming();
 
   const padX = isPortrait ? sp(CARD_TYPE.padX) : CARD_TYPE.padX;
@@ -103,8 +109,9 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   return (
     <AbsoluteFill
       style={{
-        // 横屏贴标题排：标题是绝对定位的，内容若相对整块画布居中，标题下方会白出 238px
-        justifyContent: isPortrait ? "center" : "flex-start",
+        // 横竖屏都贴标题排：标题是绝对定位的，内容若相对整块画布居中，
+        // 横屏标题下方白 238px，竖屏实测白 450px（正文 626..1294）
+        justifyContent: "flex-start",
         alignItems: "center",
         flexDirection: "column",
       }}
@@ -116,9 +123,7 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           display: "flex",
           flexDirection: isPortrait ? "column" : "row",
           gap: isPortrait ? gapPortrait || portraitGap : 48,
-          // 竖屏的 PageHeading 是绝对定位在顶部，这里再往下推 170 会把整组压到偏下，
-          // 实测上方空 550px、下方只剩 330px；交给居中即可，marginTop 归零
-          marginTop: isPortrait ? 0 : contentTop,
+          marginTop: contentTop,
         }}
       >
         {[0, 1, 2].map((i) => {
@@ -147,7 +152,8 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                   width: isPortrait ? contentWidth : CARD_W,
                   // 竖屏改由内容撑高：固定套用横屏卡高会在高画布里留下大片空白，
                   // 而且一旦文案变长就溢出卡片（改字号缩放的实测就是这个现象）
-                  height: isPortrait ? undefined : cardH,
+                  /* 竖屏也给定高（卡内内容居中），否则三张按内容撑高、整组只占带的 45% */
+                  height: isPortrait ? portraitCardH : cardH,
                   minHeight: isPortrait ? sp(150) : undefined,
                   boxSizing: "border-box",
                 }}

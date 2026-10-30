@@ -42,6 +42,26 @@ export const BodyProbe: React.FC<{
        *    实测：不排除时 points 页量出 bodyTop=0 / bodyBottom=1080。
        */
       const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      /*
+       * 继承文字的绝对定位块要算进正文（第三层过滤）。
+       *
+       * title/section/end 这三类页面的内容全是绝对定位的，不放宽就永远拿不到几何（实测 3/30 页 n/a）；
+       * custom_svg 的要点贴片、code 页自带的统计卡也是绝对定位的，不算进去会把“页面用了多少空间”量小。
+       * 但绝对定位里也混着装饰（光环、大色块、右下角水印「设计评审」），所以只收两种：
+       * 自己直接带文字的、且面积占画布 ≥ 0.25%（水印实测 2800px²，只占 0.13%，被排除）。
+       */
+      const ABS_MIN_AREA_RATIO = 0.0025;
+      const minAbsArea = vw * vh * ABS_MIN_AREA_RATIO;
+      /*
+       * 只收「最内层文字块」：自己含文字、且没有子元素再含文字。
+       * 否则 section 页那个包着标题的光环容器（绝对定位 + textContent 非空）会进来，
+       * 量出 152..928 这种把装饰也算进去的框。
+       */
+      const isTextLeafBlock = (el: HTMLElement): boolean => {
+        if (!(el.textContent ?? "").trim()) return false;
+        return !Array.from(el.children).some((c) => (c.textContent ?? "").trim());
+      };
       let top = Number.POSITIVE_INFINITY;
       let bottom = Number.NEGATIVE_INFINITY;
       for (const el of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
@@ -53,10 +73,14 @@ export const BodyProbe: React.FC<{
          */
         if (heading && el.contains(heading)) continue;
         const pos = getComputedStyle(el).position;
-        if (pos === "absolute" || pos === "fixed") continue;
         const r = rectOf(el);
+        if (pos === "absolute" || pos === "fixed") {
+          if (!isTextLeafBlock(el)) continue;
+          if (r.width * r.height < minAbsArea) continue;
+        }
         if (r.width <= 0 || r.height <= 0) continue;
         if (r.height > vh * 0.9) continue;
+        if (r.width > vw * 0.9 && r.height > vh * 0.9) continue;
         top = Math.min(top, r.top);
         bottom = Math.max(bottom, r.bottom);
       }

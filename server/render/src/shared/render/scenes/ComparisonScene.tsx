@@ -244,7 +244,11 @@ export const ComparisonScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const badgeRight = accentOf(2);
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    /*
+     * 横竖屏都贴标题排。竖屏原来是整页居中，实测正文 377..1544：
+     * 标题下空 201px，下方又空 146px，两边都没贴住。
+     */
+    <AbsoluteFill style={{ justifyContent: "flex-start", alignItems: "center", flexDirection: "column" }}>
       <PageHeading text={title} />
       <div
         style={{

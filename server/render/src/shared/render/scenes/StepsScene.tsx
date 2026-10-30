@@ -34,13 +34,26 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const singleRow = !isPortrait && n <= perRow;
   /* 0.74 + 470 上限时正文只到 y=720（带底 920），正好卡在 200px 的告警线上；抬到 0.92 + 520 留出余量 */
   const rowH = singleRow ? Math.min(520, Math.round(bandH * 0.92)) : undefined;
+  /*
+   * 竖屏：单列时把每张卡拉高到正文带。
+   * 原来靠 `minHeight: sp(250)` 兑位，实测 473..1448 下方还空 242px。
+   */
+  const portraitRowH =
+    isPortrait && n > 0
+      ? Math.max(sp(250), Math.min(sp(430), Math.round((bandH * 0.94 - sp(48) * (n - 1)) / n)))
+      : undefined;
 
   return (
     <AbsoluteFill
       style={{
         // 竖屏也贴标题排：卡片只有 3 张时，原来的垂直居中会在标题下方留 400px+ 的空洞；
         // 5 张以上单列可能排不下，这时退回居中，宁可上下留白也不要压到字幕条
-        justifyContent: isPortrait ? "center" : "flex-start",
+        /*
+         * 竖屏也改成从上往下排（原来是 center）。
+         * `marginTop: contentTop` 在 `justifyContent: center` 下是无效的：子元素的 margin box
+         * 还是被整块画布居中，竖屏实测正文落在 473..1448（标题下空 297px）。
+         */
+        justifyContent: "flex-start",
         alignItems: "center",
         flexDirection: "column",
       }}
@@ -50,7 +63,7 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))`,
-          gridTemplateRows: rowH ? `${rowH}px` : undefined,
+          gridTemplateRows: rowH ? `${rowH}px` : portraitRowH ? `repeat(${n}, ${portraitRowH}px)` : undefined,
           columnGap: isPortrait ? sp(60) : 60,
           // 竖屏 4 张卡原来只隔 17px、整组像一块石板；且 marginTop 用了 212px，上方空 363px
           rowGap: isPortrait ? sp(48) : 20,
