@@ -339,10 +339,17 @@ export function auditVerdict(
   const geo = opts.geometry ?? null;
   const hasGeo = !!geo && geo.bodyTop != null && geo.bodyBottom != null;
   if (airy) {
-    if (m.fill < AIRY_MIN_FILL) {
+    /*
+     * fill 是相对正文带面积的，而正文带高度随方向变：
+     * 横屏 721px、竖屏 1482px。同一句标题在竖屏里算出来的比例就只有一半——
+     * 实测 section 页：横屏 24%、竖屏 10%，但竖屏那页看图完全正常（大标题居中）。
+     * 所以先折算到 720px 带高再比，避免竖屏空白页误报「没渲染出来」。
+     */
+    const fillAt720 = m.fill * (bandH / 720);
+    if (fillAt720 < AIRY_MIN_FILL) {
       out.push({
         level: "warn",
-        message: `这页天生稀疏，但内容只占 ${Math.round(m.fill * 100)}%（不足 ${Math.round(AIRY_MIN_FILL * 100)}%），像是没渲染出来`,
+        message: `这页天生稀疏，但内容只占 ${Math.round(fillAt720 * 100)}%（按 720px 带高折算，不足 ${Math.round(AIRY_MIN_FILL * 100)}%），像是没渲染出来`,
       });
     }
     if (inVoid > bandH * AIRY_MAX_VOID_RATIO) {
@@ -357,18 +364,32 @@ export function auditVerdict(
     const top = geo.bodyTop as number;
     const bottom = geo.bodyBottom as number;
     const headGap = geo.headingBottom != null ? Math.round(top - geo.headingBottom) : null;
-    if (headGap != null && headGap > HEAD_GAP_LIMIT) {
-      out.push({
-        level: "warn",
-        message: `标题与正文之间空了 ${headGap}px（标题底 ${geo.headingBottom} → 正文顶 ${top}），内容漂在了画布中间`,
-      });
-    }
     const bottomAir = Math.round(b.bottom - bottom);
-    if (bottomAir > BOTTOM_AIR_LIMIT) {
-      out.push({
-        level: "warn",
-        message: `正文底到正文带底还空着 ${bottomAir}px（正文止于 y=${bottom}，带底 ${b.bottom}），下半截没用上`,
-      });
+    if (isPortrait) {
+      /*
+       * 竖屏不做位置判据。
+       *
+       * 竖屏构图本来就是整页居中（正文带 1482px，内容居中才不会上重下轻），
+       * 把横屏那套「标题下空 ≤ 120px」搬过去，24/30 页正常页面全会报警（实测）；
+       * 改成「上下留白是否对称」也不行——code-generated 这类自带构图的页面，
+       * 标题就在块里，量出来天然不对称。
+       * 竖屏继续用像素口径（内部空洞/填充率），几何数值只打印不判。
+       */
+      void bottom;
+      void top;
+    } else {
+      if (headGap != null && headGap > HEAD_GAP_LIMIT) {
+        out.push({
+          level: "warn",
+          message: `标题与正文之间空了 ${headGap}px（标题底 ${geo.headingBottom} → 正文顶 ${top}），内容漂在了画布中间`,
+        });
+      }
+      if (bottomAir > BOTTOM_AIR_LIMIT) {
+        out.push({
+          level: "warn",
+          message: `正文底到正文带底还空着 ${bottomAir}px（正文止于 y=${bottom}，带底 ${b.bottom}），下半截没用上`,
+        });
+      }
     }
     /*
      * 几何已经把位置说清楚了，墨迹空洞只作为提示：

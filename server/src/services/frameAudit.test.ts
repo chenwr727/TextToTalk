@@ -186,7 +186,7 @@ test("auditVerdict：有 DOM 几何时布局判据以它为准，像素空洞降
    * - table：墨迹空洞 242px，正文顶 415、标题底 206——确实是内容漂在中间。
    */
   const chartLine = audit.measureInk(canvas(1000, [[245, 874]]), W, 1000);
-  const withGeo = audit.auditVerdict(chartLine as never, W, 1000, true, {
+  const withGeo = audit.auditVerdict(chartLine as never, W, 1000, false, {
     geometry: { headingBottom: 206, bodyTop: 245, bodyBottom: 874 },
   });
   assert.ok(
@@ -195,7 +195,7 @@ test("auditVerdict：有 DOM 几何时布局判据以它为准，像素空洞降
   );
 
   const table = audit.measureInk(canvas(1000, [[415, 772]]), W, 1000);
-  const tableGeo = audit.auditVerdict(table as never, W, 1000, true, {
+  const tableGeo = audit.auditVerdict(table as never, W, 1000, false, {
     geometry: { headingBottom: 206, bodyTop: 415, bodyBottom: 772 },
   });
   assert.ok(
@@ -210,7 +210,7 @@ test("auditVerdict：正文底到带底的空白也要管（墨迹口径看不�
    * 但正文止于 587、带底 920，下半截空了 333px。
    */
   const m = audit.measureInk(canvas(1000, [[250, 587]]), W, 1000);
-  const v = audit.auditVerdict(m as never, W, 1000, true, {
+  const v = audit.auditVerdict(m as never, W, 1000, false, {
     band: { top: 200, bottom: 920 },
     geometry: { headingBottom: 206, bodyTop: 250, bodyBottom: 587 },
   });
@@ -236,6 +236,41 @@ test("auditVerdict：正文底到带底的空白也要管（墨迹口径看不�
   assert.ok(
     noGeo.some((x) => x.level === "warn" && x.message.includes("没拿到 DOM 几何")),
     `缺几何时要说明口径局限，实际：${JSON.stringify(noGeo)}`,
+  );
+});
+
+test("auditVerdict：竖屏不做位置判据（居中是设计），但天生稀疏的填充率要按带高折算", () => {
+  /*
+   * 竖屏实测（正文带 209..1690 = 1482px）：
+   * three_card 正文 626..1294（标题下空 450、带底空 396）、quote 682..1225（上 506、下 465）。
+   * 把横屏「标题下空 ≤ 120px」直接套上去，24/30 页正常页面全会报警。
+   */
+  const centered = audit.auditVerdict(canvas(1000, [[626, 1294]]) as never, W, 1000, true, {
+    band: { top: 209, bottom: 1690 },
+    geometry: { headingBottom: 176, bodyTop: 626, bodyBottom: 1294 },
+  });
+  assert.equal(centered.length, 0, `竖屏居中不该告警，实际：${JSON.stringify(centered)}`);
+
+  // 竖屏天生稀疏页：fill 10% 在 1482px 带里 = 按 720px 折算 20.6%，不该当成“没渲染出来”
+  const thin = audit.measureInk(canvas(1920, [[880, 1000]]), W, 1920, { band: { top: 209, bottom: 1690 } });
+  const thinVerdict = audit.auditVerdict(thin as never, W, 1920, true, {
+    layout: "section",
+    band: { top: 209, bottom: 1690 },
+  });
+  assert.ok(
+    thinVerdict.every((v) => v.level !== "warn" || !v.message.includes("没渲染出来")),
+    `竖屏 10% 不该报“没渲染出来”，实际：${JSON.stringify(thinVerdict)}`,
+  );
+
+  // 真空白：整页只剩 1.5% 墨迹，按折算也不到 15%
+  const empty = audit.measureInk(canvas(1920, [[900, 930]]), W, 1920, { band: { top: 209, bottom: 1690 } });
+  const emptyVerdict = audit.auditVerdict(empty as never, W, 1920, true, {
+    layout: "section",
+    band: { top: 209, bottom: 1690 },
+  });
+  assert.ok(
+    emptyVerdict.some((v) => v.level === "warn" && v.message.includes("没渲染出来")),
+    `真空白必须告警，实际：${JSON.stringify(emptyVerdict)}`,
   );
 });
 

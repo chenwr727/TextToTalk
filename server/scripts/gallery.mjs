@@ -32,7 +32,19 @@ const TRANSITION = 12;
 const theme = process.env.GALLERY_THEME || "tech";
 /** 画布尺寸：landscape（默认 1920×1080）或 portrait（1080×1920） */
 const SIZE = (process.env.GALLERY_SIZE || "landscape").trim();
-const [CANVAS_W, CANVAS_H] = SIZE === "portrait" ? [1080, 1920] : [1920, 1080];
+/*
+ * 也接受 `1080x1920` / `1920x1080` 这种写法。
+ * 原来只认字面量 "portrait"，传 "1080x1920" 会被当成横屏静默跑错（实测白跑了一轮 13 分钟的横屏渲染）。
+ */
+const SIZE_HINT = SIZE.toLowerCase();
+const SIZE_WH = /^(\d+)\s*[x×*]\s*(\d+)$/.exec(SIZE);
+const IS_PORTRAIT =
+  SIZE_HINT === "portrait" || SIZE_HINT === "vertical" || (!!SIZE_WH && Number(SIZE_WH[2]) > Number(SIZE_WH[1]));
+const [CANVAS_W, CANVAS_H] = SIZE_WH
+  ? [Number(SIZE_WH[1]), Number(SIZE_WH[2])]
+  : IS_PORTRAIT
+    ? [1080, 1920]
+    : [1920, 1080];
 const only = (process.env.GALLERY_ONLY || "").trim();
 /**
  * 默认渲设计样本；给了 GALLERY_PAGES_JSON 就渲那份真实分镜。
@@ -63,7 +75,7 @@ PAGES.forEach((p, i) => {
   cursor += Math.round(p.durationSec * FPS) - (i === PAGES.length - 1 ? 0 : TRANSITION);
 });
 
-const outDir = path.join(repoRoot, "server", "out", "gallery", `${theme}${SIZE === "portrait" ? "-portrait" : ""}`);
+const outDir = path.join(repoRoot, "server", "out", "gallery", `${theme}${IS_PORTRAIT ? "-portrait" : ""}`);
 mkdirSync(outDir, { recursive: true });
 
 const inputProps = {
