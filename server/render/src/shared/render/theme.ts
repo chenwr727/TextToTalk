@@ -455,14 +455,14 @@ export const themeVars = (id?: string | null): CSSProperties => {
     "--ttt-accent-a33": tint(20),
     "--ttt-accent-a0d": tint(5),
     "--ttt-grad-accent": "linear-gradient(90deg, var(--ttt-accent), var(--ttt-grad-end))",
-  /*
-   * 表头专用渐变：终点不是浅色 gradEnd，而是 accent 压深。
-   *
-   * 表头上是白字，用 grad-accent 时右半边底色接近薄荷绿（实测 rgb(166,225,220)），
-   * 白字对比度只有 1.45:1——等于把右侧几列的表头抹掉了。
-   */
-  "--ttt-grad-header":
-    "linear-gradient(90deg, var(--ttt-accent), color-mix(in srgb, var(--ttt-accent) 62%, #0b1220))",
+    /*
+     * 表头专用渐变：终点不是浅色 gradEnd，而是 accent 压深。
+     *
+     * 表头上是白字，用 grad-accent 时右半边底色接近薄荷绿（实测 rgb(166,225,220)），
+     * 白字对比度只有 1.45:1——等于把右侧几列的表头抹掉了。
+     */
+    "--ttt-grad-header":
+      "linear-gradient(90deg, var(--ttt-accent), color-mix(in srgb, var(--ttt-accent) 62%, #0b1220))",
     "--ttt-grad-accent-soft":
       "linear-gradient(90deg, color-mix(in srgb, var(--ttt-accent) 80%, transparent), color-mix(in srgb, var(--ttt-grad-end) 80%, transparent))",
     "--ttt-card-bg": t.card.bg,

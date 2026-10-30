@@ -52,7 +52,13 @@ const describe = (el: Element) => {
     tag: el.tagName.toLowerCase(),
     // Remotion 会把非当前页的图层挪到屏幕外（top: -999999px），
     // 只看 on-screen 的实例才能对上"成图里那张卡"
-    visible: r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth,
+    visible:
+      r.width > 0 &&
+      r.height > 0 &&
+      r.bottom > 0 &&
+      r.top < window.innerHeight &&
+      r.right > 0 &&
+      r.left < window.innerWidth,
     rect: {
       x: Math.round(r.x),
       y: Math.round(r.y),
@@ -106,19 +112,21 @@ export const DomProbe: React.FC<{ spec: ProbeSpec }> = ({ spec }) => {
           },
         ]
       : [];
-    report.push(...spec.selectors.map((sel) => {
-      let nodes: Element[] = [];
-      try {
-        nodes = Array.from(document.querySelectorAll(sel)).slice(0, 12);
-      } catch (err) {
-        return { selector: sel, error: `选择器无效: ${(err as Error).message}` };
-      }
-      return {
-        selector: sel,
-        count: nodes.length,
-        items: nodes.map((el) => ({ ...describe(el), chain: chainOf(el) })),
-      };
-    }));
+    report.push(
+      ...spec.selectors.map((sel) => {
+        let nodes: Element[] = [];
+        try {
+          nodes = Array.from(document.querySelectorAll(sel)).slice(0, 12);
+        } catch (err) {
+          return { selector: sel, error: `选择器无效: ${(err as Error).message}` };
+        }
+        return {
+          selector: sel,
+          count: nodes.length,
+          items: nodes.map((el) => ({ ...describe(el), chain: chainOf(el) })),
+        };
+      }),
+    );
     const payload = {
       frame,
       viewport: { w: window.innerWidth, h: window.innerHeight },

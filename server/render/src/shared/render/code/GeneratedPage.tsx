@@ -43,8 +43,7 @@ const compilePage = (js: string): React.ComponentType<GeneratedProps> | null => 
     );
     const mod: { exports: Record<string, unknown> } = { exports: {} };
     const out = factory(React, Kit, remotionApi, mod, mod.exports);
-    const candidate =
-      typeof out === "function" ? out : (out as { default?: unknown } | undefined)?.default;
+    const candidate = typeof out === "function" ? out : (out as { default?: unknown } | undefined)?.default;
     comp = typeof candidate === "function" ? (candidate as React.ComponentType<GeneratedProps>) : null;
   } catch {
     comp = null;

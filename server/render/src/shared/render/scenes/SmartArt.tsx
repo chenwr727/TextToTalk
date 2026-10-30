@@ -95,10 +95,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * —— 三张 310 高的卡 + 间距总高约 990，占可画区 66%，也不再有大片色块。
    */
   const cardH = isPortrait
-    ? Math.min(
-        maxCardH,
-        Math.max(Math.round(maxCardH * 0.5), Math.round((Math.max(ICON_BLOCK, textH) + V_PAD) * 1.15)),
-      )
+    ? Math.min(maxCardH, Math.max(Math.round(maxCardH * 0.5), Math.round((Math.max(ICON_BLOCK, textH) + V_PAD) * 1.15)))
     : Math.min(Math.max(Math.round(maxCardH * 0.62), Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
   const iconSize = isPortrait ? sp(CARD_TYPE.iconSize) : CARD_TYPE.iconSize;
   const ICON_GAP = isPortrait ? sp(16) : 16;

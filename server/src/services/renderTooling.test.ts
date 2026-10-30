@@ -22,7 +22,10 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const readScript = (rel: string) => fs.readFileSync(path.join(repoRoot, "server", "scripts", rel), "utf8");
 const stripComments = (src: string) =>
-  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/^\s*\*.*$/gm, "");
+  src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/^\s*\*.*$/gm, "");
 
 test("gallery / probe 都按完整页面列表渲染，避免目标页被 TitleScene 接管", () => {
   for (const file of ["gallery.mjs", "probe.mjs"]) {

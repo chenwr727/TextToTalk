@@ -96,7 +96,8 @@ export type Layout =
   | "stats"
   | "qa"
   | "map"
-  /** 受约束的生成式版式：AI 直接写一页 React 组件（只允许用白名单 Kit），由服务端校验后渲染 */ | "code";
+  /** 受约束的生成式版式：AI 直接写一页 React 组件（只允许用白名单 Kit），由服务端校验后渲染 */
+  | "code";
 
 export type Art = "flow" | "loop" | "timeline" | "quadrant" | "quote";
 

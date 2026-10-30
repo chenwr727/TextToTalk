@@ -305,10 +305,11 @@ export function buildPortraitChain(
   // 1. 节点：矩形 / 圆 / 椭圆，且两个方向都够大（排除小圆点、圆角小方块）
   const nodeIdx = els
     .map((el, i) => ({ el, i, b: bs[i] }))
-    .filter(({ el, b }) =>
-      (el.type === "rect" || el.type === "circle" || el.type === "ellipse") &&
-      b.maxX - b.minX >= 50 &&
-      b.maxY - b.minY >= 50,
+    .filter(
+      ({ el, b }) =>
+        (el.type === "rect" || el.type === "circle" || el.type === "ellipse") &&
+        b.maxX - b.minX >= 50 &&
+        b.maxY - b.minY >= 50,
     );
   if (nodeIdx.length < 2) return null;
 
@@ -457,11 +458,7 @@ export function buildPortraitChain(
  * 由宽度定标，实际只占 300px，上下的空盒子各留了 400px 白。这里按"内容等比放大后
  * 再多留 30% 边距"给高度，并夹在可用高度之内。
  */
-export function portraitSafeH(
-  els: SvgElement[],
-  safeW: number,
-  availH: number,
-): number {
+export function portraitSafeH(els: SvgElement[], safeW: number, availH: number): number {
   if (!els.length) return Math.round(availH * 0.6);
   const bounds = els.map(elementBounds);
   const contentW = Math.max(Math.max(...bounds.map((b) => b.maxX)) - Math.min(...bounds.map((b) => b.minX)), 100);
@@ -501,7 +498,10 @@ export const CustomSvgScene: React.FC<SceneProps> = ({ page, subtitles, fps }) =
    *   - 能识别成「单行节点链」→ 竖排（buildPortraitChain），直接铺满标题到字幕之间；
    *   - 否则退回到等比缩放，安全区高度跟着内容纵横比走（portraitSafeH）。
    */
-  const chain = useMemo(() => (isPortrait ? buildPortraitChain(spec, portraitBand) : null), [spec, isPortrait, portraitBand]);
+  const chain = useMemo(
+    () => (isPortrait ? buildPortraitChain(spec, portraitBand) : null),
+    [spec, isPortrait, portraitBand],
+  );
   const safe = isPortrait
     ? chain
       ? portraitBand

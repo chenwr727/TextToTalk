@@ -72,7 +72,9 @@ for (const [i, p] of codePages.entries()) {
   const usesFlexWrap = /flexWrap/.test(src);
   const hardcodedW = /width:\s*\d{3,4}\b/.test(src) && !/maxWidth/.test(src);
   console.log(`\n--- code 页 ${i + 1}：${p.title} ---`);
-  console.log(`  用到 portrait: ${usesPortrait ? "是" : "否"} | flexWrap: ${usesFlexWrap ? "是" : "否"} | 写死宽度: ${hardcodedW ? "疑似" : "否"}`);
+  console.log(
+    `  用到 portrait: ${usesPortrait ? "是" : "否"} | flexWrap: ${usesFlexWrap ? "是" : "否"} | 写死宽度: ${hardcodedW ? "疑似" : "否"}`,
+  );
   console.log(src.split("\n").slice(0, 24).join("\n"));
 }
 

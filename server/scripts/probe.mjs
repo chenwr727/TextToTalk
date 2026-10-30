@@ -63,7 +63,9 @@ const [CANVAS_W, CANVAS_H] = SIZE === "portrait" ? [1080, 1920] : [1920, 1080];
 
 // 精确同名优先（points 与 points-long 都在样本里，模糊匹配会选错页）
 const all = PAGES.filter((p) => pageName(p).includes(wantPage) || String(p.layout).includes(wantPage));
-const targets = all.length ? [...all].sort((a, b) => (pageName(a) === wantPage ? -1 : 0) - (pageName(b) === wantPage ? -1 : 0)) : all;
+const targets = all.length
+  ? [...all].sort((a, b) => (pageName(a) === wantPage ? -1 : 0) - (pageName(b) === wantPage ? -1 : 0))
+  : all;
 if (!targets.length) {
   console.error(`没有匹配 "${wantPage}" 的样本页；可用：${PAGES.map(pageName).join(", ")}`);
   process.exit(2);
@@ -120,7 +122,9 @@ writeFileSync(
   ),
 );
 
-console.log(`[probe] ${name} @ frame ${frame}（${selectors.length} 个选择器${wantText ? ` + 文字 "${wantText}"` : ""}）`);
+console.log(
+  `[probe] ${name} @ frame ${frame}（${selectors.length} 个选择器${wantText ? ` + 文字 "${wantText}"` : ""}）`,
+);
 
 const runStill = (cfg) =>
   new Promise((resolve, reject) => {

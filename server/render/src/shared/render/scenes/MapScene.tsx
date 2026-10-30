@@ -323,9 +323,7 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
     ? {
         x: 60,
         // 底板在「标题底 .. 字幕条顶」之间居中，而不是在整张画布上居中（否则被字幕条往上顶）
-        y: Math.round(
-          contentTop + Math.max(0, (contentHeight - contentTop - captionReserve - portraitBoardH) / 2),
-        ),
+        y: Math.round(contentTop + Math.max(0, (contentHeight - contentTop - captionReserve - portraitBoardH) / 2)),
         w: portraitBoard.w,
         h: portraitBoardH,
       }
