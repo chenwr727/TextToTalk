@@ -100,6 +100,8 @@ interface CardProps {
   icon: string;
   /** 单列统一定宽；不给则按内容宽度 */
   cardW?: number;
+  /** 横屏单列时按正文带算出的卡片最小高度；文字在卡内垂直居中 */
+  minH?: number;
   pulse: number;
 }
 
@@ -126,6 +128,7 @@ const PointCard: React.FC<CardProps> = ({
   sp,
   icon,
   cardW,
+  minH,
   pulse,
 }) => {
   const a = accentOf(index);
@@ -159,10 +162,23 @@ const PointCard: React.FC<CardProps> = ({
           marginLeft: cardW ? "auto" : undefined,
           marginRight: cardW ? "auto" : undefined,
           maxWidth: "100%",
+          // 横屏单列：卡片高度由正文带推出（见 cardMinH）。
+          // 注意：可见的那层 div 在 Card 内部，这里只能定高；垂直居中靠内层行的 auto 边距
+          height: minH,
+          minHeight: minH,
           transform: `translateY(0)`,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", maxWidth: "100%" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            maxWidth: "100%",
+            // 卡片被拉高时，图标 + 文字在卡内垂直居中（与 steps / stats 同一套写法）
+            marginTop: minH ? "auto" : undefined,
+            marginBottom: minH ? "auto" : undefined,
+          }}
+        >
           <div
             style={{
               marginRight: isPortrait ? sp(24) : 24,
@@ -342,6 +358,20 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   const twoCol = texts.length >= 4 && estHeightOf(baseScale) > availH * 0.95;
 
+  /*
+   * 横屏单列：卡片高度由正文带推出来，让整叠卡片正好铺满「标题下 ~ 字幕条上」。
+   *
+   * 只在横屏给这个值：竖屏的画布高 1920，卡片长高会把 3 条要点变成三块巨幅色块，
+   * 竖屏仍然走它自己那套「按估算高度放大字号」（见 mkScale / portraitFill）。
+   * 上限 260：一句话的卡片长到 260 已经足够宽松，再高就只是在卡片里塞空气。
+   */
+  const cardMinH = isPortrait
+    ? undefined
+    : Math.max(
+        0,
+        Math.round(Math.min(260, (availH - scale.gap * Math.max(0, points.length - 1)) / Math.max(1, points.length))),
+      );
+
   if (twoCol) {
     const left = points.map((p, i) => ({ p, i })).filter(({ i }) => i % 2 === 0);
     const right = points.map((p, i) => ({ p, i })).filter(({ i }) => i % 2 === 1);
@@ -409,10 +439,16 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           fontFamily: FONT,
           paddingTop: isPortrait ? SPACE.lg : padTop,
           paddingBottom: captionReserve,
-          // 两个方向都在"标题底 ~ 字幕条顶"之间居中：横屏原来是 flex-start 顶上去，
-          // 结果卡片上面只隔 81px、下面空 206px
+          /*
+           * 横屏改成“顶到标题下 + 卡片长高”（与 steps / stats / three_card / two_column 同一套）。
+           *
+           * 旧写法是 justifyContent: center：PageHeading 是绝对定位、不占文档流，
+           * 于是这个 flex 容器的“居中”是相对整块画布算的——实测 points 样例页
+           * 卡片落在 y=390..760，标题下方空 181px、标题与内容看上去是脱开的。
+           * 现在卡片高度由正文带推出（见 cardMinH），文字在卡内居中，卡片堆满整个带。
+           */
           flex: 1,
-          justifyContent: "center",
+          justifyContent: isPortrait ? "center" : "flex-start",
           display: "flex",
           flexDirection: "column",
           gap: isPortrait ? sp(scale.gap) + portraitGap : scale.gap,
@@ -435,6 +471,7 @@ export const PointsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               sp={sp}
               icon={pointIcon(p, i)}
               cardW={isPortrait ? undefined : uniformW}
+              minH={cardMinH}
             />
           );
         })}

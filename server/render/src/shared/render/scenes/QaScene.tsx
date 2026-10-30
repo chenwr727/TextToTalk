@@ -1,6 +1,6 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { C, FONT, FS, LH, FW, SPACE, accentOf, SOLID_SHADOW, springIn } from "../theme";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { pointText, pointIcon, pointAnchor } from "../point";
@@ -19,6 +19,7 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const { fps } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
   const captionReserve = useCaptionReserve(subtitles, page.captions);
+  const { contentTop } = useHeadingMetrics();
   const timing = useSceneTiming();
   const question = points[0] ? pointText(points[0], 0) : "";
   const answers = points.slice(1);
@@ -77,20 +78,35 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const iconSize = zoom > 1.22 ? "lg" : "md";
 
   const qO = springIn(f, fps, resolveAnchor(timing, points[0] ? pointAnchor(points[0]) : undefined, 0), page.motion);
+  /** 横屏正文带：标题下沿到字幕条上沿。问卡从带顶起笔，答案卡分掉剩余高度 */
+  const qaBandH = 1080 - contentTop - captionReserve;
+
   const a = accentOf(0);
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        justifyContent: isPortrait ? "center" : "flex-start",
+        alignItems: "center",
+        flexDirection: "column",
+      }}
+    >
       <PageHeading text={title} />
       {/*
-       * 原来 marginTop 用一个写死的 250px 顶下去、却完全不消费字幕预留：
-       * 两段卡挤在 y496-824（画布 30%），上方空 263px、下方离字幕条只剩 74px。
-       * 交给 AbsoluteFill 的居中，上下留白由字幕预留决定。
+       * 横屏改成“从 contentTop 起笔、答案卡分掉剩余高度”。
+       *
+       * 旧写法靠 AbsoluteFill 居中 + marginTop: 120：PageHeading 是绝对定位、不占文档流，
+       * 于是“居中”是相对整块画布算的——实测 qa 样例页问卡落在 y=375，
+       * 标题下方空 166px，答案卡下面又空 310px。
+       * 现在：问卡跟着标题，答案卡列 flex: 1 分掉剩余高度，文字在卡内居中。
        */}
       <div
         style={{
-          marginTop: isPortrait ? 0 : 120,
+          marginTop: isPortrait ? 0 : contentTop,
           marginBottom: isPortrait ? 0 : captionReserve,
+          height: isPortrait ? undefined : qaBandH,
+          display: "flex",
+          flexDirection: "column",
           width: isPortrait ? contentWidth : 1560,
         }}
       >
@@ -140,6 +156,9 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             flexDirection: "column",
             gap: isPortrait ? sp(24 * zi) + qaSurplus : SPACE.md,
             marginTop: isPortrait ? sp(32 * zi) + qaSurplus : SPACE.lg,
+            // 横屏：剩余高度交给这一列，但卡片本身不无限拉高（见下方 maxHeight）
+            flex: isPortrait ? undefined : 1,
+            justifyContent: isPortrait ? undefined : "center",
           }}
         >
           {answers.map((p, i) => {
@@ -151,9 +170,29 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 accent={ac}
                 leftBar
                 pad={isPortrait ? sp(28 * zi) : 28}
-                style={{ opacity: t, transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px)` }}
+                style={{
+                  opacity: t,
+                  transform: `translateY(${interpolate(t, [0, 1], [30, 0])}px)`,
+                  flex: isPortrait ? undefined : 1,
+                  /*
+                   * 卡片长高有上限：一句答案的卡被拉到 430px 高时，
+                   * 卡内只有一行字、上下各空一半，看上去像“面板没装东西”。
+                   * 260 是一行正文 + 两行正文都能安全装下的高度。
+                   */
+                  maxHeight: isPortrait ? undefined : 260,
+                  display: isPortrait ? undefined : "flex",
+                  flexDirection: isPortrait ? undefined : "column",
+                }}
               >
-                <div style={{ display: "flex", alignItems: "center" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    // 卡被拉高时内容垂直居中（与 points / steps / stats 同一套）
+                    marginTop: isPortrait ? undefined : "auto",
+                    marginBottom: isPortrait ? undefined : "auto",
+                  }}
+                >
                   <IconTile
                     name={pointIcon(p, i + 1)}
                     accent={ac}
