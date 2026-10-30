@@ -1,6 +1,6 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig } from "remotion";
 import { alpha, C, FONT, FS, FW, accentOf, tileShadow, springIn } from "../theme";
-import { useResponsive } from "../responsive";
+import { useCaptionReserve, useResponsive } from "../responsive";
 import { axisScale, fmtTick, niceStep, unitOf, yAxisOf } from "../chartScale";
 import { useSceneTiming } from "../captionTiming";
 import { HeadingContent } from "../PageHeading";
@@ -23,6 +23,32 @@ const SERIES = [accentOf(0), accentOf(1), accentOf(2), accentOf(3), accentOf(4),
  * 页面标题（page.title）走主题的标题语言，与其它版式一致；chart.title 降为副标题，
  * 保留"这组数据在比什么"的信息。放在内容列的流里而不是绝对定位，否则会压住图形。
  */
+/**
+ * 竖屏图表的一把尺：标题下方到字幕上方到底有多高。
+ *
+ * 为什么要它：图表页把标题放在内容列里（走正常流），整列又 `justifyContent: center`，
+ * 于是竖屏下图表只占中间一段，实测 fill 67%~76%、上下各空 400px。
+ * 得到带高后，每类图表只要把自己的高度取成带高的固定比例就能铺满。
+ */
+const useChartBand = (subtitles: boolean, texts: string[]) => {
+  const { isPortrait, height, sp } = useResponsive();
+  const reserve = useCaptionReserve(subtitles, texts);
+  const top = sp(90);
+  const bottom = height - Math.max(reserve, isPortrait ? 120 : 200);
+  return { isPortrait, top, bottom, h: Math.max(320, bottom - top) };
+};
+
+const pageColumn = (band: { isPortrait: boolean; top: number; bottom: number }, height: number) =>
+  band.isPortrait
+    ? {
+        justifyContent: "flex-start" as const,
+        alignItems: "center" as const,
+        flexDirection: "column" as const,
+        paddingTop: band.top,
+        paddingBottom: Math.max(0, height - band.bottom),
+      }
+    : { justifyContent: "center" as const, alignItems: "center" as const, flexDirection: "column" as const };
+
 const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> = ({ page, chartTitle }) => {
   const { isPortrait, sp } = useResponsive();
   const head = String(page?.title ?? "").trim();
@@ -60,12 +86,16 @@ const ChartHeading: React.FC<{ page: SceneProps["page"]; chartTitle?: string }> 
     </div>
   );
 };
-export const ChartScene: React.FC<SceneProps> = ({ page }) => {
+export const ChartScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const dataMax = Math.max(...values);
   const { top: axisTop, ticks } = axisScale(dataMax);
   const max = axisTop;
@@ -90,10 +120,11 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
     : Math.max(24, Math.min(180, (availW - n * 60) / Math.max(1, n - 1)));
   const barW = Math.min(barMaxW, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
-  const chartH = isPortrait ? 880 : 500;
-  const barMaxH = isPortrait ? 700 : 380;
+  /* 竖屏：图高跟着带高走（原来写死 880，带高 1481，上下各空 400px） */
+  const chartH = isPortrait ? Math.round(band.h * 0.86) : 500;
+  const barMaxH = isPortrait ? Math.round(chartH * 0.8) : 380;
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill style={pageColumn(band, canvasH)}>
       <ChartHeading page={page} chartTitle={title} />
       <div
         style={{
@@ -237,16 +268,20 @@ export const ChartScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-export const LineScene: React.FC<SceneProps> = ({ page }) => {
+export const LineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1500,
     // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
-    H = isPortrait ? 900 : 520,
+    H = isPortrait ? Math.round(band.h * 0.8) : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   /*
@@ -265,11 +300,9 @@ export const LineScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill
       style={{
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        // 整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
-        paddingBottom: isPortrait ? 0 : 88,
+        ...pageColumn(band, canvasH),
+        // 横屏整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
+        ...(isPortrait ? {} : { paddingBottom: 88 }),
       }}
     >
       <ChartHeading page={page} chartTitle={title} />
@@ -381,19 +414,23 @@ const pieSlicePath = (cx: number, cy: number, r: number, a0: number, a1: number)
   return `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
 };
 
-export const PieScene: React.FC<SceneProps> = ({ page }) => {
+export const PieScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const pal = SERIES;
   const total = values.reduce((a, b) => a + b, 0) || 1;
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const cx = isPortrait ? contentWidth / 2 : 430,
-    cy = isPortrait ? 360 : 300,
-    r = isPortrait ? 300 : 250;
+    cy = isPortrait ? Math.round(band.h * 0.34) : 300,
+    r = isPortrait ? Math.min(Math.round(contentWidth * 0.42), Math.round(band.h * 0.3)) : 250;
   const fitLabel = (s: string) => (Array.from(s).length > 5 ? Array.from(s).slice(0, 5).join("") + "…" : s);
   let cumulative = 0;
   const slices = values.map((v, i) => {
@@ -411,9 +448,9 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
   });
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill style={pageColumn(band, canvasH)}>
       <ChartHeading page={page} chartTitle={title} />
-      <svg width={isPortrait ? contentWidth : 1150} height={isPortrait ? 760 : 560}>
+      <svg width={isPortrait ? contentWidth : 1150} height={isPortrait ? Math.round(band.h * 0.8) : 560}>
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
         )}
@@ -488,16 +525,20 @@ export const PieScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-export const AreaScene: React.FC<SceneProps> = ({ page }) => {
+export const AreaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, labels, values } = chart as Extract<ChartSpec, { labels: string[]; values: number[] }>;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const W = isPortrait ? contentWidth : 1500,
     // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
-    H = isPortrait ? 900 : 520,
+    H = isPortrait ? Math.round(band.h * 0.8) : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   /*
@@ -516,11 +557,9 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill
       style={{
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        // 整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
-        paddingBottom: isPortrait ? 0 : 88,
+        ...pageColumn(band, canvasH),
+        // 横屏整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
+        ...(isPortrait ? {} : { paddingBottom: 88 }),
       }}
     >
       <ChartHeading page={page} chartTitle={title} />
@@ -600,7 +639,7 @@ export const AreaScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-export const DonutScene: React.FC<SceneProps> = ({ page }) => {
+export const DonutScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, labels, values, total } = chart as {
     type: "donut";
@@ -610,14 +649,18 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
     total?: number;
   };
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const pal = SERIES;
   const sum = values.reduce((a, b) => a + b, 0) || 1;
   const grow = springIn(f, fps, timing.frameAt(0), "spring");
   const cx = isPortrait ? contentWidth / 2 : 430,
-    cy = isPortrait ? 360 : 300,
+    cy = isPortrait ? Math.round(band.h * 0.34) : 300,
     r = isPortrait ? 300 : 250,
     hole = 0.55;
   const fitLabel = (s: string) => (Array.from(s).length > 5 ? Array.from(s).slice(0, 5).join("") + "…" : s);
@@ -644,9 +687,9 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
   const centerMain = total !== undefined ? String(total) : sumIsShares ? `${topSlice.pct}%` : String(sum);
   const centerSub = total !== undefined || !sumIsShares ? "总量" : fitLabel(topSlice.label ?? "");
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill style={pageColumn(band, canvasH)}>
       <ChartHeading page={page} chartTitle={title} />
-      <svg width={isPortrait ? contentWidth : 1150} height={isPortrait ? 760 : 560}>
+      <svg width={isPortrait ? contentWidth : 1150} height={isPortrait ? Math.round(band.h * 0.8) : 560}>
         {slices.map((s, i) =>
           s.pct > 0 ? <path key={i} d={s.d} fill={s.color} stroke="#fff" strokeWidth={4} opacity={0.95} /> : null,
         )}
@@ -720,15 +763,19 @@ export const DonutScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
+export const StackedBarScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, labels, series } = chart as Extract<
     ChartSpec,
     { labels: string[]; series: { name: string; values: number[] }[] }
   >;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const pal = SERIES;
   const maxTotal = Math.max(...labels.map((_, i) => series.reduce((a, s) => a + (s.values[i] || 0), 0))) || 1;
   const n = labels.length;
@@ -741,13 +788,14 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   );
   const barW = Math.min(barMaxW, (availW - (n - 1) * barGap) / n);
   const labelFs = Math.min(isPortrait ? fs(FS.body) : FS.body, Math.max(16, barW));
-  const chartH = isPortrait ? 840 : 440;
-  const barMaxH = isPortrait ? 660 : 360;
+  /* 堆叠柱下面还有图例 + 横轴标签：用 0.86 会把正文拉到 1716，越过带底 1690 压到字幕上 */
+  const chartH = isPortrait ? Math.round(band.h * 0.72) : 440;
+  const barMaxH = isPortrait ? Math.round(chartH * 0.74) : 360;
   // 柱区底边：让出标签那一行，刻度才能与柱高对齐（此前标签在柱底下撑开，柱底位置不定）
   const barBottom = Math.round(labelFs * 1.2) + (isPortrait ? sp(18) : 18);
   const { top: stackTop, ticks: axisTicks } = axisScale(maxTotal);
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill style={pageColumn(band, canvasH)}>
       <ChartHeading page={page} chartTitle={title} />
       <div
         style={{
@@ -919,15 +967,19 @@ export const StackedBarScene: React.FC<SceneProps> = ({ page }) => {
   );
 };
 
-export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
+export const ScatterScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const chart = page.chart!;
   const { title, points } = chart as Extract<ChartSpec, { points: { x: number; y: number; label?: string }[] }>;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
+  const band = useChartBand(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const W = isPortrait ? contentWidth : 1500,
     // 560 会让 x 轴标签贴到字幕条（实测只剩 11px），520 配 PAD_T 仍然把绘图区从 325 抬到 410
-    H = isPortrait ? 900 : 520,
+    H = isPortrait ? Math.round(band.h * 0.8) : 520,
     PAD = isPortrait ? sp(110) : 110,
     BOTTOM = isPortrait ? sp(70) : 70;
   /*
@@ -956,11 +1008,9 @@ export const ScatterScene: React.FC<SceneProps> = ({ page }) => {
   return (
     <AbsoluteFill
       style={{
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        // 整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
-        paddingBottom: isPortrait ? 0 : 88,
+        ...pageColumn(band, canvasH),
+        // 横屏整组上移：居中的画布里 x 轴标签离字幕条只剩 17px（H=520 时实测）
+        ...(isPortrait ? {} : { paddingBottom: 88 }),
       }}
     >
       <ChartHeading page={page} chartTitle={title} />

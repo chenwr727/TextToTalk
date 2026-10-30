@@ -77,7 +77,8 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 标题下沉 162px、带底再空 207px。现在改成用真实画布高减标题下沿与字幕带，
    * 容器也改成从 contentTop 起笔（见下面的 padding）。
    */
-  const BODY_H = isPortrait ? 1500 : Math.max(0, canvasH - contentTop - captionReserve);
+  /* 竖屏用真实带高（原来写死 1500，而带高是 1481，且卡片还被下一行的比例压到一半） */
+  const BODY_H = Math.max(320, canvasH - contentTop - captionReserve);
   const maxCardH = Math.floor(BODY_H / rows) - ROW_GAP;
 
   const ICON_BLOCK = isPortrait ? sp(CARD_TYPE.iconBox) : CARD_TYPE.iconBox;
@@ -102,7 +103,11 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * —— 三张 310 高的卡 + 间距总高约 990，占可画区 66%，也不再有大片色块。
    */
   const cardH = isPortrait
-    ? Math.min(maxCardH, Math.max(Math.round(maxCardH * 0.5), Math.round((Math.max(ICON_BLOCK, textH) + V_PAD) * 1.15)))
+    ? Math.min(
+        maxCardH,
+        /* 0.86 实测把末卡底拉到 1695，越过带底 1690 压到字幕上；0.83 留出余量 */
+        Math.max(Math.round(maxCardH * 0.83), Math.round((Math.max(ICON_BLOCK, textH) + V_PAD) * 1.15)),
+      )
     : Math.min(Math.max(Math.round(maxCardH * 0.86), Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
   const iconSize = isPortrait ? sp(CARD_TYPE.iconSize) : CARD_TYPE.iconSize;
   const ICON_GAP = isPortrait ? sp(16) : 16;
@@ -115,9 +120,9 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           flex: 1,
           display: "flex",
           alignItems: isPortrait ? "center" : "flex-start",
-          justifyContent: "center",
-          // 横屏从正文带顶起笔（标题绝对定位、不占流，靠它才能贴住标题）
-          padding: isPortrait ? `0 ${SIDE_PAD}px` : `${contentTop}px ${SIDE_PAD}px 0`,
+          justifyContent: "flex-start",
+          // 两个方向都从正文带顶起笔（标题绝对定位、不占流，靠它才能贴住标题）
+          padding: `${contentTop}px ${SIDE_PAD}px 0`,
         }}
       >
         <div
@@ -828,12 +833,17 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   );
 };
 
-export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
+export const QuadrantScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const items = page.points;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
+  const captionReserve = useCaptionReserve(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   const list = items.slice(0, 4);
   /*
@@ -867,7 +877,10 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page }) => {
   const labelFs =
     [nodeFs, nodeFs - 2, nodeFs - 4, nodeFs - 6, 26, 24, 22].find((fsz) => labelChars * fsz * 1.02 <= cellInnerW) ?? 22;
 
-  const GRID_H = isPortrait ? 1000 : 520;
+  /* 竖屏：四象限占满带（原来 1000，带高 1481，只占 67%） */
+  const GRID_H = isPortrait
+    ? Math.round(Math.max(520, canvasH - contentTop - Math.max(captionReserve, sp(120))) * 0.92)
+    : 520;
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={title} />

@@ -25,6 +25,7 @@ import {
   validatePageContent,
   validatePlan,
 } from "./normalize.js";
+import { LAYOUT_ANCHOR_MISSING } from "./codePage.js";
 import type { StoryPage } from "../types.js";
 
 /**
@@ -615,8 +616,11 @@ describe("页面视觉参数：accent / decor", () => {
 });
 
 describe("生成式版式（layout=code）的归一化", () => {
+  // 合法 fixture 必须引用 band：版式锚点是硬契约（见 codePage 的 LAYOUT_ANCHOR_MISSING）
   const SOURCE = `
-    const Page = ({ page }) => <div style={{ position: "absolute", inset: 0 }}>{page.title}</div>;
+    const Page = ({ page, band }) => (
+      <div style={{ position: "absolute", left: band.left, top: band.top }}>{page.title}</div>
+    );
     export default Page;
   `;
 
@@ -679,6 +683,45 @@ describe("生成式版式（layout=code）的归一化", () => {
       diagnostics.some((d) => d.includes("禁止 import")),
       diagnostics.join("\n"),
     );
+  });
+
+  test("既不用 band 也不用 portrait：降级回 points 而不是整页失败，并把竖屏提示交给重试", () => {
+    const diagnostics: string[] = [];
+    const page = normalizePage(
+      {
+        title: "横屏常量页",
+        captions: ["一句话"],
+        points: [{ text: "要点一" }],
+        layout: "code",
+        code: `const Page = ({ page }) => (
+          <div style={{ position: "absolute", left: 160, top: 380 }}>{page.title}</div>
+        );
+        export default Page;`,
+      },
+      1,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      diagnostics,
+    );
+    // 硬规则只影响这一页：源码被丢弃、版式降级，分镜本身照常产出（重试提示见 storyboardGenerator）
+    assert.equal(page.layout, "points", diagnostics.join("\n"));
+    assert.equal(page.code, undefined);
+    assert.ok(
+      diagnostics.some((d) => d.includes(LAYOUT_ANCHOR_MISSING)),
+      `应把竖屏实测提示交给重试：${diagnostics.join("\n")}`,
+    );
+    assert.ok(
+      diagnostics.some((d) => d.includes("降级")),
+      diagnostics.join("\n"),
+    );
+    // 降级后仍是一页有内容可渲染的 points 页，不会把整篇分镜拖垮
+    assert.ok(page.title && page.points.length > 0);
   });
 });
 

@@ -30,6 +30,12 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
    * 横屏最外圈 r=540、cy=540 又正好与上下边相切。现在 viewBox 跟随画布方向，
    * 半径按短边的 0.46 封顶，三圈都完整落在画面内。
    */
+  /*
+   * 竖屏把节段标题放大：`fs()` 是**缩小**的（竖屏 0.82），于是 1080×1920 的画布上
+   * 标题比横屏还小，实测墨迹只占 886..1100（fill 10%）。节段页本来就是“少字”的页，
+   * 字小就真的是一小团漂在中间；这里反过来把字号拉到 1.45倍。
+   */
+  const displayFs = isPortrait ? Math.round(fs(FS.display) * 1.45) : FS.display;
   const vb = isPortrait ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
   const cx = vb.w / 2;
   const cy = vb.h / 2;
@@ -63,8 +69,8 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
       </svg>
       <div
         style={{
-          fontSize: isPortrait ? fs(FS.caption) : FS.caption,
-          letterSpacing: isPortrait ? sp(12) : 12,
+          fontSize: isPortrait ? Math.round(fs(FS.caption) * 1.3) : FS.caption,
+          letterSpacing: isPortrait ? sp(20) : 12,
           color: C.muted,
           fontWeight: FW.bold,
           marginBottom: sp(34),
@@ -76,7 +82,7 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
       {annotate ? (
         <div
           style={{
-            fontSize: isPortrait ? fs(FS.display) : FS.display,
+            fontSize: displayFs,
             fontWeight: FW.heavy,
             color: C.ink,
             textAlign: "center",
@@ -90,17 +96,13 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
           {/* 标注只包文字，不包这个块：块是整行宽，再加内边距与椭圆鼓包会超出画布。
               circle 的容器是 white-space:pre（永远不折行），所以超宽时要自己断行。 */}
           <Annotated kind={annotate}>
-            {circleWrap(
-              title,
-              isPortrait ? fs(FS.display) : FS.display,
-              isPortrait ? undefined : CIRCLED_TEXT_WIDTH_LANDSCAPE,
-            )}
+            {circleWrap(title, displayFs, isPortrait ? undefined : CIRCLED_TEXT_WIDTH_LANDSCAPE)}
           </Annotated>
         </div>
       ) : (
         <div
           style={{
-            fontSize: isPortrait ? fs(FS.display) : FS.display,
+            fontSize: displayFs,
             fontWeight: FW.heavy,
             color: C.ink,
             textAlign: "center",
@@ -117,8 +119,8 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
       {sub && (
         <div
           style={{
-            marginTop: sp(30),
-            fontSize: isPortrait ? fs(FS.heading) : FS.heading,
+            marginTop: sp(isPortrait ? 54 : 30),
+            fontSize: isPortrait ? Math.round(fs(FS.heading) * 1.25) : FS.heading,
             color: C.sub,
             fontFamily: FONT,
             opacity: o,

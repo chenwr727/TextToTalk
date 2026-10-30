@@ -62,7 +62,8 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const fitOne = Math.floor((960 - (titleChars - 1)) / Math.max(1, titleChars));
   const titleFontSize = isPortrait
-    ? Math.max(59, Math.min(92, fitOne))
+    ? /* 竖屏上限 92 → 112：1080px 宽的画布上 92 字就是一行小字，封面墨迹只占 22% */
+      Math.max(64, Math.min(112, fitOne))
     : titleChars > 18
       ? 64
       : titleChars > 14

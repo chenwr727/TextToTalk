@@ -147,10 +147,23 @@ const main = async () => {
 
   // E2E_FORCE_CODE=<页序号，从 0 起>：强制某页走生成式版式，
   // 用来隔离测量"模型能不能按白名单写出合格组件"，绕开"它愿不愿意选 code"这层变量
-  const forceIdx = process.env.E2E_FORCE_CODE != null ? Number(process.env.E2E_FORCE_CODE) : -1;
-  if (forceIdx >= 0 && plan.pages?.[forceIdx]) {
-    const target = plan.pages[forceIdx];
-    console.log(`\n[e2e] 实验：强制第 ${forceIdx + 1} 页使用生成式版式（原版式 ${target.layout}）`);
+  const forceRaw = process.env.E2E_FORCE_CODE;
+  const forceIdx = forceRaw != null && forceRaw !== "all" ? Number(forceRaw) : -1;
+  /*
+   * `E2E_FORCE_CODE=all`：把**每一页**都逼成生成式版式。
+   *
+   * 用来对「模型能不能按 band 契约写合格组件」做批量压测（单页强制只能证明“能写出一页”），
+   * 一次拿到 N 页的通过/降级比例。
+   */
+  const forceAll = forceRaw === "all";
+  if (forceAll) {
+    console.log(`\n[e2e] 实验：强制全部 ${plan.pages?.length ?? 0} 页使用生成式版式`);
+  }
+  for (let i = 0; i < (plan.pages?.length ?? 0); i++) {
+    const want = forceAll || i === forceIdx;
+    if (!want) continue;
+    const target = plan.pages![i];
+    console.log(`\n[e2e] 实验：强制第 ${i + 1} 页使用生成式版式（原版式 ${target.layout}）`);
     Object.assign(target, { layout: "code", art: null, chart: false, table: false });
   }
 

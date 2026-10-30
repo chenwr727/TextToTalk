@@ -52,6 +52,20 @@ const BANNED_IDENTIFIERS = new Set([
   "alert",
 ]);
 
+/**
+ * 版式锚点 prop：生成代码必须至少真实引用其中一个。
+ *
+ * 实测失败样本：模型按横屏写死 `top: 380` / `left: 160`，同一页投到竖屏 1080×1920 上
+ * 正文只占 884..1199（正文带高 1481px，上下各空 800+ 像素），成片里就是一条漂在
+ * 画面中间的窄带子。`band` 是渲染端已算好的正文目标盒子（已避开标题与字幕），
+ * `portrait` 是方向标志——代码里出现过这两个名字，才有机会算出竖屏也成立的位置。
+ */
+const LAYOUT_ANCHOR_PROPS = new Set(["band", "portrait"]);
+
+/** 既不用 band 也不用 portrait 时的拒绝原因（同时也是重试提示，会原样拼进 diagnostics） */
+export const LAYOUT_ANCHOR_MISSING =
+  "必须使用 `band` 或 `portrait`：同一页也会被渲染成竖屏 1080×1920，只写横屏像素常量（如 `top: 380` / `left: 160`）会让正文只剩 884..1199 一条窄带子（实测，正文带高 1481px，上下各空 800+ 像素）。请用 `band`（`{ top, bottom, left, right }`，已避开标题与字幕）算出位置，或按 `portrait` 分支；竖向至少占满 `(band.bottom - band.top) * 0.8`。";
+
 /** 这些父节点下的标识符是"名字"而不是"引用"，不该误杀（如 obj.window、{ Date: 1 }） */
 const isNamePosition = (node: ts.Node): boolean => {
   const p = node.parent;
@@ -110,7 +124,18 @@ export const checkPageCode = (source: string): CodeCheckResult => {
     problems.push("缺少 `export default`：必须导出一个 React 组件");
   }
 
+  /** 本次遍历里出现过的版式锚点 prop（`band` / `portrait`） */
+  const usedAnchors = new Set<string>();
+
   const visit = (node: ts.Node) => {
+    /*
+     * 版式锚点：只认 AST 里的真实引用——解构参数 `({ band })`、成员访问 `props.band`、
+     * 字符串下标 `props["band"]`、以及裸标识符用法。字符串字面量、对象键、JSX 属性名
+     * 这类"名字位置"不算：`<div data-band="x" />`、`{ band: 1 }` 都没有把 band 用起来。
+     */
+    if (ts.isBindingElement(node) && ts.isIdentifier(node.name) && LAYOUT_ANCHOR_PROPS.has(node.name.text)) {
+      usedAnchors.add(node.name.text);
+    }
     if (ts.isImportDeclaration(node) || ts.isImportEqualsDeclaration(node)) {
       problems.push("禁止 import：生成代码拿不到模块系统，请用参数里的 React / Kit / remotion");
       return;
@@ -123,6 +148,7 @@ export const checkPageCode = (source: string): CodeCheckResult => {
     // 所以必须连属性名一起禁，而不是只禁 Function 这个标识符。
     const PROPERTY_BANNED = new Set(["constructor", "__proto__", "prototype"]);
     if (ts.isPropertyAccessExpression(node)) {
+      if (LAYOUT_ANCHOR_PROPS.has(node.name.text)) usedAnchors.add(node.name.text);
       if (ts.isIdentifier(node.expression) && node.expression.text === "Math" && node.name.text === "random") {
         problems.push("禁止 Math.random：逐帧渲染要求同一帧永远得到同一画面");
       }
@@ -131,9 +157,13 @@ export const checkPageCode = (source: string): CodeCheckResult => {
       }
     }
     if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+      if (LAYOUT_ANCHOR_PROPS.has(node.argumentExpression.text)) usedAnchors.add(node.argumentExpression.text);
       if (PROPERTY_BANNED.has(node.argumentExpression.text)) {
         problems.push(`禁止访问 ["${node.argumentExpression.text}"]：可经原型链拿到 Function 等宿主能力`);
       }
+    }
+    if (ts.isIdentifier(node) && LAYOUT_ANCHOR_PROPS.has(node.text) && !isNamePosition(node)) {
+      usedAnchors.add(node.text);
     }
     if (ts.isIdentifier(node) && BANNED_IDENTIFIERS.has(node.text) && !isNamePosition(node)) {
       problems.push(`禁止使用 ${node.text}`);
@@ -141,6 +171,9 @@ export const checkPageCode = (source: string): CodeCheckResult => {
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
+
+  // 一条硬规则：一页代码必须能自己算出两个方向的位置，band 与 portrait 都不提就没得算
+  if (!usedAnchors.size) problems.push(LAYOUT_ANCHOR_MISSING);
 
   const seen = new Set<string>();
   const unique = problems.filter((p) => (seen.has(p) ? false : (seen.add(p), true)));

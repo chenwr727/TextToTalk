@@ -99,21 +99,19 @@ const CODE_PAGE_DESC = `code：本页版式为「生成式版式」，由你直�
 1. 必须 \`export default\` 一个函数组件，props 是 \`{ page, portrait, width, height, band }\`（\`page.title\` / \`page.points\` / \`page.captions\` 可取内容；\`portrait\` 为 true 时画布是竖屏 1080×1920；**\`band\` 是已算好的正文目标盒子** \`{ top, bottom, left, right }\`，已避开标题与字幕）。
 2. 你只拿得到三个参数：\`React\`、\`remotion\`、\`Kit\`。**严禁 import / require / eval / Function / fetch / window / document / setTimeout / setInterval / Math.random / Date**。
 3. 动画必须由 \`remotion.useCurrentFrame()\` + \`remotion.interpolate()\` 或 \`remotion.spring()\` 驱动，保证同一帧永远得到同一画面。
-4. **位置必须从 \`width\` / \`height\` / \`band\` 推出来，不得写只对 1920×1080 成立的常量**。同一页会被渲染成横屏与竖屏两个方向（竖屏可用宽度仅 952）：\`top: 380\` 这种写法投到竖屏上就是一条漂在中间的窄带子（实测正文只占 884..1199，上下各空 800+像素）。用 \`band\` 定位：主容器 \`left: band.left, right: width - band.right, top: band.top\`，**竖向至少占满 \`(band.bottom - band.top) * 0.8\`**（竖屏约 1180px、横屏约 570px）；用 \`display: "flex", flexDirection: "column", justifyContent: "space-between"\` 或 \`flex: 1\` 让卡片自己长高，不要把内容摆在上半就完事；宽度一律用 \`band.left/right\`、百分比或 \`flexWrap: "wrap"\`，不要写死像素值。
+4. **位置必须从 \`width\` / \`height\` / \`band\` 推出来，不得写只对 1920×1080 成立的常量**。同一页会被渲染成横屏与竖屏两个方向（竖屏可用宽度仅 952）：\`top: 380\` 这种写法投到竖屏上就是一条漂在中间的窄带子（实测正文只占 884..1199，上下各空 800+像素）。用 \`band\` 定位：主容器 \`left: band.left, right: width - band.right, top: band.top\`，**竖向至少占满 \`(band.bottom - band.top) * 0.8\`**（竖屏约 1180px、横屏约 570px）；用 \`flex: 1\` 让中间那一块自己长高（内部再 \`justifyContent: "space-between"\` 或 \`alignItems: "stretch"\`），不要把内容摆在上半就完事；**也不要用顶层的 \`space-between\` 把整页拆成上下两块**——顶层拆开后中间会留出 400px+ 的空洞（实测一页 470px，静帧体检会报警）；**条目少（≤3 条）时不要靠拉伸容器凑高度**，要把字号、行高、卡片内边距一起放大（实测一页 2 条数据拉满后卡片内空洞 576px）；宽度一律用 \`band.left/right\`、百分比或 \`flexWrap: "wrap"\`，不要写死像素值。
 5. **颜色和字号一律用 Kit 令牌，不要写死十六进制**：\`Kit.C.ink\` / \`Kit.C.sub\` / \`Kit.C.accent\` / \`Kit.C.muted\`、\`Kit.accent(i)\`（i=0~5 调色板）、\`Kit.FS.hero|title|heading|body|label\`、\`Kit.alpha(色值, 百分比)\`。这样浅色与深色主题都能正常显示。
 6. 可直接用：\`<Kit.Heading text={...}/>\`（页面标题，与其它版式同一套样式）、\`<Kit.Card accentIndex={i}>...</Kit.Card>\`、\`<Kit.Stat value="80℃" label="起始温度" accentIndex={0}/>\`、\`<Kit.Pill text="..." icon="trend"/>\`、\`<Kit.Text size={Kit.FS.body} color={Kit.C.sub}>...</Kit.Text>\`、\`<Kit.Row gap={40}>...</Kit.Row>\`、\`<Kit.Col gap={24}>...</Kit.Col>\`、\`<Kit.Icon name="trend" size={48}/>\`。
 7. 不要把 captions 画进画面（字幕由渲染端统一叠加）；元素总数 ≤ 20 个，宁可少而清楚。
-示例结构（内容换成你的）：
-export default ({ page }) => {
+示例结构（内容换成你的；**注意所有位置都从 \`band\` 算**，写死 160 / 380 这类常数会直接被服务端拒绝）：
+export default ({ page, band }) => {
   const f = remotion.useCurrentFrame();
   const rise = remotion.interpolate(f, [0, 24], [40, 0], { extrapolateRight: "clamp" });
   const o = remotion.interpolate(f, [0, 18], [0, 1], { extrapolateRight: "clamp" });
   return (
-    <div style={{ position: "absolute", inset: 0 }}>
-      <div style={{ position: "absolute", left: 160, top: 150 }}>
-        <Kit.Heading text={page.title} />
-      </div>
-      <Kit.Row gap={56} style={{ position: "absolute", left: 160, right: 160, top: 380, opacity: o, transform: \`translateY(\${rise}px)\` }}>
+    <div style={{ position: "absolute", left: band.left, top: band.top, width: band.right - band.left, height: band.bottom - band.top, display: "flex", flexDirection: "column", gap: 28 }}>
+      <Kit.Heading text={page.title} />
+      <Kit.Row gap={56} style={{ opacity: o, transform: \`translateY(\${rise}px)\` }}>
         {(page.points || []).slice(0, 4).map((p, i) => (
           <Kit.Card key={i} accentIndex={i} style={{ flex: 1 }}>
             <Kit.Text size={Kit.FS.heading} weight={700}>{p.text}</Kit.Text>

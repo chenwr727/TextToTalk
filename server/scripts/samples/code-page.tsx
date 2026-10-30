@@ -15,7 +15,18 @@ import type { Point, StoryPage } from "../../render/src/shared/render/props";
 
 const { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } = remotion;
 
-export default function GeneratedPage({ page, portrait }: { page: StoryPage; portrait?: boolean }) {
+/*
+ * 签名换成 `{ page, band }`：服务端现在有硬规则——生成代码不提 `band`/`portrait` 会被打回重写（→ 降级 points）。
+ * 样本也得跟着走新契约：位置全部从 `band` 算。原来是「居中 + wrap」，
+ * 竖屏实测只占 884..1199（fill 32%），横屏也只用了中间一段。
+ */
+export default function GeneratedPage({
+  page,
+  band,
+}: {
+  page: StoryPage;
+  band: { top: number; bottom: number; left: number; right: number };
+}) {
   const f = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame: f, fps, config: { damping: 200 } });
@@ -29,33 +40,37 @@ export default function GeneratedPage({ page, portrait }: { page: StoryPage; por
   return (
     <AbsoluteFill
       style={{
+        /* 位置全部从 band 推出来：已避开标题与字幕，不写任何像素常量 */
+        position: "absolute",
+        left: band.left,
+        top: band.top,
+        width: band.right - band.left,
+        height: band.bottom - band.top,
+        display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: portrait ? "0 64px" : "0 120px",
-        gap: portrait ? 40 : 56,
+        justifyContent: "space-between",
         opacity: enter,
       }}
     >
-      <Kit.Heading text={page.title} />
-      {/* 横竖屏共用一份排布：靠 wrap + flex 自适应，而不是给两个方向各写一套 */}
-      <Kit.Row gap={portrait ? 24 : 56} style={{ marginTop: 24, flexWrap: "wrap", justifyContent: "center" }}>
+      {/* 标题由渲染端统一画（PageHeading），这里不再重复 Kit.Heading */}
+      <Kit.Row gap={24} style={{ flexWrap: "wrap", justifyContent: "space-between" }}>
         {stats.map((s, i) => (
-          <Kit.Card key={i} accentIndex={i} style={{ flex: 1, minWidth: portrait ? 240 : 340 }}>
-            <Kit.Stat value={s.value} label={s.label} accentIndex={i} size={portrait ? Kit.FS.title : Kit.FS.hero} />
+          <Kit.Card key={i} accentIndex={i} style={{ flex: 1, minWidth: "30%" }}>
+            <Kit.Stat value={s.value} label={s.label} accentIndex={i} size={Kit.FS.hero} />
           </Kit.Card>
         ))}
       </Kit.Row>
-      <Kit.Col gap={20} style={{ alignItems: "center" }}>
-        <Kit.Row gap={20} style={{ flexWrap: "wrap", justifyContent: "center" }}>
-          {items.slice(0, 3).map((t, i) => (
-            <Kit.Pill key={i} text={t} icon={i === 0 ? "clock" : null} accentIndex={i + 1} />
-          ))}
-        </Kit.Row>
-        <Kit.Text size={Kit.FS.caption} color={Kit.C.sub}>
-          数据来自上季度 214 次审批记录
-        </Kit.Text>
+      {/* 每张卡自己 `flex: 1` 撑满：中间那一块整体 `flex: 1` + 内容居中会在卡片上下留出 400px+ 的连续空白（实测 418px） */}
+      <Kit.Col gap={20} style={{ flex: 1 }}>
+        {items.slice(0, 4).map((t, i) => (
+          <Kit.Card key={i} accentIndex={i + 1} style={{ flex: 1, display: "flex", alignItems: "center" }}>
+            <Kit.Text size={Kit.FS.heading}>{t}</Kit.Text>
+          </Kit.Card>
+        ))}
       </Kit.Col>
+      <Kit.Text size={Kit.FS.caption} color={Kit.C.sub}>
+        数据来自上季度 214 次审批记录
+      </Kit.Text>
     </AbsoluteFill>
   );
 }
