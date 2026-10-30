@@ -32,7 +32,8 @@ export const StepsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const bandH = Math.max(0, canvasH - captionReserve - contentTop);
   const singleRow = !isPortrait && n <= perRow;
-  const rowH = singleRow ? Math.min(470, Math.round(bandH * 0.74)) : undefined;
+  /* 0.74 + 470 上限时正文只到 y=720（带底 920），正好卡在 200px 的告警线上；抬到 0.92 + 520 留出余量 */
+  const rowH = singleRow ? Math.min(520, Math.round(bandH * 0.92)) : undefined;
 
   return (
     <AbsoluteFill

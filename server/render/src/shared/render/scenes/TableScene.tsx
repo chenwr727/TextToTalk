@@ -76,8 +76,18 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const nRows = 1 + rows.length;
   const band = height - contentTop - captionReserve;
+  /*
+   * 横屏也要让表格去吃正文带：原先横屏 minCellH 就是 baseCellH（66px 量级），
+   * 四行表只有 265px 高，再被"在带里居中"的逻辑摆到 415..772——
+   * 实测标题下空 209px、表格上下一对白边，1920×1080 里像贴了张小抄。
+   * 现在横屏按带高 0.86 分行高（封顶 190，避免两三行表被拉成字段列表），并从 contentTop 起笔。
+   */
+  const { height: canvasH } = useVideoConfig();
+  const bandH = isPortrait ? band : Math.max(0, canvasH - contentTop - captionReserve);
   const baseCellH = Math.round((isPortrait ? sp(120) : 66) * Math.min(1.22, fitW));
-  const minCellH = isPortrait ? Math.round(Math.min(sp(260), Math.max(baseCellH, (band * 0.62) / nRows))) : baseCellH;
+  const minCellH = Math.round(
+    Math.min(isPortrait ? sp(260) : 190, Math.max(baseCellH, (bandH * (isPortrait ? 0.62 : 0.86)) / nRows)),
+  );
   const startX = (DESIGN_WIDTH - totalW) / 2;
   // 表格垂直位置：竖屏在画布正中；横屏在「标题下沿」与「字幕带」之间居中
   const tableH = nRows * minCellH;
@@ -85,7 +95,7 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 居中的“可用带”必须扣掉字幕条：只按 contentTop..height 算会把表格整体往下推半个
    * 字幕高度（实测表格原先落在 490..850：上面空 240、下面只剩 75）。
    */
-  const startY = isPortrait ? (height - tableH) / 2 : contentTop + Math.max(0, (band - tableH) / 2);
+  const startY = isPortrait ? (height - tableH) / 2 : contentTop + Math.max(0, (bandH - tableH) / 2);
   /**
    * 数值格子拆成「数字 + 单位」两段。
    *

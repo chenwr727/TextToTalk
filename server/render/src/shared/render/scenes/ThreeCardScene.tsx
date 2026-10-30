@@ -33,8 +33,14 @@ export const ThreeCardScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 横屏三卡按正文带高度撑高：卡高写死 356 时，标题下的空间全被浪费（体检报空洞 238px）。
    * 卡片内部本来就是 `justifyContent: center`，变高只会让图标+正文更居中，不会溢出。
    */
-  const bandH = Math.max(0, contentHeight - contentTop - captionReserve);
-  const cardH = isPortrait ? undefined : Math.round(Math.min(bandH * 0.74, CARD_H * 1.55));
+  /*
+   * 正文带高度必须用画布高（1080）算，不能用 useResponsive 的 contentHeight——
+   * 那个值已经扣过安全区，再拿去减 contentTop / captionReserve 会偏小：
+   * 实测按它算出来的卡高只有 337px，正文 250..587，带底 920，下半截空 333px。
+   */
+  const { height: canvasH } = useVideoConfig();
+  const bandH = Math.max(0, canvasH - contentTop - captionReserve);
+  const cardH = isPortrait ? undefined : Math.round(Math.min(bandH * 0.92, CARD_H * 1.55));
   const timing = useSceneTiming();
 
   const padX = isPortrait ? sp(CARD_TYPE.padX) : CARD_TYPE.padX;

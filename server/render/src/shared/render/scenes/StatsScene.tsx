@@ -30,8 +30,13 @@ export const StatsScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 免得 3 张卡被拉成竖条。竖屏维持原样（自己按最小高度排）。
    */
   const bandH = Math.max(0, canvasH - captionReserve - contentTop);
+  /*
+   * 系数从 0.74 提到 0.92、上限从 420 提到 520。
+   * 实测：0.74 + 420 上限时横屏 stats 正文只到 y=670，带底 920，下半截空 250px（体检按 DOM 几何报的）。
+   * 拉高后卡片 250..约 770，卡内"图标+数字+说明"仍然居中，只是每张卡更立得住。
+   */
   const statRowH =
-    !isPortrait && points.length > 0 && points.length <= 4 ? Math.min(420, Math.round(bandH * 0.74)) : undefined;
+    !isPortrait && points.length > 0 && points.length <= 4 ? Math.min(520, Math.round(bandH * 0.92)) : undefined;
 
   const extractNum = (s: string): { num: string; rest: string } => {
     const m = s.match(/[-+]?\d+(?:\.\d+)?\s*[%％倍xX]?/);

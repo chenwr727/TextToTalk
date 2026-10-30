@@ -18,7 +18,7 @@ import {
   springIn,
 } from "../theme";
 import { Icon } from "../Icon";
-import { PageHeading } from "../PageHeading";
+import { PageHeading, useHeadingMetrics } from "../PageHeading";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
@@ -28,8 +28,9 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const items = page.points;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, sp, contentWidth } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -70,7 +71,13 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const TEXT_W = Math.max(60, nodeW - CARD_PAD * 2 - ICON_SIDE);
   const maxChars = Math.max(1, ...list.map((it, i) => Array.from(pointText(it, i)).length));
 
-  const BODY_H = isPortrait ? 1500 : 760 - captionReserve;
+  /*
+   * 横屏正文高度原先写死 760 - captionReserve（对着 1080 画布拍的脑袋），
+   * 又因为外层容器 `justifyContent: center` 是按整块画布居中的，卡片实测落在 368..713：
+   * 标题下沉 162px、带底再空 207px。现在改成用真实画布高减标题下沿与字幕带，
+   * 容器也改成从 contentTop 起笔（见下面的 padding）。
+   */
+  const BODY_H = isPortrait ? 1500 : Math.max(0, canvasH - contentTop - captionReserve);
   const maxCardH = Math.floor(BODY_H / rows) - ROW_GAP;
 
   const ICON_BLOCK = isPortrait ? sp(CARD_TYPE.iconBox) : CARD_TYPE.iconBox;
@@ -96,7 +103,7 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const cardH = isPortrait
     ? Math.min(maxCardH, Math.max(Math.round(maxCardH * 0.5), Math.round((Math.max(ICON_BLOCK, textH) + V_PAD) * 1.15)))
-    : Math.min(Math.max(Math.round(maxCardH * 0.62), Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
+    : Math.min(Math.max(Math.round(maxCardH * 0.86), Math.max(ICON_BLOCK, textH) + V_PAD), maxCardH);
   const iconSize = isPortrait ? sp(CARD_TYPE.iconSize) : CARD_TYPE.iconSize;
   const ICON_GAP = isPortrait ? sp(16) : 16;
 
@@ -104,7 +111,14 @@ export const FlowScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={title} />
       <div
-        style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: `0 ${SIDE_PAD}px` }}
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: isPortrait ? "center" : "flex-start",
+          justifyContent: "center",
+          // 横屏从正文带顶起笔（标题绝对定位、不占流，靠它才能贴住标题）
+          padding: isPortrait ? `0 ${SIDE_PAD}px` : `${contentTop}px ${SIDE_PAD}px 0`,
+        }}
       >
         <div
           style={{
@@ -414,11 +428,12 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   );
 };
 
-export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
+export const PyramidScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, sp, contentWidth, contentHeight } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
   const timing = useSceneTiming();
   const chart = page.chart;
   const labels = chart?.type === "pyramid" ? chart.labels : [];
@@ -477,9 +492,23 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
 
   const lines = Math.ceil(maxChars / Math.max(1, Math.floor(topAvailW / nodeFs)));
   const naturalH = lines * nodeFs * 1.4 + 44;
-  const availH = (isPortrait ? contentHeight : 1080) - HEADER_BOTTOM - 90 - (N - 1) * SPACE.md;
+  /*
+   * 横屏每层高度：原先取 min(内容需要的高度, 平均分到的高度)，
+   * 于是三层只有约 450px、整组在画布里居中（实测 380..700，标题下沉 174px、带底又空 220px）。
+   * 金字塔本来就是"一层占一段"的版式，直接把正文带按层数均分；竖屏保持原口径。
+   */
+  /*
+   * 底部要给字幕条让位。
+   * 只减 90px 时，三层金字塔量出正文 280..990——最底一层直接压在字幕条下面（看图确认）。
+   */
+  const captionTexts =
+    page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
+  const captionReserve = useCaptionReserve(subtitles, captionTexts);
+  const availH = isPortrait
+    ? contentHeight - HEADER_BOTTOM - Math.max(captionReserve, 90) - (N - 1) * SPACE.md
+    : canvasH - contentTop - Math.max(captionReserve, 90) - (N - 1) * SPACE.md;
   const perTierH = Math.floor(availH / N);
-  const tierMinH = isPortrait ? perTierH : Math.min(naturalH, perTierH);
+  const tierMinH = isPortrait ? perTierH : Math.max(naturalH, Math.min(perTierH, 300));
 
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
@@ -490,8 +519,9 @@ export const PyramidScene: React.FC<SceneProps> = ({ page }) => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          padding: `${isPortrait ? sp(30) : 30}px 0`,
+          justifyContent: isPortrait ? "center" : "flex-start",
+          // 横屏从正文带顶起笔，别在整块画布上居中（标题是绝对定位，不占流）
+          padding: isPortrait ? `${sp(30)}px 0` : `${contentTop + 30}px 0 0`,
         }}
       >
         {tiers.map((t, i) => {
@@ -574,14 +604,35 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
-  const PORTRAIT_TOP = sp(260);
-  const PORTRAIT_BOTTOM = captionReserve + sp(40);
-  const PORTRAIT_NODE_W = contentWidth / 2 - sp(70);
+  /*
+   * 竖排时轴线的上下边界。
+   *
+   * 横屏也走竖排（见 vertical 的注释），所以这里要分两套：
+   * 竖屏沿用原来的 sp(260)（不能动，竖屏已经对了），横屏用标题下沿算出的正文带顶。
+   */
+  const { contentTop } = useHeadingMetrics();
+  const V_TOP = isPortrait ? sp(260) : contentTop;
+  const V_BOTTOM = captionReserve + (isPortrait ? sp(40) : 40);
+  const V_NODE_W = isPortrait ? contentWidth / 2 - sp(70) : 620;
+  const V_DOT = isPortrait ? sp(60) : 96;
+  const V_ICON = isPortrait ? sp(32) : 52;
+  const V_AXIS_W = isPortrait ? 8 : 10;
+  const V_PAD = isPortrait ? sp(18) : 28;
+  const V_GAP = isPortrait ? sp(16) : 24;
+  /*
+   * 横屏也走竖排时机：少数量（≤4）时。
+   *
+   * 原因：横屏的水平时间轴是一条 8px 细线 + 80px 圆，只占正文带中间 ~230px，
+   * 实测空洞 228px（从 y=209 起）、fill 62%，在 1920×1080 里看着就像一根线漂在屏幕中间。
+   * 改成竖排后，轴线从正文带顶拉到字幕条上，每个节点占满一段。
+   * 节点多了（≥5）竖排会挤成一植，那时仍用原来的水平轴。
+   */
+  const vertical = isPortrait || list.length <= 4;
   return (
     <AbsoluteFill style={{ flexDirection: "column" }}>
       <PageHeading text={title} />
       <div style={{ flex: 1, position: "relative" }}>
-        {isPortrait ? null : (
+        {vertical ? null : (
           /* 轴线两端与首尾节点的圆心严格对齐。 */
           <div
             style={{
@@ -596,8 +647,8 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
             }}
           />
         )}
-        {isPortrait ? (
-          <div style={{ position: "absolute", top: PORTRAIT_TOP, bottom: PORTRAIT_BOTTOM, left: 0, right: 0 }}>
+        {vertical ? (
+          <div style={{ position: "absolute", top: V_TOP, bottom: V_BOTTOM, left: 0, right: 0 }}>
             {/*
              * 轴线和节点放在同一个容器里、用百分比定位。
              * 先前轴线在外层、节点在内层，两层各自用 px 算坐标，
@@ -609,7 +660,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                 left: "50%",
                 top: `${50 / Math.max(1, list.length)}%`,
                 height: `${((list.length - 1) * 100) / Math.max(1, list.length)}%`,
-                width: 8,
+                width: V_AXIS_W,
                 transform: "translateX(-50%)",
                 background: C.accent,
                 borderRadius: 4,
@@ -633,20 +684,26 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                      * 原先左侧节点用 `left: 0` + 行方向，图标被顶到画布最左边（半个圆被切掉），
                      * 而节点尾巴离轴还空着 120px。
                      */
-                    ...(left ? { right: "50%", paddingRight: sp(18) } : { left: "50%", paddingLeft: sp(18) }),
-                    width: PORTRAIT_NODE_W,
+                    /*
+                     * 圆心要落在轴线上：原来用 `padding: V_PAD` 把整行往外让，
+                     * 圆心就偏出轴线 V_PAD + V_DOT/2（横屏 28+48=76px）；
+                     * 实测横屏时圆心在 x≈1025、轴线在 960，看着像串不上的一串珠子。
+                     * 改成负半个直径的 margin：圆心恰好压在轴上，文字仍然贴着圆的外侧。
+                     */
+                    ...(left ? { right: "50%", marginRight: -V_DOT / 2 } : { left: "50%", marginLeft: -V_DOT / 2 }),
+                    width: V_NODE_W,
                     transform: "translateY(-50%)",
                     display: "flex",
                     flexDirection: left ? "row-reverse" : "row",
                     alignItems: "center",
-                    gap: sp(16),
+                    gap: V_GAP,
                     opacity: o,
                   }}
                 >
                   <div
                     style={{
-                      width: sp(60),
-                      height: sp(60),
+                      width: V_DOT,
+                      height: V_DOT,
                       borderRadius: "50%",
                       background: a,
                       display: "flex",
@@ -656,7 +713,7 @@ export const TimelineScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                       flexShrink: 0,
                     }}
                   >
-                    <Icon name={pointIcon(it, i)} size={sp(32)} color="#fff" />
+                    <Icon name={pointIcon(it, i)} size={V_ICON} color="#fff" />
                   </div>
                   <div
                     style={{
