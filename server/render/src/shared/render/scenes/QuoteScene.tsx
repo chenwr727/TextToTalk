@@ -38,12 +38,20 @@ export const QuoteScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const fitFs = (() => {
     if (!isPortrait) return baseFs;
     const avail = bandH * 0.78 - markH - authorH - sp(58);
-    /* 从大往小试：先满足行高，再保证每行至少 5 字（字太大会成为一行两字的怪物） */
-    /* 上限 1.45×：再大就是“一行五字的海报”，不像解说视频的金句页（实测 2× 时折成 5 行、
-     * 每行 5 字，海报感过头）；且每行至少 8 字，保证读起来是句子而不是字碑 */
-    const cap = Math.round(baseFs * 1.75);
+    /*
+     * 从大往小试，先满足行高，再保证可读性。
+     *
+     * 上限 1.45×：再大就是“一行四五字的海报”，不像解说视频的金句页。
+     *
+     * `MIN_PER_LINE` 必须是**约束**而不能写成 `Math.max(MIN, floor(...))`：
+     * 后者把“每行容得下几字”直接抬到下限，于是循环以为放得下、
+     * 实际只塞得下 4 字—— 实测把「价值」「管住」都折开了，5 行字碑。
+     */
+    const cap = Math.round(baseFs * 1.55);
+    const MIN_PER_LINE = 7;
     for (let cand = cap; cand > baseFs; cand -= 2) {
-      const perLine = Math.max(7, Math.floor(maxW / (cand * 1.02)));
+      const perLine = Math.floor(maxW / (cand * 1.02));
+      if (perLine < MIN_PER_LINE) continue;
       const lines = Math.ceil(chars / perLine);
       if (lines * cand * LH.body <= avail) return cand;
     }
