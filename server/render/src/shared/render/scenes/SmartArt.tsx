@@ -859,10 +859,11 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const cells = [{ a: C.accent }, { a: "#34c79f" }, { a: "#f2b03f" }, { a: "#e868a4" }];
 
-  const TEXT_W = (isPortrait ? sp(550) : 550) - (isPortrait ? sp(26) : 26) * 2 - (isPortrait ? sp(24) : 24) * 2;
-  const maxChars = Math.max(1, ...list.map((it, i) => Array.from(pointText(it, i)).length));
-  const FS_CANDIDATES = [FS.body, 32, 28, 25, 22];
-  const nodeFs = FS_CANDIDATES.find((fsz) => Math.ceil(maxChars / Math.max(1, Math.floor(TEXT_W / fsz))) <= 2) ?? 22;
+  /*
+   * 格内大字（事项名）的字号要按格子内宽反推，否则“设备领用”会被折成“设备领 / 用”。
+   * 按字符数选一个“两行放得下”的字号（CJK 字宽 ≈ 1em，留 4% 余量）。
+   */
+  const nameCharCount = Math.max(1, ...list.map((it, i) => pointText(it, i).replace(/^[^：:]*[：:]/, "").length));
 
   /*
    * 标签字号要按「格子内宽 - 图标 - 内边距」反推，且不允许折行。
@@ -873,17 +874,22 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const GRID_W = isPortrait ? contentWidth : 1180;
   const cellPad = isPortrait ? sp(28) : 28;
-  const chipPadX = isPortrait ? sp(26) : 26;
-  const iconW = (isPortrait ? sp(28) : 28) + (isPortrait ? sp(14) : 14);
-  const cellInnerW = GRID_W / 2 - cellPad * 2 - chipPadX * 2 - iconW - (isPortrait ? sp(SPACE.md) : SPACE.md);
-  const labelChars = Math.max(1, ...list.map((it, i) => Array.from(pointText(it, i)).length));
-  /* 1.02：CJK 字宽≈em，留 2% 余量避免贴着边界折行 */
-  const labelFs =
-    [nodeFs, nodeFs - 2, nodeFs - 4, nodeFs - 6, 26, 24, 22].find((fsz) => labelChars * fsz * 1.02 <= cellInnerW) ?? 22;
+  /** 格子内可用宽（已扣内边距与网格间隙） */
+  const cellInnerW = GRID_W / 2 - cellPad * 2 - (isPortrait ? sp(SPACE.md) : SPACE.md);
 
   /* 竖屏：四象限占满带（原来 1000，带高 1481，只占 67%） */
-  const tagFs = labelFs;
-  const nameFs = isPortrait ? sp(58) : FS.heading;
+  /*
+   * 两层各自的字号。
+   *
+   * labelFs 是按「象限名：事项」整条单行放得下反推出来的，直接拿来做标签字号会很大；
+   * 现在标签只装「高频高痛」四个字，取 nameFs 的 0.6 就够。
+   */
+  /*
+   * 字号上限 (竖 sp(58) / 横 FS.heading) 再按“两行放得下”压一档：
+   * 四个字的事项在 sp(58) 下正好一行，六个字就要降到两行都放得下。
+   */
+  const nameFs = Math.round(Math.min(isPortrait ? sp(58) : FS.heading, (cellInnerW * 0.96) / (nameCharCount / 2)));
+  const tagFs = Math.max(isPortrait ? sp(22) : 20, Math.round(nameFs * 0.55));
   const GRID_H = isPortrait
     ? Math.round(Math.max(520, canvasH - contentTop - Math.max(captionReserve, sp(120))) * 0.92)
     : 520;
@@ -949,8 +955,15 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                      * 的纯白——四格看起来像"四块贴了标签的白板"，象限关系完全读不出来。
                      * 标签居中后空白均分到上下两侧，格子才像一个完整的象限单元。
                      */
+                    /*
+                     * 必须是 column：格内现在有两层（象限名标签 + 事项大字）。
+                     * 漏了这一条时 flex 默认 row，两层并排、直接重叠（实测图：
+                     * 「高频高痛」胶囊盖在「报销」上面，看不清字）。
+                     */
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
+                    gap: isPortrait ? sp(26) : 18,
                     padding: isPortrait ? sp(28) : 28,
                     boxShadow: CARD_SHADOW,
                   }}
