@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { auditElements, auditPresence, auditContent, auditNumbers, auditIcons } from "./elementAudit";
+import { auditElements, auditPresence, auditContent, auditNumbers, auditIcons, auditPairs } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
 const box = (o: Partial<ElementBox>): ElementBox => ({
@@ -222,4 +222,35 @@ test("auditIcons：图标 id 不认识（没渲染）要告警", () => {
   assert.match(findings[0].message, /rocket/);
   assert.deepEqual(auditIcons(["rocket"], ["rocket"]), []);
   assert.deepEqual(auditIcons([], []), []);
+});
+
+test("auditPairs：数值张冠李戴（A 的数画到 B 那行）要告警", () => {
+  // 正常：同一个行容器里同时有标签与数值
+  const ok = [
+    box({ y: 400, h: 60, w: 900, text: "自建 12,000元 3人" }),
+    box({ y: 500, h: 60, w: 900, text: "采购 38,000元 1人" }),
+  ];
+  assert.deepEqual(
+    auditPairs(ok, [
+      { label: "自建", value: "12000" },
+      { label: "采购", value: "38000" },
+    ]),
+    [],
+  );
+  // 错位：自建那行里写的是别人的数
+  const swapped = [
+    box({ y: 400, h: 60, w: 900, text: "自建 38,000元 3人" }),
+    box({ y: 500, h: 60, w: 900, text: "采购 12,000元 1人" }),
+  ];
+  const findings = auditPairs(swapped, [
+    { label: "自建", value: "12000" },
+    { label: "采购", value: "38000" },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /数值与标签没在一起/);
+});
+
+test("auditPairs：没有配对数据时不判", () => {
+  assert.deepEqual(auditPairs([box({ text: "任意" })], []), []);
+  assert.deepEqual(auditPairs([box({ text: "任意" })], null), []);
 });

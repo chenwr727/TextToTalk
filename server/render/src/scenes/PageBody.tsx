@@ -12,7 +12,13 @@ import {
 import { accentVars } from "../shared/render/theme";
 import { AnnotationContext } from "../shared/render/annotation";
 import type { PageBodyProps } from "../shared/render/scenes/types";
-import { expectedBlocks, expectedTexts, expectedNumbers, expectedIcons } from "../shared/render/expectedBlocks";
+import {
+  expectedBlocks,
+  expectedTexts,
+  expectedNumbers,
+  expectedIcons,
+  expectedPairs,
+} from "../shared/render/expectedBlocks";
 
 /**
  * rhythm -> 元素之间的错开帧数。
@@ -98,6 +104,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
             data-expect-texts={JSON.stringify(expectedTexts(page))}
             data-expect-numbers={JSON.stringify(expectedNumbers(page))}
             data-expect-icons={JSON.stringify(expectedIcons(page))}
+            data-expect-pairs={JSON.stringify(expectedPairs(page))}
             style={{ position: "absolute", inset: 0 }}
           >
             <BodyProbe pageIndex={pageIndex} sceneRef={sceneRef} />

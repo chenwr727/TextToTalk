@@ -54,4 +54,6 @@ export interface ElementGeometryPayload {
   expectIcons: string[];
   /** 实际渲染出来的图标 id */
   icons: string[];
+  /** 需要配对的「标签 + 数值」组，由 `auditPairs` 核对没有张冠李戴 */
+  expectPairs: { label: string; value: string }[];
 }

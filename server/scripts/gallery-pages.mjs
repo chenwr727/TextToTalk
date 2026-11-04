@@ -29,6 +29,37 @@ export const PAGES = [
     accent: 0,
   }),
   page({ layout: "section", role: "transition", title: "第一部分 · 症状", accent: 1 }),
+  /*
+   * 页面级图标（右上角装饰）的样本。
+   *
+   * 之前一个都没有，`auditIcons` 在 gallery 上从不触发——判据写了却没人验证。
+   * 这两页把它覆盖上：一个合法 id、一个**根本不存在的 id**（验证能报出来）。
+   */
+  page({
+    layout: "points",
+    _name: "icon",
+    icon: "rocket",
+    title: "图标样本：合法 id",
+    // 补足三条要点：只放一条会让页面"内容偏上"（体检会报），那是样本单薄而非判据问题
+    points: [
+      { text: "右上角的图标应该正常画出来" },
+      { text: "它是页面级装饰，不占正文带" },
+      { text: "所以不能当成“页面少了一块”报警" },
+    ],
+    accent: 2,
+  }),
+  page({
+    layout: "points",
+    _name: "icon-bogus",
+    icon: "no-such-icon-id",
+    title: "图标样本：坏 id",
+    points: [
+      { text: "id 不在 ICON_PATHS 里、IconView 会静默返回 null" },
+      { text: "页面上什么都不缺，只是图标不在" },
+      { text: "所以需要探针把实际渲染的 id 报回来" },
+    ],
+    accent: 3,
+  }),
   page({
     layout: "points",
     _name: "long",

@@ -66,6 +66,33 @@ export function expectedIcons(page: StoryPage): string[] {
   if (page.icon) out.push(String(page.icon));
   return out;
 }
+/**
+ * 需要配对的「标签 + 数值」组（抓"数值张冠李戴"）。
+ *
+ * `expectedNumbers` 只核对数字还在不在，A 的数值画到 B 那一行照样通过。
+ * 这里给出同一条数据里的标签与数值，由 `auditPairs` 核对它们是否在同一块里。
+ *
+ * 只做**表格**：表格的行列语义明确（一行里的首列是标签、其余列是数值），
+ * 要点列表里"哪个数字配哪个词"没有可靠判据，硬做会大面积误报。
+ */
+export function expectedPairs(page: StoryPage): { label: string; value: string }[] {
+  if (String(page.layout ?? "") !== "table") return [];
+  const out: { label: string; value: string }[] = [];
+  for (const r of page.table?.rows ?? []) {
+    const row = r as unknown;
+    const cells = (Array.isArray(row) ? row : ((row as { cells?: unknown[] })?.cells ?? [])).map((c) =>
+      typeof c === "string" ? c : String((c as { text?: string })?.text ?? ""),
+    );
+    if (cells.length < 2) continue;
+    const label = cells[0].trim();
+    for (const cell of cells.slice(1)) {
+      const nums = [...cell.matchAll(/\d+(?:\.\d+)?/g)].map((m) => m[0]);
+      for (const n of nums) if (label) out.push({ label, value: n });
+    }
+  }
+  return out;
+}
+
 /** 片段取前 6 字：场景常有省略号/截断，取整句会大面积假阳性 */
 const SNIPPET = 6;
 

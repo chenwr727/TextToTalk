@@ -13,7 +13,14 @@ import path from "node:path";
 import { measureInk, auditVerdict, bodyBand } from "../src/services/frameAudit.js";
 import type { BodyGeometry } from "../render/src/shared/render/bodyGeometry";
 import type { ElementGeometryPayload } from "../render/src/shared/render/elementGeometry";
-import { auditElements, auditPresence, auditContent, auditNumbers, auditIcons } from "../src/services/elementAudit.js";
+import {
+  auditElements,
+  auditPresence,
+  auditContent,
+  auditNumbers,
+  auditIcons,
+  auditPairs,
+} from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
 const dir = process.argv[2];
@@ -155,6 +162,7 @@ for (const file of readdirSync(dir)
         ...auditContent(els.boxes, els.expectTexts),
         ...auditNumbers(els.boxes, els.expectNumbers),
         ...auditIcons(els.icons, els.expectIcons),
+        ...auditPairs(els.boxes, els.expectPairs),
       ]
     : [];
   const elWarns = elFindings.filter((v) => v.level === "warn").map((v) => v.message);
@@ -212,14 +220,41 @@ for (const r of rows) {
       : r.headGap == null
         ? `DOM 无标题（正文 ${r.bodyTop}..${r.bodyBottom}）`
         : `DOM 间距 ${String(r.headGap).padStart(4)}px（正文 ${r.bodyTop}..${r.bodyBottom}）`;
+  /*
+   * 过期图片**不输出数字**，只说明它是旧的。
+   *
+   * 踩过两次：读了一张局部渲染留下的旧图，把 "section DOM 24%" 写进 CHANGELOG（真实 40%）、
+   * 把注入 bug 的旧图当成新回归。数字一旦打出来就会被引用，所以过期页直接不给数字。
+   */
+  if (r.stale) {
+    console.log(`${r.name.padEnd(24)} ── 这张图不是当前代码渲的，数字不可用 ──  ✗ ${r.warns.join(" / ")}`);
+    continue;
+  }
   console.log(
     `${r.name.padEnd(24)} fill ${String(r.fill).padStart(3)}%  DOM ${r.domFill == null ? " n/a" : String(r.domFill).padStart(3) + "%"}  空洞 ${String(r.voidPx).padStart(4)}px@${String(r.voidAt).padStart(3)}  墨迹起 ${String(r.inkTop).padStart(3)}  密度 ${String(r.ink).padStart(2)}%  ${dom}  ${r.warns.length ? "✗ " + r.warns.join(" / ") : ""}`,
   );
 }
-const warned = rows.filter((r) => r.warns.length);
+/*
+ * 负向对照页：样本里**故意**存在的错误页，它们就是要报警的。
+ *
+ * 没有它们，判据可能写了但从没在真实页面上验证过（图标判据就是这样：
+ * 之前一个带 page.icon 的样本都没有，判据从未触发）。
+ *
+ * 它们的告警计入“预期告警”，不污染基线；但如果它们**不**报警，说明判据坏了，要单独报。
+ */
+const NEGATIVE_CONTROLS = new Set(["points-icon-bogus"]);
+const negRows = rows.filter((r) => NEGATIVE_CONTROLS.has(r.name));
+const warned = rows.filter((r) => r.warns.length && !NEGATIVE_CONTROLS.has(r.name));
+const negSilent = negRows.filter((r) => !r.warns.length);
 const noGeom = rows.filter((r) => r.bodyTop == null);
 const noHead = rows.filter((r) => r.bodyTop != null && r.headGap == null);
 console.log(`\n合计 ${rows.length} 页，${warned.length} 页有告警；${noGeom.length} 页没拿到 DOM 几何`);
+if (negRows.length) {
+  console.log(`  负向对照（故意错误页，告警是预期）：${negRows.map((r) => r.name).join(", ")}`);
+  if (negSilent.length) {
+    console.log(`  ⚠ 这些页**没报警**：${negSilent.map((r) => r.name).join(", ")}——判据可能坏了`);
+  }
+}
 if (noGeom.length) console.log(`  没几何：${noGeom.map((r) => r.name).join(", ")}`);
 if (noHead.length) console.log(`  无标题（几何照可用）：${noHead.map((r) => r.name).join(", ")}`);
 /*

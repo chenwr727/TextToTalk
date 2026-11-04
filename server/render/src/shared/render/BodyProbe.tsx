@@ -172,9 +172,30 @@ export const BodyProbe: React.FC<{
         })(),
         expectNumbers: readList(root, "data-expect-numbers"),
         expectIcons: readList(root, "data-expect-icons"),
-        icons: Array.from(root.querySelectorAll<HTMLElement>('[data-role="icon"]')).map(
+        /*
+         * 图标要从 **document** 查，不能从 `root`（sceneRef）查：
+         * `PageBody` 把 `<IconView>` 渲染在 sceneRef 容器**外面**（它的兄弟节点），
+         * 从 root 里查永远是 0 个 —— 实测把"图标正常渲染"误报成"图标没画出来"。
+         */
+        icons: Array.from(document.querySelectorAll<HTMLElement>('[data-role="icon"]')).map(
           (el) => el.getAttribute("data-icon") ?? "",
         ),
+        expectPairs: (() => {
+          const raw = root.getAttribute("data-expect-pairs");
+          if (!raw) return [];
+          try {
+            const v = JSON.parse(raw) as unknown;
+            if (!Array.isArray(v)) return [];
+            return v.filter(
+              (x): x is { label: string; value: string } =>
+                !!x &&
+                typeof (x as { label?: unknown }).label === "string" &&
+                typeof (x as { value?: unknown }).value === "string",
+            );
+          } catch {
+            return [];
+          }
+        })(),
       };
       console.log(`TTT_ELEMENTS ${JSON.stringify(elementPayload)}`);
     }, 0);

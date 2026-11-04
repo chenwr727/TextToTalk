@@ -225,6 +225,42 @@ export function auditIcons(
   ];
 }
 
+/**
+ * 数字**有没有配错**：数值应该和它自己的标签在同一个块里。
+ *
+ * `auditNumbers` 只核对"这个数还在页面上"，所以 A 的数值画到 B 那一行照样通过
+ * （表头顺序改了、行列错位都会这样）。这里核对**配对**：同一条数据里的标签与数值
+ * 必须出现在同一个盒子的文本里。
+ *
+ * 为什么是"同一个盒子"：表格一行的数值与标签在同一个行容器 `<div>` 里，
+ * 图表标签与数值在同一个 `<g>` 里；跨盒子就说明它们被分到了不同行/不同块。
+ */
+export function auditPairs(
+  boxes: ElementBox[],
+  pairs: readonly { label: string; value: string }[] | null | undefined,
+): ElementFinding[] {
+  if (!pairs || pairs.length === 0) return [];
+  const norm = (s: string) => s.replace(/\s+/g, "").replace(/(\d),(?=\d{3})/g, "$1");
+  const texts = boxes.map((b) => norm(b.text ?? ""));
+  const bad = pairs.filter(({ label, value }) => {
+    const l = norm(label);
+    const v = norm(value);
+    if (!l || !v) return false;
+    return !texts.some((t) => t.includes(l) && t.includes(v));
+  });
+  if (bad.length === 0) return [];
+  const shown = bad
+    .slice(0, 2)
+    .map((p) => `「${p.label}」= ${p.value}`)
+    .join("、");
+  return [
+    {
+      level: "warn",
+      message: `数值与标签没在一起：${bad.length} 组数据的数值和它自己的标签不在同一个块里（${shown}）`,
+    },
+  ];
+}
+
 export function auditElements(boxes: ElementBox[], opts: ElementAuditOptions): ElementFinding[] {
   const out: ElementFinding[] = [];
   if (!boxes.length) return out;
