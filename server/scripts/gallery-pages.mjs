@@ -287,6 +287,21 @@ export const PAGES = [
     points: [{ text: "流程的价值不在管住人，而在让人少等一会儿" }],
     accent: 5,
   }),
+  /*
+   * 对照样本：同一个版式、同一个字数，但标点更多。
+   *
+   * quote 页现在按标点断行，行数上限 = 标点块数，
+   * 所以 fill 与“文案里有几个标点”直接相关。
+   * 这一页用来验证这个因果，而不是把它当回归基线。
+   */
+  page({
+    layout: "points",
+    _name: "quote-punct",
+    art: "quote",
+    title: "一句话记住",
+    points: [{ text: "流程的价值，不在管住人，在于让人少等。" }],
+    accent: 5,
+  }),
   page({
     layout: "chart",
     title: "越往下越是执行层",

@@ -13,7 +13,7 @@ import path from "node:path";
 import { measureInk, auditVerdict, bodyBand } from "../src/services/frameAudit.js";
 import type { BodyGeometry } from "../render/src/shared/render/bodyGeometry";
 import type { ElementGeometryPayload } from "../render/src/shared/render/elementGeometry";
-import { auditElements, auditPresence, auditContent } from "../src/services/elementAudit.js";
+import { auditElements, auditPresence, auditContent, auditNumbers, auditIcons } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
 const dir = process.argv[2];
@@ -153,6 +153,8 @@ for (const file of readdirSync(dir)
         }),
         ...auditPresence(els.boxes, els.expect, name),
         ...auditContent(els.boxes, els.expectTexts),
+        ...auditNumbers(els.boxes, els.expectNumbers),
+        ...auditIcons(els.icons, els.expectIcons),
       ]
     : [];
   const elWarns = elFindings.filter((v) => v.level === "warn").map((v) => v.message);
@@ -220,3 +222,17 @@ const noHead = rows.filter((r) => r.bodyTop != null && r.headGap == null);
 console.log(`\n合计 ${rows.length} 页，${warned.length} 页有告警；${noGeom.length} 页没拿到 DOM 几何`);
 if (noGeom.length) console.log(`  没几何：${noGeom.map((r) => r.name).join(", ")}`);
 if (noHead.length) console.log(`  无标题（几何照可用）：${noHead.map((r) => r.name).join(", ")}`);
+/*
+ * 过期图片给出**可直接执行**的重渲命令，别让人对着"N 页过期"自己猜怎么修。
+ * 局部渲染（GALLERY_ONLY）是主要来源：只重渲匹配到的页，其余页面保留旧图。
+ */
+const staleRows = rows.filter((r) => r.stale);
+if (staleRows.length) {
+  const size = portrait ? "portrait" : "landscape";
+  const dirName = portrait ? "tech-portrait" : "tech";
+  console.log(
+    `\n⚠ ${staleRows.length} 页图片比渲染产物旧（不是当前代码渲的）：${staleRows.map((r) => r.name).join(", ")}`,
+  );
+  console.log(`  重渲：$env:GALLERY_SIZE='${size}'; node scripts\\gallery.mjs   （去掉 GALLERY_ONLY 才会渲全部）`);
+  console.log(`  再审计：node --import tsx scripts\\audit-gallery.mts out\\gallery\\${dirName} ${size}`);
+}

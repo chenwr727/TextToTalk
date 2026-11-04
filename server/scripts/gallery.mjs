@@ -61,6 +61,24 @@ const PAGES = pagesJson
   : SAMPLES;
 const targets = PAGES.filter((p) => !only || String(p.layout).includes(only));
 
+/*
+ * 局部渲染会把**其余页面的旧图留在原地**，而审计只看图、不看它是不是这次渲的。
+ *
+ * 踩过的坑：`GALLERY_ONLY='points'` 之后去看地图，读到的是上一次对抗性检验
+ * （故意注入 bug）留下的旧图，审计报"地图 fill 51% / 元素缺失"，看着像新回归。
+ *
+ * 现在渲染前把范围打出来，并把"这次没渲的页"写进清单，审计会据此提示重渲。
+ */
+if (only) {
+  const skipped = PAGES.filter((p) => !String(p.layout).includes(only));
+  console.log(
+    `[gallery] 局部渲染：${targets.length} 页（匹配 “${only}”${targets.length ? "：" + targets.map((p) => p.layout).join(", ") : "，没匹配到任何页"}）`,
+  );
+  if (skipped.length) {
+    console.log(`[gallery] 另外 ${skipped.length} 页**不会重渲**，目录里保留旧图（审计会标为过期）`);
+  }
+}
+
 /**
  * 页面起始帧：页长 - 转场重叠，与 DynamicVideo 的时间轴一致（转场 12 帧）。
  *

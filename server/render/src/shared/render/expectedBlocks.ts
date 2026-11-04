@@ -30,6 +30,42 @@ export function expectedBlocks(page: StoryPage): number {
   return Math.max(1, nPoints);
 }
 
+/**
+ * 数据里出现过的数字（含单位/百分号前的数值），用来核对"数字有没有被改或丢"。
+ *
+ * 只核对"出现过"，不核对位置与格式：渲染层会加千分位（`12000` → `12,000`）、
+ * 拆成数值+单位两段，所以比对时也要做同样的归一化。
+ */
+export function expectedNumbers(page: StoryPage): string[] {
+  const layout = String(page.layout ?? "");
+  if (layout.startsWith("chart") || layout === "title" || layout === "section" || layout === "end") return [];
+  if (layout === "code") return [];
+  const raw: string[] = [];
+  const collect = (s: unknown) => {
+    if (typeof s !== "string") return;
+    // 数字后可跟 % / 元 / 天 / 倍 等单位，一并取出（单位常被渲染层拆到另一个盒子）
+    for (const m of s.matchAll(/\d+(?:\.\d+)?/g)) raw.push(m[0]);
+  };
+  for (const p of page.points ?? []) collect((p as { text?: string })?.text);
+  for (const m of page.map?.markers ?? []) {
+    const mk = m as { label?: string; name?: string; text?: string };
+    collect(mk.label ?? mk.name ?? mk.text);
+  }
+  for (const r of page.table?.rows ?? []) {
+    const row = r as unknown;
+    const cells = Array.isArray(row) ? row : ((row as { cells?: unknown[] })?.cells ?? []);
+    for (const c of cells) collect(typeof c === "string" ? c : (c as { text?: string })?.text);
+  }
+  // 去重并保持顺序；纯序号（1、2、3）没有核对价值且容易与别处数字撞车
+  return [...new Set(raw)].filter((n) => n.length >= 2 || /[.%]/.test(n) || Number(n) >= 10);
+}
+
+/** 这一页应该画出的图标 id（`IconView` 遇到不认识的 id 会静默不渲染） */
+export function expectedIcons(page: StoryPage): string[] {
+  const out: string[] = [];
+  if (page.icon) out.push(String(page.icon));
+  return out;
+}
 /** 片段取前 6 字：场景常有省略号/截断，取整句会大面积假阳性 */
 const SNIPPET = 6;
 

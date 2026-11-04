@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { auditElements, auditPresence, auditContent } from "./elementAudit";
+import { auditElements, auditPresence, auditContent, auditNumbers, auditIcons } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
 const box = (o: Partial<ElementBox>): ElementBox => ({
@@ -196,4 +196,30 @@ test("auditContent：文案都在（含空格差异）不告警", () => {
 test("auditContent：没有预期文案时不判", () => {
   assert.deepEqual(auditContent([box({ text: "任意" })], []), []);
   assert.deepEqual(auditContent([box({ text: "任意" })], null), []);
+});
+
+test("auditNumbers：数字被改掉要告警（文案片段看不出这个）", () => {
+  const boxes = [box({ y: 400, h: 80, w: 700, text: "自建 1,200元" })];
+  const findings = auditNumbers(boxes, ["12000"]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /数字对不上/);
+  assert.match(findings[0].message, /12000/);
+});
+
+test("auditNumbers：千分位与分开渲染不告警", () => {
+  const boxes = [
+    box({ y: 400, h: 80, w: 700, text: "12,000元" }),
+    box({ y: 500, h: 80, w: 700, text: "3" }),
+    box({ y: 600, h: 80, w: 700, text: "人" }),
+  ];
+  assert.deepEqual(auditNumbers(boxes, ["12000", "3"]), []);
+});
+
+test("auditIcons：图标 id 不认识（没渲染）要告警", () => {
+  const findings = auditIcons([], ["rocket"]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /图标没画出来/);
+  assert.match(findings[0].message, /rocket/);
+  assert.deepEqual(auditIcons(["rocket"], ["rocket"]), []);
+  assert.deepEqual(auditIcons([], []), []);
 });

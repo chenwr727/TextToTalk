@@ -48,4 +48,10 @@ export interface ElementGeometryPayload {
   expect: number | null;
   /** 数据里应该出现的关键文案片段（前 6 字），由 `auditContent` 逐条去页面上核对 */
   expectTexts: string[];
+  /** 数据里出现过的数字，由 `auditNumbers` 核对没被改掉/丢掉 */
+  expectNumbers: string[];
+  /** 应该画出的图标 id（`IconView` 遇到不认识的 id 会静默不渲染） */
+  expectIcons: string[];
+  /** 实际渲染出来的图标 id */
+  icons: string[];
 }

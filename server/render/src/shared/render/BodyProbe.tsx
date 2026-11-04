@@ -25,6 +25,18 @@ const rectOf = (el: Element) => el.getBoundingClientRect();
 /** 会裁掉子内容的 overflow 取值（`visible` 不裁，文字溢出到邻居身上属于重叠问题） */
 const CS_CLIP = new Set(["hidden", "clip", "auto", "scroll"]);
 
+/** 读 `data-expect-*` 上的 JSON 字符串数组；读不到就给空数组 */
+const readList = (root: HTMLElement, attr: string): string[] => {
+  const raw = root.getAttribute(attr);
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
 export const BodyProbe: React.FC<{
   pageIndex: number;
   sceneRef: RefObject<HTMLDivElement | null>;
@@ -158,6 +170,11 @@ export const BodyProbe: React.FC<{
             return [];
           }
         })(),
+        expectNumbers: readList(root, "data-expect-numbers"),
+        expectIcons: readList(root, "data-expect-icons"),
+        icons: Array.from(root.querySelectorAll<HTMLElement>('[data-role="icon"]')).map(
+          (el) => el.getAttribute("data-icon") ?? "",
+        ),
       };
       console.log(`TTT_ELEMENTS ${JSON.stringify(elementPayload)}`);
     }, 0);

@@ -179,6 +179,52 @@ export function auditContent(boxes: ElementBox[], expectTexts: readonly string[]
   ];
 }
 
+/**
+ * 数字**对不对**：数据里出现过的每个数字，页面上都该能找到。
+ *
+ * 文字片段核对看不出"数字被改掉"——`12000元` 变成 `1200元` 时前 6 字照样匹配。
+ * 这里单独核对数字：归一化千分位后逐个在页面文本里找。
+ *
+ * 只核对"这个数还在不在"，不核对它跟谁配对——数字张冠李戴（A 的数值画到 B 上）仍看不出来。
+ */
+export function auditNumbers(
+  boxes: ElementBox[],
+  expectNumbers: readonly string[] | null | undefined,
+): ElementFinding[] {
+  if (!expectNumbers || expectNumbers.length === 0) return [];
+  const hay = boxes.map((b) => (b.text ?? "").replace(/\s+/g, "").replace(/(\d),(?=\d{3})/g, "$1")).join("");
+  const missing = expectNumbers.filter((n) => !hay.includes(n));
+  if (missing.length === 0) return [];
+  return [
+    {
+      level: "warn",
+      message: `数字对不上：${missing.length} 个数据里的数字在页面上找不到（${missing.slice(0, 4).join("、")}）`,
+    },
+  ];
+}
+
+/**
+ * 图标**在不在**：`IconView` 遇到不认识的 id 会静默返回 null。
+ *
+ * 页面上什么都不缺，只是图标不在，肉眼很容易当成"设计就是这样"。
+ * 比对"数据声明的 id"与"实际渲染出来的 `data-icon`"。
+ */
+export function auditIcons(
+  icons: readonly string[] | null | undefined,
+  expectIcons: readonly string[] | null | undefined,
+): ElementFinding[] {
+  if (!expectIcons || expectIcons.length === 0) return [];
+  const got = new Set((icons ?? []).filter(Boolean));
+  const missing = expectIcons.filter((id) => !got.has(id));
+  if (missing.length === 0) return [];
+  return [
+    {
+      level: "warn",
+      message: `图标没画出来：${missing.join("、")}（id 可能不在 ICON_PATHS 里，IconView 会静默返回 null）`,
+    },
+  ];
+}
+
 export function auditElements(boxes: ElementBox[], opts: ElementAuditOptions): ElementFinding[] {
   const out: ElementFinding[] = [];
   if (!boxes.length) return out;

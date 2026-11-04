@@ -95,11 +95,22 @@ export const Icon: React.FC<{ name: string; size?: number; color?: string; strok
 
 export const IconView: React.FC<{ icon: string; size?: number }> = ({ icon, size = 62 }) => {
   const d = ICON_PATHS[icon];
+  /*
+   * id 不认识就静默返回 null —— 这是"元素没渲染"的典型静默失败：
+   * 页面上什么都不缺，只是图标不在，肉眼很容易当成"设计就是这样"。
+   *
+   * 用 `data-role`/`data-icon` 把"我确实画了哪个图标"报给探针，
+   * 数据侧期望的 id 由 `data-expect-icons` 声明，审计比对即可发现。
+   */
   if (!d) return null;
   const f = useCurrentFrame();
   const o = interpolate(f, [0, 18], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return (
-    <div style={{ position: "absolute", top: 128, right: 84, width: size, height: size, opacity: o * 0.95 }}>
+    <div
+      data-role="icon"
+      data-icon={icon}
+      style={{ position: "absolute", top: 128, right: 84, width: size, height: size, opacity: o * 0.95 }}
+    >
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <path d={d} stroke={C.accent} strokeWidth={2.1} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
