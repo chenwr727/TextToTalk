@@ -31,40 +31,75 @@ export const QuoteScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    */
   const bandH = Math.max(320, canvasH - contentTop - Math.max(captionReserve, sp(120)));
   const maxW = isPortrait ? contentWidth * 0.94 : 1240;
-  const chars = Math.max(1, Array.from(quote).length);
   const markH = isPortrait ? Math.round((isPortrait ? fs(Math.round(FS.hero * 1.12)) : FS.hero) * 1.45 * 0.95) : 150;
   const authorH = author ? sp(72) : 0;
   const baseFs = isPortrait ? fs(Math.round(FS.hero * 1.12)) : FS.hero;
-  const fitFs = (() => {
-    if (!isPortrait) return baseFs;
-    /* 0.78 只做到 fill 58%（正文 513..1400，带 209..1690）；余下的给字号，不给间距 */
-    const avail = bandH * 0.86 - markH - authorH - sp(58);
-    /*
-     * 从大往小试，先满足行高，再保证可读性。
-     *
-     * 上限 1.45×：再大就是“一行四五字的海报”，不像解说视频的金句页。
-     *
-     * `MIN_PER_LINE` 必须是**约束**而不能写成 `Math.max(MIN, floor(...))`：
-     * 后者把“每行容得下几字”直接抬到下限，于是循环以为放得下、
-     * 实际只塞得下 4 字—— 实测把「价值」「管住」都折开了，5 行字碑。
-     */
-    const cap = Math.round(baseFs * 1.7);
-    const MIN_PER_LINE = 7;
-    /*
-     * 每行可用宽度必须扣掉渲染时的左右 padding（`sp(30)`×2）。
-     *
-     * 原来拿 `maxW`（contentWidth×0.94 = 895px）当行宽，实际容器只有 835px：
-     * 于是"7 字放得下"是假的，实拍断成「流程的价值不 / 在管住人，」——6 字一行，
-     * 还把"不在"劈开了。扣掉 padding 后 MIN_PER_LINE 才是真约束。
-     */
-    const textW = maxW - sp(60);
-    for (let cand = cap; cand > baseFs; cand -= 2) {
-      const perLine = Math.floor(textW / (cand * 1.02));
-      if (perLine < MIN_PER_LINE) continue;
-      const lines = Math.ceil(chars / perLine);
-      if (lines * cand * LH.body <= avail) return cand;
+  /*
+   * 按**标点**切块，只在标点处断行。
+   *
+   * 起因：浏览器默认可以在任意两个汉字之间断行，`textWrap: balance` 更会把行拉匀，
+   * 实测断成「流程的价值不 / 在管住人，」「砍层级会不 / 会失控？」——
+   * 把"不在""不会""不透明"这类词劈开了。CJK 没有空格，CSS 也关不掉这种断法，
+   * 只能自己按标点分块、再把块排进行里。
+   */
+  const chunks = (() => {
+    const parts = quote.split(/(?<=[，。；：、！？,.;:!?])/u).filter((s) => s.trim());
+    return parts.length ? parts : [quote];
+  })();
+  const chunkLens = chunks.map((c) => Array.from(c).length);
+  /** 每行容量 perLine 时，把块贪心排进行；超长块（单块就超过一行）才硬拆 */
+  const packLines = (perLine: number): { lines: string[]; hardSplit: boolean } => {
+    const lines: string[] = [];
+    let cur = "";
+    let hardSplit = false;
+    for (const ch of chunks) {
+      const cLen = Array.from(ch).length;
+      if (cLen > perLine) {
+        hardSplit = true;
+        if (cur) {
+          lines.push(cur);
+          cur = "";
+        }
+        const cs = Array.from(ch);
+        for (let i = 0; i < cs.length; i += perLine) lines.push(cs.slice(i, i + perLine).join(""));
+        continue;
+      }
+      if (Array.from(cur + ch).length <= perLine) cur += ch;
+      else {
+        if (cur) lines.push(cur);
+        cur = ch;
+      }
     }
-    return baseFs;
+    if (cur) lines.push(cur);
+    return { lines, hardSplit };
+  };
+  const { fitFs, lines } = (() => {
+    const textW = maxW - sp(60); // 扣掉容器的左右 padding（实测 895 → 835）
+    const widest = Math.max(...chunkLens);
+    const avail = bandH * 0.86 - markH - authorH - sp(58);
+    const cap = Math.round(baseFs * (isPortrait ? 1.7 : 1));
+    /*
+     * 第一优先：所有标点块都放得下（不许硬拆）——宁可字号小一点，也不在词中断。
+     *
+     * 实测这条取舍的分量：这条 20 字引文（一个逗号）在 1080 宽下，
+     * "不许硬拆"要求每行容得下 10 字 → 字号上限约 82px → 2 行、fill 约 32%；
+     * 而允许硬拆能到 124px、4 行、fill 58%。两行大字比四行碎字像金句页，选前者。
+     */
+    for (let cand = cap; cand > 0; cand -= 2) {
+      const perLine = Math.floor(textW / (cand * 1.02));
+      if (perLine < widest) continue;
+      const packed = packLines(perLine);
+      if (packed.hardSplit) continue;
+      if (packed.lines.length * cand * LH.body <= avail) return { fitFs: cand, lines: packed.lines };
+    }
+    // 退而求其次：允许硬拆（长句没有标点时的唯一出路）
+    for (let cand = cap; cand > 0; cand -= 2) {
+      const perLine = Math.floor(textW / (cand * 1.02));
+      if (perLine < 4) continue;
+      const packed = packLines(perLine);
+      if (packed.lines.length * cand * LH.body <= avail) return { fitFs: cand, lines: packed.lines };
+    }
+    return { fitFs: baseFs, lines: packLines(Math.max(4, Math.floor(textW / (baseFs * 1.02)))).lines };
   })();
   return (
     <AbsoluteFill
@@ -142,7 +177,13 @@ export const QuoteScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           textShadow: TEXT_SHADOW,
         }}
       >
-        {quote}
+        {/*
+         * 逐行渲染（由 `packLines` 在标点处断开），不再交给浏览器折行：
+         * 浏览器会在任意两个汉字之间断，把词劈开。
+         */}
+        {lines.map((ln, i) => (
+          <div key={i}>{ln}</div>
+        ))}
       </div>
       {author && (
         <div

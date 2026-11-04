@@ -77,6 +77,51 @@ const contains = (a: ElementBox, b: ElementBox): boolean =>
 
 const brief = (b: ElementBox): string => (b.text ? `「${b.text}」` : `<${b.tag}>`);
 
+/**
+ * 最内层文字块：自己有文字，且**没有含文字的子孙**（与 `BodyProbe` 的 `isTextLeafBlock` 同义）。
+ *
+ * 不能用"不含任何别的盒子"：卡片容器 `<div>1产品 · 上海</div>` 与它内部的名字 div 互为包含，
+ * 于是两边都被判成非叶子——实测横屏地图明明有 3 张卡，却数出 0 个文字块（误报）。
+ *
+ * **排除 SVG 内部文字**：地名、图表数值都是 `<text>`，数量与"数据有几条内容"无关；
+ * 不排除时，3 个地名 + 1 个图例就能把数量凑够，判据形同虚设。
+ */
+const leafTextBoxes = (boxes: ElementBox[]): ElementBox[] =>
+  boxes.filter((b) => {
+    if (SVG_TAGS.has(b.tag)) return false;
+    if (!b.text || b.text.length < 2) return false;
+    /*
+     * 只认「严格更小」的含文字子盒：同一矩形上常套着两层 div（`fs 16` 的容器与
+     * `fs 34` 的字号层），它们互为包含；按"包含"判会把两层同时排除，
+     * 实测横屏地图明明有 3 张卡却数出 0 个文字块。
+     */
+    const area = b.w * b.h;
+    return !boxes.some((other) => other !== b && other.text && other.w * other.h < area && contains(b, other));
+  });
+
+/**
+ * 元素**在不在**：数据里有 N 条，页面上就该有 N 个内容块。
+ *
+ * 这是元素级判据唯一的盲区——没有盒子就没有东西可比。实测：横屏地图页地标卡片
+ * 整块没渲染时，像素体检 72% / 0 告警、元素体检也 0 告警，只有人眼看图才发现。
+ *
+ * 判据只用"叶子文字块"的个数，容忍多（图表标签、图例、地名都会计入），
+ * 只在**明显少于**预期时报警——少一个就可能意味着整张卡没画出来。
+ */
+export function auditPresence(boxes: ElementBox[], expect: number | null | undefined, note?: string): ElementFinding[] {
+  if (expect == null || expect <= 0) return [];
+  // 单块内容（封面/图表/生成式）不做数量判据：它们本来就没有"条数"可比
+  if (expect < 2) return [];
+  const observed = leafTextBoxes(boxes).length;
+  if (observed >= expect) return [];
+  return [
+    {
+      level: "warn",
+      message: `元素缺失：数据里有 ${expect} 条内容，页面上只找到 ${observed} 个文字块${note ? `（${note}）` : ""}`,
+    },
+  ];
+}
+
 export function auditElements(boxes: ElementBox[], opts: ElementAuditOptions): ElementFinding[] {
   const out: ElementFinding[] = [];
   if (!boxes.length) return out;

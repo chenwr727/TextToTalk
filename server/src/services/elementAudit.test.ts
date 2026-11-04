@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { auditElements } from "./elementAudit";
+import { auditElements, auditPresence } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
 const box = (o: Partial<ElementBox>): ElementBox => ({
@@ -140,4 +140,39 @@ test("auditElements：四象限的胶囊压在大字上（真实回归）", () =
     findings.some((f) => f.level === "warn" && f.message.includes("两块内容重叠")),
     "两块兄弟内容大面积重叠必须告警",
   );
+});
+
+/**
+ * 回归：横屏地图页的卡片**整块没渲染**（不是被压扁，是根本没有）。
+ *
+ * 这是元素级判据唯一的盲区：没有盒子就没有东西可比。
+ * 实测当时像素体检 72% / 0 告警，元素体检也 0 告警，只有看图才发现。
+ * 现在由 `PageBody` 把"数据里有几条"写在 `data-expect` 上，探针回传后比对。
+ */
+test("auditPresence：数据里有 3 条，只画出 0 个文字块要告警", () => {
+  const findings = auditPresence([box({ y: 240, h: 300, w: 1700, text: "三个部门的协作断点" })], 3, "map");
+  assert.ok(
+    findings.some((f) => f.level === "warn" && f.message.includes("元素缺失")),
+    "数据 3 条、页面只有 1 块必须告警",
+  );
+  assert.match(findings[0].message, /3 条/);
+});
+
+test("auditPresence：块数够（含图例/地名等额外文字）不告警", () => {
+  const findings = auditPresence(
+    [
+      box({ y: 240, h: 300, w: 1700, text: "三个部门的协作断点" }),
+      box({ y: 640, h: 100, w: 800, text: "1产品 · 上海" }),
+      box({ y: 750, h: 100, w: 800, text: "2研发 · 杭州" }),
+      box({ y: 860, h: 60, w: 800, text: "3运营 · 成都" }),
+    ],
+    3,
+    "map",
+  );
+  assert.deepEqual(findings, []);
+});
+
+test("auditPresence：单块内容和没有预期时不判数量", () => {
+  assert.deepEqual(auditPresence([box({ text: "封面标题" })], 1), []);
+  assert.deepEqual(auditPresence([box({ text: "封面标题" })], null), []);
 });

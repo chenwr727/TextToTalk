@@ -12,6 +12,7 @@ import {
 import { accentVars } from "../shared/render/theme";
 import { AnnotationContext } from "../shared/render/annotation";
 import type { PageBodyProps } from "../shared/render/scenes/types";
+import { expectedBlocks } from "../shared/render/expectedBlocks";
 
 /**
  * rhythm -> 元素之间的错开帧数。
@@ -91,7 +92,7 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
       {!isFirst && page.icon ? <IconView icon={page.icon} /> : null}
       <div style={{ position: "absolute", inset: 0, perspective: 1600 }}>
         <div style={{ position: "absolute", inset: 0, transformStyle: "preserve-3d", ...flip }}>
-          <div ref={sceneRef} style={{ position: "absolute", inset: 0 }}>
+          <div ref={sceneRef} data-expect={expectedBlocks(page)} style={{ position: "absolute", inset: 0 }}>
             <BodyProbe pageIndex={pageIndex} sceneRef={sceneRef} />
             <SceneTimingContext.Provider value={timing}>
               <AnnotationContext.Provider value={page.effects?.annotation}>

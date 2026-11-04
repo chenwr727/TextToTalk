@@ -140,7 +140,15 @@ export const BodyProbe: React.FC<{
         viewportH: window.innerHeight,
       };
       console.log(`TTT_BODY ${JSON.stringify(payload)}`);
-      const elementPayload: ElementGeometryPayload = { frame, pageIndex, boxes };
+      const elementPayload: ElementGeometryPayload = {
+        frame,
+        pageIndex,
+        boxes,
+        expect: (() => {
+          const raw = Number.parseInt(root.getAttribute("data-expect") ?? "", 10);
+          return Number.isFinite(raw) ? raw : null;
+        })(),
+      };
       console.log(`TTT_ELEMENTS ${JSON.stringify(elementPayload)}`);
     }, 0);
     return () => clearTimeout(t);

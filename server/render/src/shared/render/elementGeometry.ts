@@ -40,4 +40,10 @@ export interface ElementGeometryPayload {
   frame: number;
   pageIndex: number;
   boxes: ElementBox[];
+  /**
+   * 这一页应该有几个内容块（由 `PageBody` 按页面数据算好、写在容器的 `data-expect` 上）。
+   *
+   * 用来发现"元素压根没渲染"——没有盒子就没有东西可比，这是元素级判据唯一的盲区。
+   */
+  expect: number | null;
 }

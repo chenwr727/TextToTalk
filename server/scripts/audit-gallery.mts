@@ -13,7 +13,7 @@ import path from "node:path";
 import { measureInk, auditVerdict, bodyBand } from "../src/services/frameAudit.js";
 import type { BodyGeometry } from "../render/src/shared/render/bodyGeometry";
 import type { ElementGeometryPayload } from "../render/src/shared/render/elementGeometry";
-import { auditElements } from "../src/services/elementAudit.js";
+import { auditElements, auditPresence } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
 const dir = process.argv[2];
@@ -116,13 +116,16 @@ for (const file of readdirSync(dir)
    * 两个真 bug（四象限胶囊盖大字、横屏地图卡片被压到 17px）都是只能靠看图发现的。
    */
   const elFindings = els
-    ? auditElements(els.boxes, {
-        width: W,
-        height: H,
-        bandTop: band.top,
-        bandBottom: band.bottom,
-        captionTop: g?.captionTop ?? null,
-      })
+    ? [
+        ...auditElements(els.boxes, {
+          width: W,
+          height: H,
+          bandTop: band.top,
+          bandBottom: band.bottom,
+          captionTop: g?.captionTop ?? null,
+        }),
+        ...auditPresence(els.boxes, els.expect, name),
+      ]
     : [];
   const elWarns = elFindings.filter((v) => v.level === "warn").map((v) => v.message);
   const warns = [...pixWarns, ...elWarns];
