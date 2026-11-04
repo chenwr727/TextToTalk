@@ -46,4 +46,6 @@ export interface ElementGeometryPayload {
    * 用来发现"元素压根没渲染"——没有盒子就没有东西可比，这是元素级判据唯一的盲区。
    */
   expect: number | null;
+  /** 数据里应该出现的关键文案片段（前 6 字），由 `auditContent` 逐条去页面上核对 */
+  expectTexts: string[];
 }

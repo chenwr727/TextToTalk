@@ -122,6 +122,63 @@ export function auditPresence(boxes: ElementBox[], expect: number | null | undef
   ];
 }
 
+/**
+ * 内容**对不对**：数据里这条文案，页面上到底有没有画出来。
+ *
+ * `auditPresence` 只数块数——数量对了，内容仍可能不对（这条没画、或画成了另一条）。
+ * 这里拿数据里的片段逐条去页面上找（归一化空白后做包含匹配），找不到就报。
+ *
+ * 只核对片段（前 6 字），容忍省略号与截断；代价是"前 6 字对、后半句错"仍看不出来。
+ */
+/**
+ * 归一化文本，用来比对"数据里的文案有没有画出来"。
+ *
+ * 渲染层会**重排和格式化**文案，逐字匹配天然误报，实测三种：
+ * - `table-numeric`：数据 `12000元` → 页面 `12,000元`（加了千分位）
+ * - `stats`：数据 `审批时长 1.5 天` → 页面拆成 `1.5` + `审批时长 天`（数值与标签换位）
+ * - `points-quadrant`：数据 `高频高痛：报销` → 页面 `高频高痛` + `报销`（去掉冒号）
+ *
+ * 所以：去空白与标点、数字去千分位，再比对。
+ */
+const norm = (s: string): string =>
+  s
+    .replace(/\s+/g, "")
+    .replace(/[：:、，,。.；;·+＋]/g, "")
+    .replace(/(\d),(?=\d{3})/g, "$1");
+
+/** 按非字母数字汉字切成 token，用于"顺序包含"匹配（容忍渲染层换位） */
+const tokens = (s: string): string[] =>
+  norm(s)
+    .split(/(?<!\d)(?=\d)|[^\p{L}\p{N}.%]/u)
+    .filter(Boolean);
+
+export function auditContent(boxes: ElementBox[], expectTexts: readonly string[] | null | undefined): ElementFinding[] {
+  if (!expectTexts || expectTexts.length === 0) return [];
+  const hay = norm(boxes.map((b) => b.text ?? "").join(""));
+  /*
+   * 每个片段拆成 token 后**逐个**检查是否出现，而不是要求整段连续出现。
+   *
+   * 原因见 `norm` 的注释：渲染层会重排（数值与标签换位）、去标点、加千分位。
+   * 要求连续会把这三类正常渲染全部报成"文案没画出来"。
+   */
+  const missing = expectTexts.filter((t) => {
+    const ts = tokens(t);
+    if (ts.length === 0) return false;
+    return !ts.every((tok) => hay.includes(tok));
+  });
+  if (missing.length === 0) return [];
+  const shown = missing
+    .slice(0, 3)
+    .map((t) => `「${t}」`)
+    .join("");
+  return [
+    {
+      level: "warn",
+      message: `文案没画出来：${missing.length} 条数据在页面上找不到 ${shown}${missing.length > 3 ? " 等" : ""}`,
+    },
+  ];
+}
+
 export function auditElements(boxes: ElementBox[], opts: ElementAuditOptions): ElementFinding[] {
   const out: ElementFinding[] = [];
   if (!boxes.length) return out;

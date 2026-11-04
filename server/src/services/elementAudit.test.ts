@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { auditElements, auditPresence } from "./elementAudit";
+import { auditElements, auditPresence, auditContent } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
 const box = (o: Partial<ElementBox>): ElementBox => ({
@@ -175,4 +175,25 @@ test("auditPresence：块数够（含图例/地名等额外文字）不告警", 
 test("auditPresence：单块内容和没有预期时不判数量", () => {
   assert.deepEqual(auditPresence([box({ text: "封面标题" })], 1), []);
   assert.deepEqual(auditPresence([box({ text: "封面标题" })], null), []);
+});
+
+test("auditContent：数据里的文案在页面上找不到要告警", () => {
+  const boxes = [box({ y: 400, h: 80, w: 600, text: "低效的流程有三个信号" })];
+  const findings = auditContent(boxes, ["流程的价值不在", "低效的流程"]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /文案没画出来/);
+  assert.match(findings[0].message, /流程的价值不在/);
+});
+
+test("auditContent：文案都在（含空格差异）不告警", () => {
+  const boxes = [
+    box({ y: 400, h: 80, w: 600, text: "流程 的价值不在管住人" }),
+    box({ y: 500, h: 80, w: 600, text: "低效的流程有三个信号" }),
+  ];
+  assert.deepEqual(auditContent(boxes, ["流程的价值不在", "低效的流程"]), []);
+});
+
+test("auditContent：没有预期文案时不判", () => {
+  assert.deepEqual(auditContent([box({ text: "任意" })], []), []);
+  assert.deepEqual(auditContent([box({ text: "任意" })], null), []);
 });

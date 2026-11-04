@@ -148,6 +148,16 @@ export const BodyProbe: React.FC<{
           const raw = Number.parseInt(root.getAttribute("data-expect") ?? "", 10);
           return Number.isFinite(raw) ? raw : null;
         })(),
+        expectTexts: (() => {
+          const raw = root.getAttribute("data-expect-texts");
+          if (!raw) return [];
+          try {
+            const v = JSON.parse(raw) as unknown;
+            return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+          } catch {
+            return [];
+          }
+        })(),
       };
       console.log(`TTT_ELEMENTS ${JSON.stringify(elementPayload)}`);
     }, 0);

@@ -8,12 +8,12 @@
  * 「标题底 → 正文顶」是布局真值：像素口径看不见浅色卡片，只有它能判断内容有没有跟着标题。
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, rmSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { measureInk, auditVerdict, bodyBand } from "../src/services/frameAudit.js";
 import type { BodyGeometry } from "../render/src/shared/render/bodyGeometry";
 import type { ElementGeometryPayload } from "../render/src/shared/render/elementGeometry";
-import { auditElements, auditPresence } from "../src/services/elementAudit.js";
+import { auditElements, auditPresence, auditContent } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
 const dir = process.argv[2];
@@ -95,8 +95,35 @@ const rows: {
   headGap: number | null;
   bodyTop: number | null;
   bodyBottom: number | null;
+  domFill: number | null;
+  stale: boolean;
   warns: string[];
 }[] = [];
+/*
+ * 旧图检测：PNG 比渲染产物（bundle）还旧，说明这张图不是用当前代码渲的。
+ *
+ * 踩过的坑：`GALLERY_ONLY='points'` 只重渲要点页，地图 PNG 还是上一次
+ * 对抗性检验（故意注入 bug）留下的旧图，审计于是报"地图 fill 51% / 元素缺失"——
+ * 看着像新引入的回归，实际是读了一张过期图片。
+ */
+const bundleMark = (() => {
+  try {
+    const bdir = path.join(process.cwd(), "render", "out", "bundle");
+    let newest = 0;
+    for (const f of readdirSync(bdir, { recursive: true }) as string[]) {
+      const p = path.join(bdir, f);
+      try {
+        const st = statSync(p);
+        if (st.isFile()) newest = Math.max(newest, st.mtimeMs);
+      } catch {
+        /* 读不到的跳过 */
+      }
+    }
+    return newest;
+  } catch {
+    return 0;
+  }
+})();
 for (const file of readdirSync(dir)
   .filter((f) => f.endsWith(".png"))
   .sort()) {
@@ -125,10 +152,31 @@ for (const file of readdirSync(dir)
           captionTop: g?.captionTop ?? null,
         }),
         ...auditPresence(els.boxes, els.expect, name),
+        ...auditContent(els.boxes, els.expectTexts),
       ]
     : [];
   const elWarns = elFindings.filter((v) => v.level === "warn").map((v) => v.message);
-  const warns = [...pixWarns, ...elWarns];
+  const staleWarns: string[] = [];
+  let stale = false;
+  try {
+    if (bundleMark > 0 && statSync(full).mtimeMs + 1000 < bundleMark) {
+      stale = true;
+      staleWarns.push("图片比渲染产物旧：这张不是当前代码渲的，先重渲再看");
+    }
+  } catch {
+    /* 读不到时间就跳过 */
+  }
+  const warns = [...pixWarns, ...elWarns, ...staleWarns];
+  const bandH = band.bottom - band.top + 1;
+  /*
+   * DOM 填充率：正文盒子实际占了多少带高。
+   *
+   * `fill` 是"墨迹 bbox 高 / 带高"，白卡页（qa / table）只有文字算墨迹，
+   * 于是 qa 报 56% 而它的 DOM 明明是 213..1690 满带。两个数一起看才不会被误导：
+   * 版面是否铺满看 domFill，墨迹是否稀疏看 fill。
+   */
+  const domFill =
+    g?.bodyTop != null && g?.bodyBottom != null ? Math.round(((g.bodyBottom - g.bodyTop + 1) / bandH) * 100) : null;
   rows.push({
     name,
     fill: Math.round(m.fill * 100),
@@ -139,6 +187,8 @@ for (const file of readdirSync(dir)
     headGap: g && g.headingBottom != null && g.bodyTop != null ? Math.round(g.bodyTop - g.headingBottom) : null,
     bodyTop: g?.bodyTop ?? null,
     bodyBottom: g?.bodyBottom ?? null,
+    domFill,
+    stale,
     warns,
   });
 }
@@ -161,7 +211,7 @@ for (const r of rows) {
         ? `DOM 无标题（正文 ${r.bodyTop}..${r.bodyBottom}）`
         : `DOM 间距 ${String(r.headGap).padStart(4)}px（正文 ${r.bodyTop}..${r.bodyBottom}）`;
   console.log(
-    `${r.name.padEnd(24)} fill ${String(r.fill).padStart(3)}%  空洞 ${String(r.voidPx).padStart(4)}px@${String(r.voidAt).padStart(3)}  墨迹起 ${String(r.inkTop).padStart(3)}  密度 ${String(r.ink).padStart(2)}%  ${dom}  ${r.warns.length ? "✗ " + r.warns.join(" / ") : ""}`,
+    `${r.name.padEnd(24)} fill ${String(r.fill).padStart(3)}%  DOM ${r.domFill == null ? " n/a" : String(r.domFill).padStart(3) + "%"}  空洞 ${String(r.voidPx).padStart(4)}px@${String(r.voidAt).padStart(3)}  墨迹起 ${String(r.inkTop).padStart(3)}  密度 ${String(r.ink).padStart(2)}%  ${dom}  ${r.warns.length ? "✗ " + r.warns.join(" / ") : ""}`,
   );
 }
 const warned = rows.filter((r) => r.warns.length);
