@@ -89,7 +89,11 @@ export const TableScene: React.FC<SceneProps> = ({ page, subtitles }) => {
      * 竖屏目标填充率从 0.62 提到 0.86，单元格高度上限 sp(260)→sp(340)：
      * 实测改前表格正文 518..1406（带 1482px 只用了 60%），且上方空 342px。
      */
-    Math.min(isPortrait ? sp(340) : 190, Math.max(baseCellH, (bandH * 0.86) / nRows)),
+    /*
+     * 能吃的都吃掉：0.86 在实测里只做到正文 382..1542（带底 1690，底下空 148px）。
+     * 0.95 + 上限 sp(380) 后表格直接到带底；行高变高也让每行更好认。
+     */
+    Math.min(isPortrait ? sp(380) : 190, Math.max(baseCellH, (bandH * 0.95) / nRows)),
   );
   /*
    * 居中要用**画布宽**，不能用 `DESIGN_WIDTH`。

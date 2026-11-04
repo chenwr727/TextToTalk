@@ -56,6 +56,11 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     /*
      * 问句是这一页的主视觉，不能被折成「砍层级会不 / 会失控？」这种断在词中间的硬折行。
      * 按「问句单行放得下」反推放大上限，再留 8% 余量（CJK 字宽≈1em，估算容易贴着边界）。
+     *
+     * 试过放宽成「两行放得下」：fill 56% → 69%，但实拍断行是
+     * 「砍层级会不 / 会失控？」「失控来自信息不 / 透明」——把"不会""不透明"劈开了，
+     * 排版比 13 个百分点的填充重要，已回退。qa 的 56% 另有原因：DOM 本来就满带
+     * （213..1690），56% 是"白卡只算文字墨迹"的口径差，不是版面空。
      */
     const qChars = Array.from(question).length;
     const qFitCap = qChars > 0 ? (qInnerW * 0.92) / (qChars * qFs) : 2.35;

@@ -40,7 +40,18 @@ export const EndScene: React.FC<SceneProps> = ({ page }) => {
     const base = isPortrait ? fs(FS.display - 8) : FS.display - 8;
     const chars = Array.from(title).length;
     const k = chars > 20 ? 0.68 : chars > 12 ? 0.82 : 1;
-    return Math.round(base * k * (roomy ? 1.3 : 1));
+    if (!isPortrait) return Math.round(base * k);
+    /*
+     * 竖屏按**两行**反推字号（和封面同一套）。
+     *
+     * 收尾页只有「圆章 + 标题 + 一个胶囊」，实测正文 678..1242 只占带高 36%：
+     * 按单行反推 + 拍倍数（1.3×）都填不满，因为真正约束是"一行放得下 16 字"。
+     * 现在限宽 contentWidth*0.86、按每行一半字数算字号，标题自然折成两行。
+     */
+    const maxW = contentWidth * 0.86;
+    const perLine = Math.max(1, Math.ceil(chars / 2));
+    const byWidth = Math.floor(maxW / perLine);
+    return Math.max(base, Math.min(byWidth, Math.round(base * 2)));
   })();
   const markSize = roomy ? sp(172) : sp(90);
   return (

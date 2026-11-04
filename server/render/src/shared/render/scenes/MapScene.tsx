@@ -358,6 +358,22 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
   const bandBottom = isPortrait
     ? Math.min(Math.round(canvasH * 0.88), canvasH - Math.max(captionReserve, 120))
     : Math.round(canvasH * 0.852);
+  /*
+   * 横屏也要给地标清单留位。
+   *
+   * 原来这块清单整块被 `isPortrait` 关掉，横屏只有底图：图上有地名，
+   * 但看不出「哪几个部门、怎么串起来」。现在先算清单高（每行 86 + 间隔 12），
+   * 剩下的给底板；一个地标都没时行为与改动前一致。
+   */
+  /*
+   * 横屏卡片的实测高是 102px（font 34 + 行高 + 上下 padding 18×2 + 边框）。
+   * 先前按 86 估，3 张卡溢出 25px，第 3 张的底边直接压在字幕上沿（看图才发现）。
+   */
+  const LAND_ROW = 102;
+  const LAND_GAP = 12;
+  const landListH =
+    markers.length > 0 ? Math.min(320, markers.length * LAND_ROW + Math.max(0, markers.length - 1) * LAND_GAP) : 0;
+  const landBoardH = Math.max(300, bandBottom - SAFE.y - landListH - (landListH > 0 ? 24 : 0));
   const safe = isPortrait
     ? {
         x: 60,
@@ -372,7 +388,7 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
         w: portraitBoard.w,
         h: portraitBoardH,
       }
-    : SAFE;
+    : { ...SAFE, h: landBoardH };
   // 地名是「以地标为锚点向外偏移」画的，如果让地标铺满整个安全区，最外侧的地名就会
   // 正好压在遮罩边缘被切掉（竖屏实测「成都」「产品·上海」都缺字）。
   // 因此竖屏额外给地名留出 150px 边距，并压低放大上限，让图整体收进来一点。
@@ -467,16 +483,17 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
          * 一个假高度硬撑，结果底板里空、底板外也空。这里把地标按顺序列出来，既填满
          * 竖向空间，也让"哪三个部门"一眼可读。
          */}
-        {isPortrait && markers.length > 0 && (
+        {markers.length > 0 && (
           <div
             style={{
               position: "absolute",
               left: safe.x,
-              top: safe.y + safe.h + 36,
+              top: safe.y + safe.h + (isPortrait ? 36 : 24),
               width: safe.w,
               display: "flex",
               flexDirection: "column",
-              justifyContent: "flex-start",
+              /* 横屏卡片自然高：用 space-between 在算好的清单高里均匀分布；竖屏卡片自己长高 */
+              justifyContent: isPortrait ? "flex-start" : "space-between",
               gap: 26,
               /*
                * 竖屏：清单拉到正文带底，卡片自己分掉剩余高度。
@@ -486,7 +503,7 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
                * 而体检仍报 72% / 0 告警（几何看不出卡片被压扁）。
                */
               /* 横屏不渲染这块清单（见下方 isPortrait 条件），这里只算竖屏 */
-              height: Math.max(0, bandBottom - (safe.y + safe.h + 36)),
+              height: Math.max(0, isPortrait ? bandBottom - (safe.y + safe.h + 36) : landListH),
             }}
           >
             {markers.map((mk, i) => {
@@ -530,7 +547,14 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
                     <div style={{ fontSize: 34, fontWeight: FW.bold, color: C.ink, fontFamily: FONT }}>{mk.name}</div>
-                    {links[i] ? (
+                    {/*
+                     * 连线行只在竖屏出现。
+                     *
+                     * 它本来就是为了给竖屏的空卡片一点内容支撑；
+                     * 横屏卡片是紧凑行（高 约84），多一行就从 84 涨到 126，
+                     * 3 张就超出清单高、第 3 张直接被字幕条压住（实测正是如此）。
+                     */}
+                    {isPortrait && links[i] ? (
                       <div style={{ fontSize: 24, color: C.sub, fontFamily: FONT, lineHeight: 1.3 }}>{links[i]}</div>
                     ) : null}
                   </div>

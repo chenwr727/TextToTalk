@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from "react";
 import { useCurrentFrame } from "remotion";
 import type { BodyGeometry } from "./bodyGeometry";
+import type { ElementBox, ElementGeometryPayload } from "./elementGeometry";
 
 /**
  * 把「正文块的真实几何」报回 Node 侧。
@@ -20,6 +21,9 @@ import type { BodyGeometry } from "./bodyGeometry";
  * 输出：`TTT_BODY {json}` 一行一条（与 DomProbe 的 `TTT_PROBE` 同一套约定）。
  */
 const rectOf = (el: Element) => el.getBoundingClientRect();
+
+/** 会裁掉子内容的 overflow 取值（`visible` 不裁，文字溢出到邻居身上属于重叠问题） */
+const CS_CLIP = new Set(["hidden", "clip", "auto", "scroll"]);
 
 export const BodyProbe: React.FC<{
   pageIndex: number;
@@ -64,6 +68,33 @@ export const BodyProbe: React.FC<{
       };
       let top = Number.POSITIVE_INFINITY;
       let bottom = Number.NEGATIVE_INFINITY;
+      /*
+       * 元素级盒子（`TTT_ELEMENTS`）：与下面「正文块」用同一套过滤，但**逐个**记下来，
+       * 交给 Node 侧判断裁字 / 压扁 / 重叠 / 越带。上限 120 个，超出只取前 120 个
+       * （正常页面 10~40 个；真超了说明这一页元素过多，报错也会先被别的判据拦下）。
+       */
+      const boxes: ElementBox[] = [];
+      const MAX_BOXES = 120;
+      const pushBox = (el: HTMLElement, r: DOMRect, pos: string) => {
+        if (boxes.length >= MAX_BOXES) return;
+        const cs = getComputedStyle(el);
+        const fontRaw = Number.parseFloat(cs.fontSize);
+        boxes.push({
+          tag: el.tagName.toLowerCase(),
+          text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 24),
+          x: Math.round(r.left),
+          y: Math.round(r.top),
+          w: Math.round(r.width),
+          h: Math.round(r.height),
+          fontSize: Number.isFinite(fontRaw) ? Math.round(fontRaw) : 0,
+          scrollW: el.scrollWidth,
+          scrollH: el.scrollHeight,
+          clientW: el.clientWidth,
+          clientH: el.clientHeight,
+          abs: pos === "absolute" || pos === "fixed",
+          clip: CS_CLIP.has(cs.overflowX) || CS_CLIP.has(cs.overflowY) || (cs.overflow ?? "").includes("hidden"),
+        });
+      };
       for (const el of Array.from(root.querySelectorAll<HTMLElement>("*"))) {
         if (el.closest('[data-role="heading"]')) continue;
         /*
@@ -91,6 +122,11 @@ export const BodyProbe: React.FC<{
         if (r.width <= 0 || r.height <= 0) continue;
         if (r.height > vh * 0.9) continue;
         if (r.width > vw * 0.9 && r.height > vh * 0.9) continue;
+        /*
+         * 只记「有意义的块」：带文字的，或者面积够大的容器（卡片底）。
+         * 纯装饰的空白 div 记进来只会让重叠判据噪声爆炸。
+         */
+        if ((el.textContent ?? "").trim() || r.width * r.height >= minAbsArea * 4) pushBox(el, r, pos);
         top = Math.min(top, r.top);
         bottom = Math.max(bottom, r.bottom);
       }
@@ -104,6 +140,8 @@ export const BodyProbe: React.FC<{
         viewportH: window.innerHeight,
       };
       console.log(`TTT_BODY ${JSON.stringify(payload)}`);
+      const elementPayload: ElementGeometryPayload = { frame, pageIndex, boxes };
+      console.log(`TTT_ELEMENTS ${JSON.stringify(elementPayload)}`);
     }, 0);
     return () => clearTimeout(t);
   }, [frame, pageIndex, sceneRef]);

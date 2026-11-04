@@ -12,6 +12,8 @@ import { existsSync, readFileSync, rmSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { measureInk, auditVerdict, bodyBand } from "../src/services/frameAudit.js";
 import type { BodyGeometry } from "../render/src/shared/render/bodyGeometry";
+import type { ElementGeometryPayload } from "../render/src/shared/render/elementGeometry";
+import { auditElements } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
 const dir = process.argv[2];
@@ -27,6 +29,33 @@ const gray = (input: string): Buffer => {
   const buf = readFileSync(tmp);
   rmSync(tmp, { force: true });
   return buf;
+};
+
+/** 读同名 browser.log，取最后一条 TTT_ELEMENTS（元素级盒子） */
+const readElements = (logPath: string): ElementGeometryPayload | null => {
+  if (!existsSync(logPath)) return null;
+  let last: ElementGeometryPayload | null = null;
+  for (const line of readFileSync(logPath, "utf8").split("\n")) {
+    const text = line.trim();
+    if (!text) continue;
+    let msg = text;
+    try {
+      const outer = JSON.parse(text) as { text?: string };
+      if (typeof outer.text === "string") msg = outer.text;
+    } catch {
+      /* 非 JSON 行当纯文本 */
+    }
+    const at = msg.indexOf("TTT_ELEMENTS ");
+    if (at < 0) continue;
+    try {
+      const g = JSON.parse(msg.slice(at + "TTT_ELEMENTS ".length)) as ElementGeometryPayload;
+      if (!Array.isArray(g.boxes)) continue;
+      last = g;
+    } catch {
+      /* 截断行跳过 */
+    }
+  }
+  return last;
 };
 
 /** 读同名 browser.log，取最后一条 TTT_BODY（同帧多条时后者更新） */
@@ -77,9 +106,26 @@ for (const file of readdirSync(dir)
   // 版式名也要先去掉 .png：否则 "end.png" 不在 AIRY_LAYOUTS 里，封面/结尾页会被当成普通页去量
   const layout = name.replace(/-.*$/, "");
   const g = readGeom(path.join(dir, `${name}.browser.log`));
-  const warns = auditVerdict(m, W, H, portrait, { layout, geometry: g })
+  const els = readElements(path.join(dir, `${name}.browser.log`));
+  const band = bodyBand(W, H);
+  const pixWarns = auditVerdict(m, W, H, portrait, { layout, geometry: g })
     .filter((v) => v.level === "warn")
     .map((v) => v.message);
+  /*
+   * 元素级判据单独一组：像素口径看不见“裁字 / 压扁 / 重叠”，
+   * 两个真 bug（四象限胶囊盖大字、横屏地图卡片被压到 17px）都是只能靠看图发现的。
+   */
+  const elFindings = els
+    ? auditElements(els.boxes, {
+        width: W,
+        height: H,
+        bandTop: band.top,
+        bandBottom: band.bottom,
+        captionTop: g?.captionTop ?? null,
+      })
+    : [];
+  const elWarns = elFindings.filter((v) => v.level === "warn").map((v) => v.message);
+  const warns = [...pixWarns, ...elWarns];
   rows.push({
     name,
     fill: Math.round(m.fill * 100),

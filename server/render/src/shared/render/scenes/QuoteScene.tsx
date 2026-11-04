@@ -37,7 +37,8 @@ export const QuoteScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const baseFs = isPortrait ? fs(Math.round(FS.hero * 1.12)) : FS.hero;
   const fitFs = (() => {
     if (!isPortrait) return baseFs;
-    const avail = bandH * 0.78 - markH - authorH - sp(58);
+    /* 0.78 只做到 fill 58%（正文 513..1400，带 209..1690）；余下的给字号，不给间距 */
+    const avail = bandH * 0.86 - markH - authorH - sp(58);
     /*
      * 从大往小试，先满足行高，再保证可读性。
      *
@@ -47,10 +48,18 @@ export const QuoteScene: React.FC<SceneProps> = ({ page, subtitles }) => {
      * 后者把“每行容得下几字”直接抬到下限，于是循环以为放得下、
      * 实际只塞得下 4 字—— 实测把「价值」「管住」都折开了，5 行字碑。
      */
-    const cap = Math.round(baseFs * 1.55);
+    const cap = Math.round(baseFs * 1.7);
     const MIN_PER_LINE = 7;
+    /*
+     * 每行可用宽度必须扣掉渲染时的左右 padding（`sp(30)`×2）。
+     *
+     * 原来拿 `maxW`（contentWidth×0.94 = 895px）当行宽，实际容器只有 835px：
+     * 于是"7 字放得下"是假的，实拍断成「流程的价值不 / 在管住人，」——6 字一行，
+     * 还把"不在"劈开了。扣掉 padding 后 MIN_PER_LINE 才是真约束。
+     */
+    const textW = maxW - sp(60);
     for (let cand = cap; cand > baseFs; cand -= 2) {
-      const perLine = Math.floor(maxW / (cand * 1.02));
+      const perLine = Math.floor(textW / (cand * 1.02));
       if (perLine < MIN_PER_LINE) continue;
       const lines = Math.ceil(chars / perLine);
       if (lines * cand * LH.body <= avail) return cand;
