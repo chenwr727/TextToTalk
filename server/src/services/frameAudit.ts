@@ -437,7 +437,33 @@ export function auditVerdict(
         message: `正文块内部有 ${inVoid}px 连续空行（从 y=${inVoidAt} 起）；位置判据以 DOM 几何为准，这条不算告警`,
       });
     }
-  } else if (inVoid > bandH * 0.15) {
+  } else if (geo && geo.bodyTop != null && geo.bodyBottom != null) {
+    /*
+     * 生成式（code）页有 DOM 几何，但不做位置判据——那就不能反过来用像素猜出的空洞报警。
+     *
+     * 原来 `hasGeo` 里写了 `&& !opaque`，于是 code 页虽然回传了 bodyTop/bodyBottom，
+     * 仍被归入“没拿到几何”那一支，拿墨迹连续空白去报警。
+     * 实测（E2E_FORCE_CODE=all，横屏）：第 1 页是被强制成 code 的封面页，
+     * 标题下划线到第一个 chip 的正常段间距 110px 被报成“页面内部连续空白”。
+     */
+    if (inVoid > bandH * 0.15) {
+      out.push({
+        level: "info",
+        message: `正文块内部有 ${inVoid}px 连续空行（从 y=${inVoidAt} 起）；生成式版式不做位置判据，这条不算告警`,
+      });
+    }
+  } else if (inVoid > Math.max(bandH * 0.15, HEAD_GAP_LIMIT)) {
+    /*
+     * 真没拿到 DOM 几何时才用像素判据，且要同时超过**两个量纲**：
+     *
+     *   ① 占正文带 15%；
+     *   ② 绝对值 ≥ HEAD_GAP_LIMIT（120px）。
+     *
+     * 只用百分比在两个方向上不等价：横屏带高 720px 时 15% 只有 108px，
+     * 一段正常的段间距（110px）就能踩线；而本文体检自己把 120px 以下的
+     * 头部空隙当作正常（HEAD_GAP_LIMIT）。同一份体检不应该一边说 110px 正常、
+     * 一边说 110px 破了版面。
+     */
     out.push({
       level: "warn",
       message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）；没拿到 DOM 几何，这条可能是浅色结构引起的误报`,

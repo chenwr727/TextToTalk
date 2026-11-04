@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { evolvePath } from "@remotion/paths";
 import { C, FONT, FW, springIn, accentOf } from "../theme";
 import { PageHeading, useHeadingMetrics } from "../PageHeading";
@@ -282,6 +282,7 @@ const Legend: React.FC<{
 
 export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
   const f = useCurrentFrame();
+  const { height: canvasH } = useVideoConfig();
   const { isPortrait, contentWidth, contentHeight } = useResponsive();
   const { contentTop } = useHeadingMetrics();
   const captionReserve = useCaptionReserve(
@@ -308,6 +309,16 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
     [spec, regionPolys],
   );
   const PORTRAIT_FIT_MAX = 1.1;
+  /*
+   * 竖屏底板只裹住图形（不用假高度硬撑）。
+   *
+   * 试过四种填法，结论：剩下的高度**不能靠分空白消化**。
+   *   ① 底板拉高到 795 → 空底板（图形上下各 约260px 纯底色），fill 73%；
+   *   ② 卡片自然高 + `space-between` → 三张卡孤零零散着（卡间 380px）；
+   *   ③ 卡片 `flex: 1` 只装一行字 → 空面板；
+   *   ④（现在）给卡片加**第二行：它与哪些地标相连**（从 routes 推出来，不是造数据），
+   *      卡片长高才有内容支撑。
+   */
   const portraitBoard = useMemo(() => {
     const boardW = contentWidth - 120;
     const cW = Math.max(bounds.maxX - bounds.minX, 100);
@@ -315,15 +326,49 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
     // 与 computeFitTransform 用同一个放大上限，否则底板按 1.4 估、图形只放到 1.1
     const scale = Math.min((boardW - 220) / cW, PORTRAIT_FIT_MAX);
     // 上下各留 110：地名画在地标上方/下方 26px 处的 30px 字，再加一点余量
-    const h = Math.round(cH * scale + 220);
-    return { w: boardW, h: Math.min(Math.round(contentHeight - 96), Math.max(420, h)) };
+    const hugH = Math.round(cH * scale + 220);
+    const h = Math.min(Math.round(contentHeight - 96), Math.max(420, hugH));
+    return { w: boardW, h };
   }, [bounds, contentWidth, contentHeight]);
   const portraitBoardH = portraitBoard.h;
+  /*
+   * 每个地标的「连线」说明，从 routes 里推出来（不造数据）。
+   *
+   * 这一页只有 3 个地标、每个只有名字，卡片拉高就是空面板；
+   * 而连线本来就在数据里，写成「→ 研发 · 杭州」既填了卡片又省得观众去图上数线。
+   */
+  const links = useMemo(
+    () =>
+      markers.map((_, i) => {
+        const parts: string[] = [];
+        for (const rt of routes) {
+          const other = rt.from === i ? rt.to : rt.to === i ? rt.from : -1;
+          if (other >= 0 && markers[other]) {
+            const name = markers[other].name;
+            if (!parts.includes(name)) parts.push(name);
+          }
+        }
+        return parts.length ? `\u2192 ${parts.join("\u3001")}` : "";
+      }),
+    [markers, routes],
+  );
+  /*
+   * 正文带底：与体检、问答页同一个口径（画布 88% 与字幕实测高度取较小）。
+   */
+  const bandBottom = isPortrait
+    ? Math.min(Math.round(canvasH * 0.88), canvasH - Math.max(captionReserve, 120))
+    : Math.round(canvasH * 0.852);
   const safe = isPortrait
     ? {
         x: 60,
-        // 底板在「标题底 .. 字幕条顶」之间居中，而不是在整张画布上居中（否则被字幕条往上顶）
-        y: Math.round(contentTop + Math.max(0, (contentHeight - contentTop - captionReserve - portraitBoardH) / 2)),
+        /*
+         * 底板直接贴着标题下沿起笔。
+         *
+         * 原来在「标题底..字幕顶」之间居中，而整块内容（底板 490 + 卡片 450）
+         * 只有 854px：实测标题下空 494px、带底空 166px，fill 52%。
+         * 现在底板顶在正文带顶，剩下的高度给地标清单；卡片各自长高吃掉它，不拉大间隙。
+         */
+        y: Math.round(contentTop),
         w: portraitBoard.w,
         h: portraitBoardH,
       }
@@ -431,12 +476,17 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
               width: safe.w,
               display: "flex",
               flexDirection: "column",
-              justifyContent: "space-between",
-              gap: 18,
-              height: Math.max(
-                0,
-                Math.min(contentHeight - captionReserve - (safe.y + safe.h + 36) - 24, markers.length * 150),
-              ),
+              justifyContent: "flex-start",
+              gap: 26,
+              /*
+               * 竖屏：清单拉到正文带底，卡片自己分掉剩余高度。
+               *
+               * 横屏必须保留原来的算式：横屏底板是固定 SAFE（y 240 / h 540），
+               * 拿“带底 920 - 816”只剩 104px，3 张卡被压成 17px 高——实测直接看不见，
+               * 而体检仍报 72% / 0 告警（几何看不出卡片被压扁）。
+               */
+              /* 横屏不渲染这块清单（见下方 isPortrait 条件），这里只算竖屏 */
+              height: Math.max(0, bandBottom - (safe.y + safe.h + 36)),
             }}
           >
             {markers.map((mk, i) => {
@@ -450,7 +500,8 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
                     display: "flex",
                     alignItems: "center",
                     gap: 22,
-                    padding: "18px 28px",
+                    flex: isPortrait ? 1 : undefined,
+                    padding: isPortrait ? "18px 30px" : "18px 28px",
                     borderRadius: 20,
                     background: "rgba(255,255,255,0.72)",
                     borderLeft: `6px solid ${col}`,
@@ -477,7 +528,12 @@ export const MapScene: React.FC<SceneProps> = ({ page, subtitles, fps }) => {
                   >
                     {i + 1}
                   </div>
-                  <div style={{ fontSize: 34, fontWeight: FW.bold, color: C.ink, fontFamily: FONT }}>{mk.name}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+                    <div style={{ fontSize: 34, fontWeight: FW.bold, color: C.ink, fontFamily: FONT }}>{mk.name}</div>
+                    {links[i] ? (
+                      <div style={{ fontSize: 24, color: C.sub, fontFamily: FONT, lineHeight: 1.3 }}>{links[i]}</div>
+                    ) : null}
+                  </div>
                 </div>
               );
             })}

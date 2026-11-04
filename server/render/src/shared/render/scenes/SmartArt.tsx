@@ -463,7 +463,13 @@ export const PyramidScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   // 底层不放满画布：留 210px 边距，金字塔两侧有呼吸，也不至于像一根通栏横条
   const MAX_W = isPortrait ? contentWidth : 1920 - 210 * 2;
-  const MIN_W = isPortrait ? sp(420) : 420;
+  /*
+   * 竖屏的最窄层要宽一点。
+   *
+   * sp(420)（357px）配 0.32 次幂时，三层实测 360 / 500 / 950：
+   * 顶层只占宽度的 1/3，两侧各留 360px，看上去像一根细条。
+   */
+  const MIN_W = isPortrait ? sp(520) : 420;
   /**
    * 层级宽度 = 数值占最大值的比例，但要**软化**，否则画出来不像金字塔。
    *
@@ -472,7 +478,7 @@ export const PyramidScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 而是"两根小条 + 一根大条"。用 0.32 次幂压缩差距（→ 515 / 801 / 1500），
    * 既保留"越往下人越多"的语义，又让层与层的宽度差看得见。
    */
-  const WIDTH_EXP = 0.32;
+  const WIDTH_EXP = 0.26;
   const widths = vals.map((v) => {
     const ratio = Math.pow(v / maxVal, WIDTH_EXP);
     return Math.max(MIN_W, Math.round(MAX_W * ratio));
@@ -484,10 +490,18 @@ export const PyramidScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 文字颜色必须跟着底色走，不能跟着层号走——金字塔顶层数值最小、底色最浅，
    * 之前按"i===0 就白字"上色，结果顶层是白字配近白底，整行标题看不见。
    */
+  /** 各层占比用的分母（用真实数值的和，没数值时不除） */
+  const sumVals = vals.reduce((a, b) => a + (b ?? 0), 0) || 1;
   const fillRatio = vals.map((v) => (v - Math.min(...vals)) / Math.max(1, maxVal - Math.min(...vals)));
   const cols = fillRatio.map((r) => {
+    /*
+     * 最浅一档原来是 rgb(212,225,255)，压在近白背景上几乎看不见：
+     * 实测顶层「决策层」的块面和页面底色分不出边界，
+     * 体检的墨迹判据也看不到它（报“404px 连续空白”）。
+     * 压深到 rgb(188,206,248)：仍然是浅色层，但在白底上有形体。
+     */
     const from = [59, 111, 245],
-      to = [212, 225, 255];
+      to = [188, 206, 248];
     const c = from.map((_, idx) => Math.round(to[idx] + (from[idx] - to[idx]) * r));
     return `linear-gradient(135deg,rgb(${c[0]},${c[1]},${c[2]}),rgb(${Math.min(255, c[0] + 40)},${Math.min(255, c[1] + 40)},${Math.min(255, c[2] + 30)}))`;
   });
@@ -569,7 +583,28 @@ export const PyramidScene: React.FC<SceneProps> = ({ page, subtitles }) => {
               }}
             >
               <Icon name={icon} size={Math.max(24, Math.round(nodeFs * 0.9))} color={onDark ? "#fff" : "#3b6ff5"} />
-              <span style={{ textAlign: "center" }}>{label}</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <span style={{ textAlign: "center" }}>{label}</span>
+                {/*
+                 * 补上数值与占比。
+                 *
+                 * 这张图叫「组织层级与人数」，但层里只画了「决策层 / 管理层 / 执行层」三个名字，
+                 * 数值 3 / 12 / 85 一个都没出现——数据页不显示数值。
+                 * 占比由 values 现算，不猜单位。
+                 */}
+                {vals[i] != null ? (
+                  <span
+                    style={{
+                      fontSize: Math.max(20, Math.round(nodeFs * 0.62)),
+                      fontWeight: FW.bold,
+                      opacity: 0.82,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {`${vals[i]} \u00b7 ${Math.round((vals[i] / sumVals) * 100)}%`}
+                  </span>
+                ) : null}
+              </div>
             </div>
           );
         })}

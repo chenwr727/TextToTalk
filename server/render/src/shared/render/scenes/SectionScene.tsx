@@ -1,19 +1,24 @@
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { evolvePath } from "@remotion/paths";
-import { alpha, C, FONT, FS, FW, TEXT_SHADOW, springIn } from "../theme";
+import { alpha, C, FONT, FS, FW, LH, TEXT_SHADOW, springIn } from "../theme";
 import { firstPointText } from "../point";
-import { useResponsive } from "../responsive";
+import { useCaptionReserve, useResponsive } from "../responsive";
 import { useAnnotation } from "../annotation";
-import { Annotated, circleWrap, CIRCLED_TEXT_WIDTH_LANDSCAPE } from "../PageHeading";
+import { Annotated, circleWrap, CIRCLED_TEXT_WIDTH_LANDSCAPE, useHeadingMetrics } from "../PageHeading";
 import { useSceneTiming } from "../captionTiming";
 import type { SceneProps } from "./types";
 
-export const SectionScene: React.FC<SceneProps> = ({ page }) => {
+export const SectionScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const sub = firstPointText(page.points || []);
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  const { contentTop } = useHeadingMetrics();
+  const captionReserve = useCaptionReserve(
+    subtitles,
+    page.sentences && page.sentences.length ? page.sentences.map((x) => x.text) : (page.captions ?? []),
+  );
   const timing = useSceneTiming();
   // 节段页自己画标题，不走 HeadingContent；手绘标注要在这里自己接上
   const rawAnnot = useAnnotation();
@@ -35,7 +40,32 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
    * 标题比横屏还小，实测墨迹只占 886..1100（fill 10%）。节段页本来就是“少字”的页，
    * 字小就真的是一小团漂在中间；这里反过来把字号拉到 1.45倍。
    */
-  const displayFs = isPortrait ? Math.round(fs(FS.display) * 1.75) : FS.display;
+  /*
+   * 竖屏节段标题按**两行**反推字号（与封面同一套口径）。
+   *
+   * 1.75 倍只是拍的一个倍数：7 字的「第一部分 · 症状」在 1080 宽的画布上
+   * 仍只占中间一小块（fill 15%）。现在按字数与带高算，它自然折成两行、字号翻倍。
+   */
+  /*
+   * 断行位按天然分隔处（「第一部分 · 症状」→ 「第一部分」/ 「症状」）。
+   *
+   * 先前按字数均分（ceil(chars/2)=4），结果把它断成「第一部 / 分 · 症状」——
+   * 把「第一部分」这个词直接劈开了，字号越大越难看。
+   * 中文没有词边界，只能靠标点。
+   */
+  const sectionSplit = (() => {
+    if (!isPortrait) return null;
+    const m = title.match(/^(.+?)\s*[·・｜|：:—-]\s*(.+)$/);
+    return m ? [m[1], m[2]] : null;
+  })();
+  const sectionLines = sectionSplit ?? [title];
+  const sectionLongest = Math.max(1, ...sectionLines.map((ln) => Array.from(ln).length));
+  const sectionMaxW = contentWidth * 0.92;
+  const sectionByWidth = Math.floor(sectionMaxW / sectionLongest);
+  const sectionByHeight = Math.floor(
+    ((canvasH - contentTop - Math.max(captionReserve, sp(120))) * 0.42) / (2 * LH.tight),
+  );
+  const displayFs = isPortrait ? Math.max(80, Math.min(220, sectionByWidth, sectionByHeight)) : FS.display;
   const vb = isPortrait ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
   const cx = vb.w / 2;
   const cy = vb.h / 2;
@@ -123,9 +153,14 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
             opacity: o,
             textShadow: TEXT_SHADOW,
             textWrap: "balance",
+            lineHeight: LH.tight,
           }}
         >
-          {title}
+          {/*
+           * 竖屏：按「·」这类分隔处分两行显示，不靠浏览器自动折行——
+           * 自动折行会在任意两个字之间断开，实测把「第一部分」劈成了两行。
+           */}
+          {sectionSplit ? sectionLines.map((ln, i) => <div key={i}>{ln}</div>) : title}
         </div>
       )}
       {sub && (

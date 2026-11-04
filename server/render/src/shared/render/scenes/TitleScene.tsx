@@ -20,7 +20,7 @@ import { Icon } from "../Icon";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve } from "../responsive";
 import { useAnnotation } from "../annotation";
-import { Annotated, chunkText, circlePer, CIRCLED_TEXT_WIDTH_LANDSCAPE } from "../PageHeading";
+import { Annotated, chunkText, circlePer, CIRCLED_TEXT_WIDTH_LANDSCAPE, useHeadingMetrics } from "../PageHeading";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -28,8 +28,13 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const subPoints = page.points || [];
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth } = useResponsive();
+  /*
+   * 封面本身不画 PageHeading，但字号上限要按「正文带」算：
+   * 用同一套 useHeadingMetrics 取标题区底，避免再拍一个常量。
+   */
+  const { contentTop } = useHeadingMetrics();
   const captionTexts =
     page.sentences && page.sentences.length ? page.sentences.map((s) => s.text) : (page.captions ?? []);
   const captionReserve = useCaptionReserve(subtitles, captionTexts);
@@ -60,10 +65,20 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 算出单行最大字号，封顶 92（10 字 = 929px）。算下来 ≤16 字都能一行放下；
    * 再长就维持 59px 折行（59 比原来的 44 大一档，25 字从 3 行变 2 行）。
    */
-  const fitOne = Math.floor((960 - (titleChars - 1)) / Math.max(1, titleChars));
+  /*
+   * 竖屏封面按**两行**反推字号。
+   *
+   * 原来按“单行放得下”封顶（9 字 → 105px），整块只有 261px 高，
+   * 在 1481px 的带里就是一小段字（fill 18%）。封面本就是大字页：
+   * 允许它折成两行，字号可以翻一倍（实测 190px × 2 行 ≈ 437px）。
+   * 同时受带高约束，长标题不会撞到字幕。
+   */
+  const coverMaxW = contentWidth * 0.92 - 12;
+  const perLineNeeded = Math.max(1, Math.ceil(titleChars / 2));
+  const fontByWidth = Math.floor(coverMaxW / perLineNeeded);
+  const fontByHeight = Math.floor(((canvasH - contentTop - Math.max(captionReserve, sp(120))) * 0.46) / (2 * LH.tight));
   const titleFontSize = isPortrait
-    ? /* 竖屏上限 92 → 112：1080px 宽的画布上 92 字就是一行小字，封面墨迹只占 22% */
-      Math.max(64, Math.min(112, fitOne))
+    ? Math.max(64, Math.min(190, fontByWidth, fontByHeight))
     : titleChars > 18
       ? 64
       : titleChars > 14

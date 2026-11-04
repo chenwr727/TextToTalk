@@ -132,6 +132,77 @@ test("measureInk：inkRatio 反映 bbox 内的密度", () => {
   assert.ok(full.inkRatio > 0.75 && full.inkRatio < 0.85, `实测 ${full.inkRatio}`);
 });
 
+/*
+ * 生成式（code）页：有 DOM 几何，但不做位置判据——那就不能反过来拿像素猜的空洞告警。
+ *
+ * 实测来源（E2E_FORCE_CODE=all，横屏）：第 1 页是被强制成 code 的封面页，
+ * 标题下划线到第一个 chip 的 110px 段间距被报成“页面内部连续空白”。
+ */
+test("auditVerdict：code 页有几何时，超 15% 的空洞只提示不告警", () => {
+  // 正文带 109..880（bandH 771）：15% ≈ 116px，这里造 118px 空白
+  const m = audit.measureInk(
+    canvas(1000, [
+      [200, 299],
+      [418, 851],
+    ]),
+    W,
+    1000,
+  );
+  assert.equal(m.voidPx, 118, "带内 300..417 共 118 行空白");
+  const withGeo = audit.auditVerdict(m as never, W, 1000, false, {
+    layout: "code",
+    geometry: { headingBottom: null, bodyTop: 275, bodyBottom: 631 },
+  });
+  assert.equal(
+    withGeo.filter((v) => v.level === "warn").length,
+    0,
+    "code 页有 DOM 几何时不能报警（它本来就不做位置判据）",
+  );
+  assert.ok(
+    withGeo.some((v) => v.level === "info" && v.message.includes("118px")),
+    "但要把这 118px 作为提示报出来",
+  );
+});
+
+/*
+ * 真没几何时才用像素判据，且要同时超过两个量纲：
+ * 占带高 15% 与 HEAD_GAP_LIMIT（120px）。
+ *
+ * 只用百分比在两个方向上不等价：横屏带高 720px 时 15% 只有 108px，
+ * 一段正常的段间距就能踩线。
+ */
+test("auditVerdict：无几何时 118px 不告警，500px 仍要告警", () => {
+  const small = audit.measureInk(
+    canvas(1000, [
+      [200, 299],
+      [418, 851],
+    ]),
+    W,
+    1000,
+  );
+  const vSmall = audit.auditVerdict(small as never, W, 1000, false);
+  assert.equal(
+    vSmall.filter((v) => v.level === "warn").length,
+    0,
+    "118px 段间距不是页面级空洞（旧判据 118 > 116 会报）",
+  );
+
+  const big = audit.measureInk(
+    canvas(1000, [
+      [200, 299],
+      [800, 851],
+    ]),
+    W,
+    1000,
+  );
+  assert.equal(big.voidPx, 500, "带内 300..799 共 500 行空白");
+  const vBig = audit.auditVerdict(big as never, W, 1000, false);
+  assert.ok(
+    vBig.some((v) => v.level === "warn" && v.message.includes("连续空白")),
+    "500px 空洞必须仍然告警，不能把真问题一起消掉",
+  );
+});
+
 test("auditVerdict：内部空洞超过正文带 15% 要报警，稀疏只提示", () => {
   const holey = audit.measureInk(
     canvas(1000, [
