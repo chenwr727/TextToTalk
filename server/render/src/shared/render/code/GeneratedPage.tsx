@@ -96,7 +96,9 @@ export const GeneratedPage: React.FC<{
   const band = useMemo(
     () => ({
       top: Math.round(contentTop),
-      bottom: Math.round(height - Math.max(captionReserve, isPortrait ? 120 : 200)),
+      bottom: Math.round(
+        Math.min(height * (isPortrait ? 0.88 : 0.852), height - Math.max(captionReserve, isPortrait ? 120 : 200)),
+      ),
       left: Math.round(isPortrait ? safeX : 120),
       right: Math.round(width - (isPortrait ? safeX : 120)),
     }),

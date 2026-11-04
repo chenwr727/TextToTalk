@@ -101,7 +101,17 @@ export const TitleScene: React.FC<SceneProps> = ({ page, subtitles }) => {
 
   return (
     <AbsoluteFill
-      style={{ justifyContent: "center", alignItems: "center", flexDirection: "column", paddingBottom: captionReserve }}
+      style={{
+        /*
+         * 试过竖屏改 `space-between`（引言顶、副标题底，fill 18% → 100%），
+         * 但中间直接空出 1365px，体检报警。封面不是“把三件东西拉开”就好看，
+         * 居中的紧凑块才对。
+         */
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        paddingBottom: captionReserve,
+      }}
     >
       <div
         style={{

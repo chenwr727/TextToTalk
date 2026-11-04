@@ -5,7 +5,6 @@ import { Card } from "../Card";
 import { IconTile } from "../IconTile";
 import { pointText, pointIcon, pointAnchor } from "../point";
 import { useResponsive, useCaptionReserve, estLines, portraitFill } from "../responsive";
-import { surplusGap } from "../fit";
 import { useSceneTiming, resolveAnchor } from "../captionTiming";
 import type { SceneProps } from "./types";
 
@@ -16,7 +15,7 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
   const title = page.title;
   const points = page.points;
   const f = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height: canvasH } = useVideoConfig();
   const { isPortrait, fs, sp, contentWidth, contentHeight } = useResponsive();
   const captionReserve = useCaptionReserve(subtitles, page.captions);
   const { contentTop } = useHeadingMetrics();
@@ -28,8 +27,8 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 竖屏稀疏页放大：一问一答这类内容量最少的页，实测只占可用内容带的 20%，
    * 上下各一大片空白。先估自然高度，再按目标填充率放大字号与间距。
    */
-  const { zoom, qaSurplus } = (() => {
-    if (!isPortrait) return { zoom: 1, qaSurplus: 0 };
+  const { zoom } = (() => {
+    if (!isPortrait) return { zoom: 1 };
     /*
      * 内宽要按「放大后的」内边距和问号圆章算。
      *
@@ -67,26 +66,40 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
      * 字号封顶在「问句不折行」，一问两答的页实测只占可用带 38%。
      * 剩下的竖向空间交给问答之间的间距（与 points 同一口径）。
      */
-    const surplus = surplusGap(naturalH * zoomNow, band, Math.max(2, answers.length), {
-      target: 0.78,
-      maxGap: sp(120),
-    });
-    return { zoom: zoomNow, qaSurplus: surplus };
+    /*
+     * 不再用 surplusGap 把余量堆成一个间隙：竖屏改成 `space-evenly` 平均分，
+     * 否则“字号封顶 + 余量全给一个 gap”会在问答之间留出一条大白。
+     */
+    return { zoom: zoomNow };
   })();
   /** 间距跟字号放大但更克制：字放大 1.5 倍时留白也放大 1.5 倍会显得散 */
   const zi = Math.min(zoom, 1.3);
   const iconSize = zoom > 1.22 ? "lg" : "md";
 
   const qO = springIn(f, fps, resolveAnchor(timing, points[0] ? pointAnchor(points[0]) : undefined, 0), page.motion);
-  /** 横屏正文带：标题下沿到字幕条上沿。问卡从带顶起笔，答案卡分掉剩余高度 */
-  const qaBandH = 1080 - contentTop - captionReserve;
+  /**
+   * 正文带：标题下沿到字幕条上沿。问卡从带顶起笔，答案卡分掉剩余高度。
+   *
+   * 两个方向统一用它：竖屏原来是「自然高 + 整列居中」，
+   * 一问两答实测只占 633..1287（fill 44%），而横屏同一页是 82%。
+   */
+  /* 带底用真实画布高算：用 contentHeight（已扣 safeY）会差出一截，实测底部越界到 1734 */
+  /*
+   * 带底取「画布 0.88（与体检的 portrait band 同一个口径）」与「字幕实测高度」的较小者：
+   * 只用后者会在字幕较短的页上越界（实测 1708 > 1690）。
+   */
+  const bandBottom = isPortrait
+    ? Math.min(Math.round(canvasH * 0.88), canvasH - Math.max(captionReserve, 120))
+    : Math.min(Math.round(canvasH * 0.852), canvasH - Math.max(captionReserve, 200));
+  const qaBandH = Math.max(320, bandBottom - contentTop);
 
   const a = accentOf(0);
 
   return (
     <AbsoluteFill
       style={{
-        justifyContent: isPortrait ? "center" : "flex-start",
+        /* 两个方向都从带顶起笔：居中会把「marginTop + height」算出来的带再往下挤 */
+        justifyContent: "flex-start",
         alignItems: "center",
         flexDirection: "column",
       }}
@@ -102,11 +115,16 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
        */}
       <div
         style={{
-          marginTop: isPortrait ? 0 : contentTop,
-          marginBottom: isPortrait ? 0 : captionReserve,
-          height: isPortrait ? undefined : qaBandH,
+          marginTop: contentTop,
+          marginBottom: 0,
+          height: qaBandH,
           display: "flex",
           flexDirection: "column",
+          /*
+           * 竖屏：卡片不拉高（拉到 360 就是“面板没装东西”，实测卡内 495px 空白），
+           * 多余的高度平均分给间隔——每个间隙 220px 看不出来，但不会出现一条 400px+ 的死白。
+           */
+          justifyContent: isPortrait ? "space-evenly" : "flex-start",
           width: isPortrait ? contentWidth : 1560,
         }}
       >
@@ -154,11 +172,11 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: isPortrait ? sp(24 * zi) + qaSurplus : SPACE.md,
-            marginTop: isPortrait ? sp(32 * zi) + qaSurplus : SPACE.lg,
+            gap: isPortrait ? sp(24 * zi) : SPACE.md,
+            marginTop: isPortrait ? undefined : SPACE.lg,
             // 横屏：剩余高度交给这一列，但卡片本身不无限拉高（见下方 maxHeight）
             flex: isPortrait ? undefined : 1,
-            justifyContent: isPortrait ? undefined : "center",
+            justifyContent: isPortrait ? "space-evenly" : "center",
           }}
         >
           {answers.map((p, i) => {
@@ -189,8 +207,8 @@ export const QaScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     display: "flex",
                     alignItems: "center",
                     // 卡被拉高时内容垂直居中（与 points / steps / stats 同一套）
-                    marginTop: isPortrait ? undefined : "auto",
-                    marginBottom: isPortrait ? undefined : "auto",
+                    marginTop: "auto",
+                    marginBottom: "auto",
                   }}
                 >
                   <IconTile

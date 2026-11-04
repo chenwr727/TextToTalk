@@ -184,7 +184,10 @@ test("生成式版式要拿到现成的正文带", () => {
   assert.match(src, /useHeadingMetrics/);
   assert.match(src, /useCaptionReserve/);
   assert.match(src, /band=\{band\}/, "正文带要作为 prop 传给生成代码");
-  assert.match(src, /bottom: Math\.round\(height - Math\.max\(captionReserve/, "带底要扣掉字幕预留");
+  assert.match(src, /bottom: Math\.round\(/, "带底要算出来");
+  assert.match(src, /height - Math\.max\(captionReserve, isPortrait \? 120 : 200\)/, "带底要扣掉字幕预留");
+  /* 与体检的 portrait band 同一个口径：带底还要受 88% 画布高封顶 */
+  assert.match(src, /height \* \(isPortrait \? 0\.88 : 0\.852\),/, "带底不得越过体检的正文带");
 });
 
 test("字幕字号独立于正文缩放（竖屏上前者要更大）", () => {

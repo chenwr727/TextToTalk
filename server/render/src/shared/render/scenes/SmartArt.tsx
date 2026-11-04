@@ -315,7 +315,11 @@ export const LoopScene: React.FC<SceneProps> = ({ page, subtitles }) => {
    * 节点随之分布在 330×429 的椭圆上，环高约 860（占可画区 57%），既是「环」又不像蛋。
    */
   const R = isPortrait ? Math.min(RX, RY) : 0;
-  const RYc = isPortrait ? Math.min(RY, R * 1.3) : RY;
+  /*
+   * 番外一层：竖半径上限 1.3倍把环压成 720px 高（实测节点盒 420..1308，带高 1481 只用了 60%）。
+   * 放到 1.55 倍：环高≈840，仍然是「比正圆高一点」的椭圆，不会变成之前被否掉的蛋形。
+   */
+  const RYc = isPortrait ? Math.min(RY, R * 1.55) : RY;
 
   return (
     <AbsoluteFill>
@@ -878,6 +882,8 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     [nodeFs, nodeFs - 2, nodeFs - 4, nodeFs - 6, 26, 24, 22].find((fsz) => labelChars * fsz * 1.02 <= cellInnerW) ?? 22;
 
   /* 竖屏：四象限占满带（原来 1000，带高 1481，只占 67%） */
+  const tagFs = labelFs;
+  const nameFs = isPortrait ? sp(58) : FS.heading;
   const GRID_H = isPortrait
     ? Math.round(Math.max(520, canvasH - contentTop - Math.max(captionReserve, sp(120))) * 0.92)
     : 520;
@@ -949,32 +955,57 @@ export const QuadrantScene: React.FC<SceneProps> = ({ page, subtitles }) => {
                     boxShadow: CARD_SHADOW,
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: isPortrait ? sp(14) : 14,
-                      background: cells[i].a,
-                      color: "#fff",
-                      borderRadius: RADIUS.chip,
-                      padding: `${isPortrait ? sp(20) : 20}px ${isPortrait ? sp(26) : 26}px`,
-                      fontSize: labelFs,
-                      fontWeight: FW.bold,
-                      fontFamily: FONT,
-                      textAlign: "center",
-                      lineHeight: 1.4,
-                      boxShadow: SOLID_SHADOW,
-                      // 不再拉满整宽：标签自己多宽就多宽，居中后四周留白均匀
-                      maxWidth: "100%",
-                      /* 单行：字号已经按最长标签反推过，再折行就会把中文词拆开 */
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    <Icon name={pointIcon(it, i)} size={isPortrait ? sp(28) : 28} color="#fff" />
-                    <span>{pointText(it, i)}</span>
-                  </div>
+                  {/*
+                    格内拆成两层：上面一枚「象限名」小标签，下面一行大字的事项名。
+                    原来整个格子只有一枚胶囊居中，拉到 0.92 带高后每格上下各空一半。
+                    标签里本来就带着「高频高痛：报销」，按全角/半角冒号切开就是两层，不需要额外数据。
+                  */}
+                  {(() => {
+                    const full = pointText(it, i);
+                    const cut = full.search(/[：:]/);
+                    const tag = cut > 0 ? full.slice(0, cut) : "";
+                    const name = cut > 0 ? full.slice(cut + 1) : full;
+                    return (
+                      <>
+                        {tag ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: isPortrait ? sp(12) : 12,
+                              background: cells[i].a,
+                              color: "#fff",
+                              borderRadius: RADIUS.chip,
+                              padding: `${isPortrait ? sp(14) : 12}px ${isPortrait ? sp(24) : 22}px`,
+                              fontSize: tagFs,
+                              fontWeight: FW.bold,
+                              fontFamily: FONT,
+                              lineHeight: 1.3,
+                              boxShadow: SOLID_SHADOW,
+                              whiteSpace: "nowrap",
+                              boxSizing: "border-box",
+                            }}
+                          >
+                            <Icon name={pointIcon(it, i)} size={isPortrait ? sp(24) : 22} color="#fff" />
+                            <span>{tag}</span>
+                          </div>
+                        ) : null}
+                        <div
+                          style={{
+                            fontSize: nameFs,
+                            fontWeight: FW.heavy,
+                            color: C.ink,
+                            fontFamily: FONT,
+                            lineHeight: 1.25,
+                            textAlign: "center",
+                            maxWidth: "100%",
+                          }}
+                        >
+                          {name}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               );
             })}

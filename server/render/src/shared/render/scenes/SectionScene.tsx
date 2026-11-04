@@ -35,15 +35,27 @@ export const SectionScene: React.FC<SceneProps> = ({ page }) => {
    * 标题比横屏还小，实测墨迹只占 886..1100（fill 10%）。节段页本来就是“少字”的页，
    * 字小就真的是一小团漂在中间；这里反过来把字号拉到 1.45倍。
    */
-  const displayFs = isPortrait ? Math.round(fs(FS.display) * 1.45) : FS.display;
+  const displayFs = isPortrait ? Math.round(fs(FS.display) * 1.75) : FS.display;
   const vb = isPortrait ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 };
   const cx = vb.w / 2;
   const cy = vb.h / 2;
   const rMax = Math.min(vb.w, vb.h) * 0.46;
   const rings = [0.55, 0.78, 1].map((k) => Math.round(rMax * k));
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+    <AbsoluteFill
+      style={{
+        /*
+         * 试过竖屏用 `space-evenly` 把三行字在带里拉开（fill 13% → 50%），
+         * 但体检量出中间 598px 连续空白—— 那不是排版变好，是把空白从外面挪到里面。
+         * 隔断页该是一个紧凑的字块，保持居中；字号仍然放大。
+         */
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+      }}
+    >
       <svg
+        data-role="decor"
         width="100%"
         height="100%"
         viewBox={`0 0 ${vb.w} ${vb.h}`}

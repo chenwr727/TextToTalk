@@ -72,6 +72,16 @@ export const BodyProbe: React.FC<{
          * 实测：不排除时 three_card 量出 bodyTop=90（就是标题上沿）。
          */
         if (heading && el.contains(heading)) continue;
+        /*
+         * 装饰图形要显式标记（`data-role="decor"`）。
+         *
+         * 实测：节段页那三圈装饰同心圆 `<circle>` 是 `position: static`、
+         * 宽高也没超画布，于是越过了“绝对定位才需要是文字块”那条过滤，
+         * 直接把正文框撑到 152..928（真正的文字在 451..700）。
+         * 也试过“一律排除 svg 里面的元素”：图表、地图、custom_svg 的正文就是 svg 里的图元，
+         * 排除后这三类页直接没几何（实测 3/30 页 n/a）。所以只认显式标记。
+         */
+        if (el.closest('[data-role="decor"]')) continue;
         const pos = getComputedStyle(el).position;
         const r = rectOf(el);
         if (pos === "absolute" || pos === "fixed") {

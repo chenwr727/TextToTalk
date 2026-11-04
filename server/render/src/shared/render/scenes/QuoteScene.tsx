@@ -41,9 +41,9 @@ export const QuoteScene: React.FC<SceneProps> = ({ page, subtitles }) => {
     /* 从大往小试：先满足行高，再保证每行至少 5 字（字太大会成为一行两字的怪物） */
     /* 上限 1.45×：再大就是“一行五字的海报”，不像解说视频的金句页（实测 2× 时折成 5 行、
      * 每行 5 字，海报感过头）；且每行至少 8 字，保证读起来是句子而不是字碑 */
-    const cap = Math.round(baseFs * 1.45);
+    const cap = Math.round(baseFs * 1.75);
     for (let cand = cap; cand > baseFs; cand -= 2) {
-      const perLine = Math.max(8, Math.floor(maxW / (cand * 1.02)));
+      const perLine = Math.max(7, Math.floor(maxW / (cand * 1.02)));
       const lines = Math.ceil(chars / perLine);
       if (lines * cand * LH.body <= avail) return cand;
     }
