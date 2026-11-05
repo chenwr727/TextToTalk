@@ -367,6 +367,96 @@ export function auditPrefix(
   ];
 }
 
+/**
+ * 列表顺序：竖排要点在画面上必须按数据顺序从上到下排。
+ *
+ * 为什么值得单独一条：把两条步骤互换，**所有已有判据都会通过**——字都在、数字都在、
+ * 首尾片段都在、标签数值也都配对。但“先拆再评估”变成“先评估再拆”是意思变了。
+ * 这是少数能用几何核出来的语义错误。
+ *
+ * 只对单列版式生效（多栏/网格的阅读顺序本来就不是从上到下）。判定单列的方式是
+ * “所有命中的盒子左边界彼此接近”，不满足就整页跳过——宁可漏，不报假。
+ */
+export function auditOrder(
+  order: readonly string[] | null | undefined,
+  boxes: readonly ElementBox[],
+): ElementFinding[] {
+  if (!order || order.length < 2) return [];
+  const norm = (s: string) => s.replace(/\s+/g, "");
+  const withText = boxes.filter((b) => (b.text ?? "").trim().length >= 6);
+  const hits: { ix: number; y: number; x: number }[] = [];
+  order.forEach((t, ix) => {
+    const head = Array.from(norm(t)).slice(0, 6).join("");
+    if (head.length < 4) return;
+    const box = withText.find((b) => norm(b.text ?? "").startsWith(head));
+    if (box) hits.push({ ix, y: box.y, x: box.x });
+  });
+  if (hits.length < 2) return [];
+  const xs = hits.map((h) => h.x);
+  const spread = Math.max(...xs) - Math.min(...xs);
+  // 左边界散得太开 → 多栏排版，阅读顺序不是上下，跳过
+  if (spread > 160) return [];
+  const inversed: string[] = [];
+  const short = (s: string) => Array.from(norm(s)).slice(0, 8).join("");
+  for (let i = 1; i < hits.length; i++) {
+    const prev = hits[i - 1];
+    const cur = hits[i];
+    if (cur.y < prev.y - 30) {
+      inversed.push(`「${short(order[cur.ix])}…」排到了「${short(order[prev.ix])}…」上面`);
+    }
+  }
+  if (inversed.length > 0) {
+    return [
+      {
+        level: "warn",
+        message: `列表顺序和数据不一致：${inversed.length} 处（${inversed.slice(0, 2).join("；")}）——字都没错，但先后反了，意思就变了`,
+      },
+    ];
+  }
+  return [];
+}
+
+export interface TruncationInfo {
+  /** 有几条长文案被截断显示 */
+  count: number;
+  /** 被截掉、观众看不到的字数合计 */
+  hiddenChars: number;
+  /** 举例（前 2 条被截掉的开头） */
+  samples: string[];
+}
+
+/**
+ * 量化“有多少字没上画面”。
+ *
+ * 长文案被截断是**版面设计**（不截就溢出），所以这不算错误；但“截掉了多少”以前
+ * 没人知道——实测 `points-long` 有 50 字、`qa` 有 14 字读者看不到。这是编辑决策
+ * 需要的事实，给出数字比给出感觉有用。
+ */
+export function measureTruncation(
+  texts: readonly string[] | null | undefined,
+  boxes: readonly ElementBox[],
+): TruncationInfo {
+  const empty: TruncationInfo = { count: 0, hiddenChars: 0, samples: [] };
+  if (!texts || texts.length === 0) return empty;
+  const norm = (s: string) => s.replace(/\s+/g, "");
+  const shown = boxes.map((b) => norm(b.text ?? "")).filter((s) => s.length >= 8);
+  let count = 0;
+  let hidden = 0;
+  const samples: string[] = [];
+  for (const t of texts) {
+    const e = norm(t);
+    const ch = Array.from(e);
+    const b = shown.filter((x) => e.startsWith(x)).sort((a, c) => c.length - a.length)[0];
+    if (!b) continue;
+    const cut = ch.length - Array.from(b).length;
+    if (cut <= 0) continue;
+    count++;
+    hidden += cut;
+    if (samples.length < 2) samples.push(`「${ch.slice(ch.length - cut, ch.length - cut + 6).join("")}…」`);
+  }
+  return { count, hiddenChars: hidden, samples };
+}
+
 export function auditElements(boxes: ElementBox[], opts: ElementAuditOptions): ElementFinding[] {
   const out: ElementFinding[] = [];
   if (!boxes.length) return out;

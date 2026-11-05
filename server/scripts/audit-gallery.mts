@@ -22,6 +22,8 @@ import {
   auditPairs,
   auditCaption,
   auditPrefix,
+  auditOrder,
+  measureTruncation,
 } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
@@ -107,6 +109,8 @@ const rows: {
   domFill: number | null;
   stale: boolean;
   warns: string[];
+  /** 被截掉、观众看不到的字数（长文案截断） */
+  cut: number;
 }[] = [];
 /*
  * 旧图检测：PNG 比渲染产物（bundle）还旧，说明这张图不是用当前代码渲的。
@@ -166,6 +170,7 @@ for (const file of readdirSync(dir)
         ...auditIcons(els.icons, els.expectIcons),
         ...auditPairs(els.boxes, els.expectPairs),
         ...auditCaption(els.captionText, els.expectCaptions),
+        ...auditOrder(els.expectOrder, els.boxes),
         ...auditPrefix(
           els.expectLongTexts,
           els.boxes.filter((b) => b.text).map((b) => b.text ?? ""),
@@ -207,6 +212,7 @@ for (const file of readdirSync(dir)
     domFill,
     stale,
     warns,
+    cut: els ? measureTruncation(els.expectLongTexts, els.boxes).hiddenChars : 0,
   });
 }
 
@@ -253,6 +259,11 @@ const NEGATIVE_CONTROLS = new Set(["points-icon-bogus"]);
 const negRows = rows.filter((r) => NEGATIVE_CONTROLS.has(r.name));
 const warned = rows.filter((r) => r.warns.length && !NEGATIVE_CONTROLS.has(r.name));
 const negSilent = negRows.filter((r) => !r.warns.length);
+/*
+ * 被截掉的字：长文案截断是版面设计，不算错，但“有多少字观众看不到”
+ * 以前没人知道。这里把它当事实报出来，不当告警。
+ */
+const cutRows = rows.filter((r) => r.cut > 0).sort((a, b) => b.cut - a.cut);
 const noGeom = rows.filter((r) => r.bodyTop == null);
 const noHead = rows.filter((r) => r.bodyTop != null && r.headGap == null);
 console.log(`\n合计 ${rows.length} 页，${warned.length} 页有告警；${noGeom.length} 页没拿到 DOM 几何`);
@@ -261,6 +272,12 @@ if (negRows.length) {
   if (negSilent.length) {
     console.log(`  ⚠ 这些页**没报警**：${negSilent.map((r) => r.name).join(", ")}——判据可能坏了`);
   }
+}
+if (cutRows.length) {
+  console.log(
+    `  文案被截掉的字数（截断是版面设计，不算错，但这些字观众看不到）：` +
+      cutRows.map((r) => `${r.name} ${r.cut} 字`).join("、"),
+  );
 }
 if (noGeom.length) console.log(`  没几何：${noGeom.map((r) => r.name).join(", ")}`);
 if (noHead.length) console.log(`  无标题（几何照可用）：${noHead.map((r) => r.name).join(", ")}`);

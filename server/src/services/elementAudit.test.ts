@@ -9,6 +9,8 @@ import {
   auditPairs,
   auditCaption,
   auditPrefix,
+  auditOrder,
+  measureTruncation,
 } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
@@ -320,4 +322,44 @@ test("auditPrefix：长文案被截断不告警，被改写要告警", () => {
   assert.match(worse[0].message, /长文案与原文对不上/);
   // 短文案不归它管
   assert.deepEqual(auditPrefix(["短句"], ["完全不同"]), []);
+});
+
+test("auditOrder：竖排要点顺序被互换要告警（字都对、数字都对）", () => {
+  const order = ["先把流程画出来，标出所有环节", "再把等待时间单独统计出来", "最后按等待时间排序砍掉长尾"];
+  const good = [
+    box({ y: 300, h: 80, w: 800, text: order[0] }),
+    box({ y: 450, h: 80, w: 800, text: order[1] }),
+    box({ y: 600, h: 80, w: 800, text: order[2] }),
+  ];
+  assert.deepEqual(auditOrder(order, good), []);
+  // 互换后两条：字不变，位置变
+  const swapped = [
+    box({ y: 300, h: 80, w: 800, text: order[0] }),
+    box({ y: 450, h: 80, w: 800, text: order[2] }),
+    box({ y: 600, h: 80, w: 800, text: order[1] }),
+  ];
+  const f = auditOrder(order, swapped);
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /列表顺序和数据不一致/);
+  // 多栏版式（左边界散开）不应告警
+  const twoCol = [
+    box({ y: 300, h: 80, w: 300, text: order[0] }),
+    box({ y: 300, h: 80, w: 300, x: 700, text: order[1] }),
+    box({ y: 600, h: 80, w: 300, text: order[2] }),
+  ];
+  assert.deepEqual(auditOrder(order, twoCol), []);
+});
+
+test("measureTruncation：算出被截掉的字数", () => {
+  const long = "把审批链路上每个环节的等待时间单独统计出来";
+  const info = measureTruncation([long], [box({ y: 300, h: 80, w: 800, text: "把审批链路上每个环节的等待时间" })]);
+  assert.equal(info.count, 1);
+  // 原文 31 字、画面显示 25 字 → 截掉 6 字
+  assert.equal(info.hiddenChars, 6);
+  // 没截断 → 0
+  assert.deepEqual(measureTruncation([long], [box({ y: 300, h: 80, w: 800, text: long })]), {
+    count: 0,
+    hiddenChars: 0,
+    samples: [],
+  });
 });

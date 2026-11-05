@@ -251,3 +251,22 @@ export function expectedLongTexts(page: StoryPage): string[] {
   }
   return out;
 }
+
+/**
+ * 要点的**数据顺序**。
+ *
+ * 为什么要核顺序：把两条步骤互换，字都在、数字也都在，所有已有判据都会通过——
+ * 但“先拆再评估”变成“先评估再拆”是**意思变了**。这是少数能用几何核出来的语义错误。
+ *
+ * 只给竖排列表的版式（多栏/网格版式的阅读顺序本来就不是从上到下，核会假阳）。
+ */
+export function expectedOrder(page: StoryPage): string[] {
+  const layout = String(page.layout ?? "");
+  if (layout !== "points" && layout !== "steps") return [];
+  const out: string[] = [];
+  for (const p of page.points ?? []) {
+    const t = pointTextOf(p).trim();
+    if (t) out.push(t);
+  }
+  return out;
+}

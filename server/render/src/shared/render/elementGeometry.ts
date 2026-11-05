@@ -66,4 +66,6 @@ export interface ElementGeometryPayload {
   expectCaptions: string[];
   /** 可能被截断的长文案原文，由 `auditPrefix` 核对“截断而非改写” */
   expectLongTexts: string[];
+  /** 竖排要点的数据顺序，由 `auditOrder` 核对“没被互换” */
+  expectOrder: string[];
 }

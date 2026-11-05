@@ -183,6 +183,7 @@ export const BodyProbe: React.FC<{
         captionText: caption ? (caption.textContent ?? "").trim() || null : null,
         expectCaptions: readList(root, "data-expect-captions"),
         expectLongTexts: readList(root, "data-expect-long"),
+        expectOrder: readList(root, "data-expect-order"),
         expectPairs: (() => {
           const raw = root.getAttribute("data-expect-pairs");
           if (!raw) return [];
