@@ -48,8 +48,18 @@ export const BodyProbe: React.FC<{
   const frame = useCurrentFrame();
   useEffect(() => {
     // 让出一拍，等 Remotion 把舞台尺寸/位置写好（见文件头注释）
-    const t = setTimeout(() => {
+    /*
+     * 探针静默是真实会发生的：全量渲染时偶发一页没报几何（实测 34 页里出现过 1 页），
+     * 而审计只会说“没拿到 DOM 几何”，很容易被当成正常。
+     * 所以这里加重试：没根元素就再等一拍，最多 6 次（约 96ms）。
+     */
+    let tries = 0;
+    const attempt = () => {
       const root = sceneRef.current;
+      if (!root && ++tries < 6) {
+        setTimeout(attempt, 16);
+        return;
+      }
       if (!root) return;
       const heading = root.querySelector<HTMLElement>('[data-role="heading"]');
       const caption = document.querySelector<HTMLElement>('[data-role="caption"]');
@@ -210,7 +220,8 @@ export const BodyProbe: React.FC<{
         })(),
       };
       console.log(`TTT_ELEMENTS ${JSON.stringify(elementPayload)}`);
-    }, 0);
+    };
+    const t = setTimeout(attempt, 0);
     return () => clearTimeout(t);
   }, [frame, pageIndex, sceneRef]);
   return null;

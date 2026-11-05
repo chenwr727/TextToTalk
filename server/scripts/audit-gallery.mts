@@ -266,6 +266,28 @@ const negSilent = negRows.filter((r) => !r.warns.length);
  * 以前没人知道。这里把它当事实报出来，不当告警。
  */
 const cutRows = rows.filter((r) => r.cut > 0).sort((a, b) => b.cut - a.cut);
+/*
+ * 入场动画期间**不能**做严格核对（实测结论）。
+ *
+ * 用 GALLERY_AT=0.10 全量跑一遍，34 页里 5 页报警，逐条看图后确认**全是过渡态假阳**：
+ * - table / table-numeric「文字被裁 1292 < 1306」：行高入场动画还没长完，差 14px，画面上看不出裁字；
+ *   到默认帧位（60%）就不报了。
+ * - map / points-flow「正文底越过下边界」：卡片**正在向上滑入**，实测只存在于 15% 之前，
+ *   15% 就回到 1690 了。
+ * - chart-pyramid「整帧没墨迹」：入场还没开始。
+ *
+ * 所以真正可靠的不变量不是“每一帧都对”，而是**动画结束后必须全部到场**：
+ * 实测 GALLERY_AT=0.50 全量 34 页 0 告警、0 页没几何，即 `REVEAL_DEADLINE=0.45` 守住了。
+ * 要验它：`$env:GALLERY_AT='0.5'; node scripts\gallery.mjs` 然后审计。
+ */
+const verifiedAt = process.env.GALLERY_AT ?? "0.6";
+if (Number(verifiedAt) < 0.45) {
+  console.log(
+    `\n⚠ 当前采样帧位是页内 ${Math.round(Number(verifiedAt) * 100)}%（< 45%），处于**入场动画期间**。` +
+      `\n  这时的充实度/越界/裁字告警大多是过渡态假阳（实测 5/34 页，逐条看图均无异常）。` +
+      `\n  做严格核对请用\u0020GALLERY_AT=0.5（动画结束后，内容必须全部到场）。`,
+  );
+}
 const noGeom = rows.filter((r) => r.bodyTop == null);
 const noHead = rows.filter((r) => r.bodyTop != null && r.headGap == null);
 console.log(`\n合计 ${rows.length} 页，${warned.length} 页有告警；${noGeom.length} 页没拿到 DOM 几何`);
@@ -281,7 +303,18 @@ if (cutRows.length) {
       cutRows.map((r) => `${r.name} ${r.cut} 字`).join("、"),
   );
 }
-if (noGeom.length) console.log(`  没几何：${noGeom.map((r) => r.name).join(", ")}`);
+if (noGeom.length) {
+  console.log(`  没几何：${noGeom.map((r) => r.name).join(", ")}`);
+  /*
+   * 这不是“这页没问题”，而是**这页的元素级判据根本没跑**——
+   * 没几何就没东西可比，所有元素核对（含充实度、重叠、内容）在这页都是空转。
+   * 实测遇到过：全量渲染时偶发一页探针静默，审计只报一句“没几何”，很容易被当成正常。
+   */
+  console.log(
+    `  ⚠ 上面这些页的**元素级核对全部没跑**（没几何就没东西可比），不等于它们没问题；` +
+      `常见原因是探针静默，重跑一次即可`,
+  );
+}
 if (noHead.length) console.log(`  无标题（几何照可用）：${noHead.map((r) => r.name).join(", ")}`);
 /*
  * 过期图片给出**可直接执行**的重渲命令，别让人对着"N 页过期"自己猜怎么修。
