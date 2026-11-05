@@ -185,7 +185,19 @@ export function expectedTexts(page: StoryPage): string[] {
     const t = tail(s);
     if (t) out.push(t);
   };
-  if (layout.startsWith("chart")) return out;
+  if (layout.startsWith("chart")) {
+    /*
+     * 图表类版式原来完全不核对内容（只核对"有几块"），于是"轴标签丢了/写错"没人管。
+     * 图表结构是明确的：`labels` 是轴标签、`values` 是数值；数值走 `expectedNumbers`，
+     * 这里补标签。
+     *
+     * **不核 `chart.title`**：金字塔版式根本不画它（页面标题由 heading 承担，不进正文盒子），
+     * 加上它会报「组织层级与人… 找不到」的假阳性（实测）。
+     */
+    const chart = page.chart as { labels?: unknown[] } | null | undefined;
+    for (const l of chart?.labels ?? []) push(l);
+    return out;
+  }
   if (layout === "title" || layout === "section" || layout === "end" || layout === "code") return out;
   if (layout === "table") {
     for (const r of page.table?.rows ?? []) {
@@ -204,5 +216,38 @@ export function expectedTexts(page: StoryPage): string[] {
   }
   // 要点列表 / 问答：每条要点都该出现
   for (const p of page.points ?? []) push(pointTextOf(p));
+  return out;
+}
+
+/**
+ * 这一页所有可能的字幕文本。
+ *
+ * 字幕一次只显示一句（按语音时长切），所以认为“屏幕上那句必须是这一组里的一句”。
+ * 字幕和正文是两套数据，以前谁都没核对过它们。
+ */
+export function expectedCaptions(page: StoryPage): string[] {
+  const out: string[] = [];
+  for (const c of page.captions ?? []) if (typeof c === "string" && c.trim()) out.push(c.trim());
+  for (const s of page.sentences ?? []) {
+    const t = (s as { text?: unknown })?.text;
+    if (typeof t === "string" && t.trim()) out.push(t.trim());
+  }
+  return [...new Set(out)];
+}
+
+/**
+ * 长文案原文（供 `auditPrefix` 核对“截断而非改写”）。
+ *
+ * 只给**可能被截断**的长文案；短文案已有首尾双片段核对。
+ */
+export function expectedLongTexts(page: StoryPage): string[] {
+  const layout = String(page.layout ?? "");
+  if (layout === "title" || layout === "section" || layout === "end" || layout === "code") return [];
+  if (layout === "table" || layout === "map" || layout.startsWith("chart")) return [];
+  const out: string[] = [];
+  for (const p of page.points ?? []) {
+    const t = pointTextOf(p).trim();
+    if (Array.from(t.replace(/\s+/g, "")).length > 12) out.push(t);
+  }
   return out;
 }

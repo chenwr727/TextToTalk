@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { auditElements, auditPresence, auditContent, auditNumbers, auditIcons, auditPairs } from "./elementAudit";
+import {
+  auditElements,
+  auditPresence,
+  auditContent,
+  auditNumbers,
+  auditIcons,
+  auditPairs,
+  auditCaption,
+  auditPrefix,
+} from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
 const box = (o: Partial<ElementBox>): ElementBox => ({
@@ -284,4 +293,31 @@ test("auditPairs：包住全部的容器不能让任何配对通过", () => {
   ]);
   assert.equal(findings.length, 1);
   assert.match(findings[0].message, /数值与标签没在一起/);
+});
+
+test("auditCaption：显示不属于本页的字幕要告警", () => {
+  const caps = ["审批链过长，决策被反复上推", "责任边界模糊"];
+  assert.deepEqual(auditCaption("审批链过长，决策被反复上推", caps), []);
+  // 截断显示（本页句子的前缀）不告警
+  assert.deepEqual(auditCaption("审批链过长", caps), []);
+  const bad = auditCaption("这是另一页的字幕", caps);
+  assert.equal(bad.length, 1);
+  assert.match(bad[0].message, /字幕对不上/);
+  assert.deepEqual(auditCaption(null, caps), []);
+  assert.deepEqual(auditCaption("任意", []), []);
+});
+
+test("auditPrefix：长文案被截断不告警，被改写要告警", () => {
+  const long = "把审批链路上每个环节的等待时间单独统计出来，而不是只记总时长";
+  // 截断：渲染文本是原文前缀
+  assert.deepEqual(auditPrefix([long], ["把审批链路上每个环节的等待时间单独统计出来"]), []);
+  // 改写：原文截断处之后接上别的字——渲染文本不再是原文前缀，要告警
+  const bad = auditPrefix([long], ["把审批链路上每个环节的等待时间单独统计出来了啊"]);
+  assert.equal(bad.length, 1);
+  assert.match(bad[0].message, /长文案与原文对不上/);
+  const worse = auditPrefix([long], ["完全不同的另一句长文案，足够长了吧真的"]);
+  assert.equal(worse.length, 1);
+  assert.match(worse[0].message, /长文案与原文对不上/);
+  // 短文案不归它管
+  assert.deepEqual(auditPrefix(["短句"], ["完全不同"]), []);
 });

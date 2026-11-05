@@ -20,6 +20,8 @@ import {
   auditNumbers,
   auditIcons,
   auditPairs,
+  auditCaption,
+  auditPrefix,
 } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
@@ -163,6 +165,11 @@ for (const file of readdirSync(dir)
         ...auditNumbers(els.boxes, els.expectNumbers),
         ...auditIcons(els.icons, els.expectIcons),
         ...auditPairs(els.boxes, els.expectPairs),
+        ...auditCaption(els.captionText, els.expectCaptions),
+        ...auditPrefix(
+          els.expectLongTexts,
+          els.boxes.filter((b) => b.text).map((b) => b.text ?? ""),
+        ),
       ]
     : [];
   const elWarns = elFindings.filter((v) => v.level === "warn").map((v) => v.message);

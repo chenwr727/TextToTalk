@@ -180,6 +180,9 @@ export const BodyProbe: React.FC<{
         icons: Array.from(document.querySelectorAll<HTMLElement>('[data-role="icon"]')).map(
           (el) => el.getAttribute("data-icon") ?? "",
         ),
+        captionText: caption ? (caption.textContent ?? "").trim() || null : null,
+        expectCaptions: readList(root, "data-expect-captions"),
+        expectLongTexts: readList(root, "data-expect-long"),
         expectPairs: (() => {
           const raw = root.getAttribute("data-expect-pairs");
           if (!raw) return [];

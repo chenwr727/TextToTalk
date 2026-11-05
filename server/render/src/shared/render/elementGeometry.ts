@@ -56,4 +56,14 @@ export interface ElementGeometryPayload {
   icons: string[];
   /** 需要配对的「标签 + 数值」组，由 `auditPairs` 核对没有张冠李戴 */
   expectPairs: { label: string; value: string }[];
+  /**
+   * 当前帧画面上**实际显示的字幕文本**（一个字幕条一次只显示一句；没有字幕时为 null）。
+   *
+   * 字幕是观众直接读到的东西，但它和正文是两套数据，以前谁都没核对过。
+   */
+  captionText: string | null;
+  /** 这一页所有可能的字幕文本；实际显示的那句必须是其中之一 */
+  expectCaptions: string[];
+  /** 可能被截断的长文案原文，由 `auditPrefix` 核对“截断而非改写” */
+  expectLongTexts: string[];
 }

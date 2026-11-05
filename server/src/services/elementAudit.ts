@@ -292,6 +292,81 @@ export function auditPairs(
   ];
 }
 
+/**
+ * 字幕**对不对**：屏幕上那句字幕必须来自这一页的字幕数据。
+ *
+ * 字幕条一次只显示一句（按语音时长切），所以他核对的是"显示的那句是不是本页的某一句"。
+ * 字幕和正文是两套数据，此前完全没有核对——字幕写错字、串页、显示上一页的话都没人管。
+ */
+export function auditCaption(
+  captionText: string | null | undefined,
+  expectCaptions: readonly string[] | null | undefined,
+): ElementFinding[] {
+  if (!captionText) return [];
+  if (!expectCaptions || expectCaptions.length === 0) return [];
+  const norm = (s: string) => s.replace(/\s+/g, "").replace(/[…⋯]+/g, "");
+  const shown = norm(captionText);
+  if (!shown) return [];
+  /*
+   * 允许"前缀/包含"关系：字幕条宽度有限，长句会被截断显示（截断是版面设计），
+   * 所以要求"显示的这句是本页某句的一部分"，而不是完全相等。
+   */
+  const ok = expectCaptions.some((c) => {
+    const e = norm(c);
+    return e === shown || e.includes(shown) || shown.includes(e);
+  });
+  if (ok) return [];
+  const head = Array.from(shown).slice(0, 12).join("");
+  return [
+    {
+      level: "warn",
+      message: `字幕对不上：画面上显示「${head}…」，但本页字幕数据里没有这句`,
+    },
+  ];
+}
+
+/**
+ * 长文案的**前缀一致性**：渲染出来的那段，必须是数据原文的前缀。
+ *
+ * 长文案在页面上会被有意截断（省略号/裁切），所以不能核对尾部——那会满屏假阳性。
+ * 但"截断"和"改写"有一个可分辨的差别：截断结果是原文的前缀，改写不是。
+ * 于是核对方向反过来：拿渲染文本去比原文开头，对不上就说明中间被动过。
+ *
+ * 只在**长到会被截断**的文案上做（短文案已有首尾双片段核对，不需要它）。
+ */
+export function auditPrefix(
+  texts: readonly string[] | null | undefined,
+  rendered: readonly string[],
+): ElementFinding[] {
+  if (!texts || texts.length === 0) return [];
+  const norm = (s: string) => s.replace(/\s+/g, "").replace(/[…⋯.]+$/g, "");
+  const boxes = rendered.map(norm).filter(Boolean);
+  const bad: string[] = [];
+  for (const t of texts) {
+    const e = norm(t);
+    if (Array.from(e).length <= 12) continue; // 短文案不归这里管
+    /*
+     * 找到"以这段原文开头"的渲染盒子：把每条渲染文本当作前缀去试。
+     * 允许渲染文本比原文短（截断），但不允许渲染文本与原文开头不一致（改写）。
+     */
+    const hit = boxes.some((b) => {
+      if (b.length < 8) return false;
+      return e.startsWith(b) || b.startsWith(e);
+    });
+    if (!hit) bad.push(Array.from(e).slice(0, 10).join(""));
+  }
+  if (bad.length === 0) return [];
+  return [
+    {
+      level: "warn",
+      message: `长文案与原文对不上：${bad.length} 条长文案在页面上找不到"以它开头"的文字（${bad
+        .slice(0, 2)
+        .map((s) => `「${s}…」`)
+        .join("")}）`,
+    },
+  ];
+}
+
 export function auditElements(boxes: ElementBox[], opts: ElementAuditOptions): ElementFinding[] {
   const out: ElementFinding[] = [];
   if (!boxes.length) return out;

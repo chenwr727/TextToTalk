@@ -18,6 +18,8 @@ import {
   expectedNumbers,
   expectedIcons,
   expectedPairs,
+  expectedCaptions,
+  expectedLongTexts,
 } from "../shared/render/expectedBlocks";
 
 /**
@@ -105,6 +107,8 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
             data-expect-numbers={JSON.stringify(expectedNumbers(page))}
             data-expect-icons={JSON.stringify(expectedIcons(page))}
             data-expect-pairs={JSON.stringify(expectedPairs(page))}
+            data-expect-captions={JSON.stringify(expectedCaptions(page))}
+            data-expect-long={JSON.stringify(expectedLongTexts(page))}
             style={{ position: "absolute", inset: 0 }}
           >
             <BodyProbe pageIndex={pageIndex} sceneRef={sceneRef} />
