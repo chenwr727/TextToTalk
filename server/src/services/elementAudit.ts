@@ -490,6 +490,24 @@ export function auditAudioDuration(
   ];
 }
 
+/**
+ * 字幕数量与**配音句数**是否一致。
+ *
+ * 为什么要核：`ttsService` 对**部分失败**只 `console.warn`、不报错；
+ * 失败的那句不会进 `sentences`，于是那句**没声音、也不会显示字幕**，
+ * 而整个流程一路“成功”。观众只是觉得“这里忽然没声了”。
+ */
+export function auditSentenceCoverage(captions: number, sentences: number): ElementFinding[] {
+  if (sentences >= captions) return [];
+  const missing = captions - sentences;
+  return [
+    {
+      level: "warn",
+      message: `有 ${missing} 句没有配音（字幕 ${captions} 句、配音 ${sentences} 句）——这些句子不会有声音、也不显示字幕，常是 TTS 部分失败后被静默跳过`,
+    },
+  ];
+}
+
 export interface TruncationInfo {
   /** 有几条长文案被截断显示 */
   count: number;

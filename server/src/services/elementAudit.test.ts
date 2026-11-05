@@ -13,6 +13,7 @@ import {
   measureTruncation,
   auditCaptionTiming,
   auditAudioDuration,
+  auditSentenceCoverage,
 } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
@@ -405,4 +406,17 @@ test("auditAudioDuration：声明时长与真实音频差异要告警", () => {
   // 容差内不告警、拿不到音频也不告警
   assert.deepEqual(auditAudioDuration([{ text: "小偏差", declared: 4.0, real: 4.1 }]), []);
   assert.deepEqual(auditAudioDuration([{ text: "无音频", declared: 4.0, real: null }]), []);
+});
+
+test("auditSentenceCoverage：有字幕没配音要告警（TTS 部分失败只 warn）", () => {
+  // 实测两份真实 e2e 产物（6 页 / 5 页）：captions 与 sentences 句数全部相等
+  assert.deepEqual(auditSentenceCoverage(3, 3), []);
+  assert.deepEqual(auditSentenceCoverage(0, 0), []);
+  // sentences 比 captions 多不是错（不应告警）
+  assert.deepEqual(auditSentenceCoverage(2, 3), []);
+  // 少一句配音 → 那句没声音也不显示字幕
+  const f = auditSentenceCoverage(4, 3);
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /有 1 句没有配音/);
+  assert.match(f[0].message, /字幕 4 句、配音 3 句/);
 });
