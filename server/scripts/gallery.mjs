@@ -62,6 +62,19 @@ const PAGES = pagesJson
 const targets = PAGES.filter((p) => !only || String(p.layout).includes(only));
 
 /*
+ * `GALLERY_PAGES=a,b,c`：按**页名**（`pageName()`，如 `table-numeric`）精确挑页。
+ *
+ * `GALLERY_ONLY` 只能按 layout 子串过滤，于是"只重渲某几页"做不到——
+ * 而审计要做的事恰恰是"只重渲那几张过期的图"。两者互补：ONLY 给人用，
+ * PAGES 给脚本用。
+ */
+const pageSel = (process.env.GALLERY_PAGES || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const finalTargets = pageSel.length ? targets.filter((p) => pageSel.includes(pageName(p))) : targets;
+
+/*
  * 局部渲染会把**其余页面的旧图留在原地**，而审计只看图、不看它是不是这次渲的。
  *
  * 踩过的坑：`GALLERY_ONLY='points'` 之后去看地图，读到的是上一次对抗性检验
@@ -120,7 +133,7 @@ function runStill(configPath) {
   });
 }
 
-console.log(`[gallery] ${targets.length} 个版式，theme=${theme}，size=${CANVAS_W}x${CANVAS_H}`);
+console.log(`[gallery] ${finalTargets.length} 个版式，theme=${theme}，size=${CANVAS_W}x${CANVAS_H}`);
 /*
  * 取帧位置：默认 60%（入场动画早已结束，看的是"排好了的样子"）。
  *
@@ -128,7 +141,7 @@ console.log(`[gallery] ${targets.length} 个版式，theme=${theme}，size=${CAN
  * 想验证"开头是不是缺内容"就把这个比例调小，例如 GALLERY_AT=0.25。
  */
 const at = Math.min(0.95, Math.max(0.02, Number(process.env.GALLERY_AT || 0.6) || 0.6));
-for (const p of targets) {
+for (const p of finalTargets) {
   const idx = PAGES.indexOf(p);
   const frame = starts[idx] + Math.round(p.durationSec * FPS * at);
   // 同一版式可能有多个样本（四种图表 / 两种表格 / 长短两版要点），命名规则见 gallery-pages

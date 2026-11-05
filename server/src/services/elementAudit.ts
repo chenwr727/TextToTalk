@@ -220,7 +220,7 @@ export function auditIcons(
   return [
     {
       level: "warn",
-      message: `图标没画出来：${missing.join("、")}（id 可能不在 ICON_PATHS 里，IconView 会静默返回 null）`,
+      message: `图标对不上：数据声明了 ${missing.join("、")}，页面上没有它（id 不在 ICON_PATHS 里会静默不渲染，渲染成别的图标也会报）`,
     },
   ];
 }
@@ -229,11 +229,19 @@ export function auditIcons(
  * 数字**有没有配错**：数值应该和它自己的标签在同一个块里。
  *
  * `auditNumbers` 只核对"这个数还在页面上"，所以 A 的数值画到 B 那一行照样通过
- * （表头顺序改了、行列错位都会这样）。这里核对**配对**：同一条数据里的标签与数值
- * 必须出现在同一个盒子的文本里。
+ * （表头顺序改了、行列错位都会这样）。这里核对**配对**。
  *
- * 为什么是"同一个盒子"：表格一行的数值与标签在同一个行容器 `<div>` 里，
- * 图表标签与数值在同一个 `<g>` 里；跨盒子就说明它们被分到了不同行/不同块。
+ * 判据：存在一个盒子同时含该标签与该数值，且**不含别的标签的数值**。
+ *
+ * 那半句是关键——页面上有一个包住全部的容器，它同时含所有标签和所有数值；
+ * 若只要求"随便哪个盒子含就行"，那个大容器会让任何配对都通过（实测交换两条要点的
+ * 数字后判据毫无反应）。
+ *
+ * 注意排除的是"**别的标签**的数值"，不是"别的数值"：表格一行的盒子本来就含该行
+ * 多个数值（`自建 12,000元 3人 4个月` 是一个盒子），按后者排除会把这行判成不配对。
+ *
+ * 数值比对必须按**完整数字 token**，不能用子串包含：`12000` 里含 `1`、`38000` 里含 `3`，
+ * 子串匹配会把本行自己的数当成"别人出现的数"（实测 9 组全部误报就是栽在这）。
  */
 export function auditPairs(
   boxes: ElementBox[],
@@ -242,11 +250,34 @@ export function auditPairs(
   if (!pairs || pairs.length === 0) return [];
   const norm = (s: string) => s.replace(/\s+/g, "").replace(/(\d),(?=\d{3})/g, "$1");
   const texts = boxes.map((b) => norm(b.text ?? ""));
+  /** 盒子里的完整数字集合（按数字边界切，`12000` 只算 `12000`） */
+  const numsOf = (t: string): Set<string> => new Set(t.match(/\d+(?:\.\d+)?/g) ?? []);
+  const boxNums = texts.map(numsOf);
+  // 标签 → 它自己的数值集合：用来判断"这个盒子里的数值是不是别人的"
+  const own = new Map<string, Set<string>>();
+  for (const p of pairs) {
+    const l = norm(p.label);
+    const v = norm(p.value);
+    if (!l || !v) continue;
+    if (!own.has(l)) own.set(l, new Set());
+    own.get(l)?.add(v);
+  }
   const bad = pairs.filter(({ label, value }) => {
     const l = norm(label);
     const v = norm(value);
     if (!l || !v) return false;
-    return !texts.some((t) => t.includes(l) && t.includes(v));
+    const otherValues = new Set<string>();
+    for (const [otherLabel, values] of own) {
+      if (otherLabel === l) continue;
+      for (const ov of values) if (ov !== v) otherValues.add(ov);
+    }
+    return !texts.some((t, i) => {
+      if (!t.includes(l)) return false;
+      const nums = boxNums[i];
+      if (!nums.has(v)) return false;
+      for (const ov of otherValues) if (nums.has(ov)) return false;
+      return true;
+    });
   });
   if (bad.length === 0) return [];
   const shown = bad

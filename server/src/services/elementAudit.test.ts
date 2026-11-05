@@ -218,7 +218,7 @@ test("auditNumbers：千分位与分开渲染不告警", () => {
 test("auditIcons：图标 id 不认识（没渲染）要告警", () => {
   const findings = auditIcons([], ["rocket"]);
   assert.equal(findings.length, 1);
-  assert.match(findings[0].message, /图标没画出来/);
+  assert.match(findings[0].message, /图标对不上/);
   assert.match(findings[0].message, /rocket/);
   assert.deepEqual(auditIcons(["rocket"], ["rocket"]), []);
   assert.deepEqual(auditIcons([], []), []);
@@ -253,4 +253,35 @@ test("auditPairs：数值张冠李戴（A 的数画到 B 那行）要告警", ()
 test("auditPairs：没有配对数据时不判", () => {
   assert.deepEqual(auditPairs([box({ text: "任意" })], []), []);
   assert.deepEqual(auditPairs([box({ text: "任意" })], null), []);
+});
+
+test("auditPairs：数值按完整数字比对，不能子串误伤（回归）", () => {
+  /*
+   * 踩过的坑：子串匹配把 `12000` 里的 `1`、`38000` 里的 `3` 当成“别人的数”，
+   * 于是表格页 9 组全部误报。这里把那个场景固定下来。
+   */
+  const boxes = [
+    box({ y: 400, h: 60, w: 900, text: "自建12,000元3人4个月" }),
+    box({ y: 500, h: 60, w: 900, text: "采购38,000元1人1个月" }),
+  ];
+  assert.deepEqual(
+    auditPairs(boxes, [
+      { label: "自建", value: "12000" },
+      { label: "自建", value: "3" },
+      { label: "采购", value: "38000" },
+      { label: "采购", value: "1" },
+    ]),
+    [],
+  );
+});
+
+test("auditPairs：包住全部的容器不能让任何配对通过", () => {
+  // 一个大盒子同时含两组的标签与数值：按“随便哪个盒子含就行”会假通过
+  const boxes = [box({ y: 400, h: 300, w: 900, text: "自建38,000元 采购12,000元" })];
+  const findings = auditPairs(boxes, [
+    { label: "自建", value: "12000" },
+    { label: "采购", value: "38000" },
+  ]);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /数值与标签没在一起/);
 });

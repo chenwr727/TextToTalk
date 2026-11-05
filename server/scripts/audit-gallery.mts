@@ -259,15 +259,36 @@ if (noGeom.length) console.log(`  没几何：${noGeom.map((r) => r.name).join("
 if (noHead.length) console.log(`  无标题（几何照可用）：${noHead.map((r) => r.name).join(", ")}`);
 /*
  * 过期图片给出**可直接执行**的重渲命令，别让人对着"N 页过期"自己猜怎么修。
- * 局部渲染（GALLERY_ONLY）是主要来源：只重渲匹配到的页，其余页面保留旧图。
+ * 局部渲染（GALLERY_ONLY / GALLERY_PAGES）是主要来源：只重渲挑中的页，其余保留旧图。
+ *
+ * `AUDIT_FIX=1` 时自动把那几页重渲掉，然后提示重跑审计——
+ * 自动重渲只覆盖"过期"这一种情况，因为它是唯一能**确定该怎么修**的情况
+ * （其余告警要靠人判断，不该让脚本自作主张改产物）。
  */
 const staleRows = rows.filter((r) => r.stale);
 if (staleRows.length) {
   const size = portrait ? "portrait" : "landscape";
   const dirName = portrait ? "tech-portrait" : "tech";
-  console.log(
-    `\n⚠ ${staleRows.length} 页图片比渲染产物旧（不是当前代码渲的）：${staleRows.map((r) => r.name).join(", ")}`,
-  );
+  const names = staleRows.map((r) => r.name);
+  console.log(`\n⚠ ${names.length} 页图片比渲染产物旧（不是当前代码渲的）：${names.join(", ")}`);
+  if (process.env.AUDIT_FIX === "1") {
+    console.log(`  AUDIT_FIX=1：正在重渲这 ${names.length} 页…`);
+    const r = spawnSync(process.execPath, [path.join("scripts", "gallery.mjs")], {
+      stdio: "inherit",
+      env: { ...process.env, GALLERY_SIZE: size, GALLERY_THEME: "tech", GALLERY_PAGES: names.join(",") },
+    });
+    if (r.status !== 0) {
+      console.log(`  重渲失败（exit ${r.status}），请手动执行下面的命令`);
+    } else {
+      console.log(`  ✓ 已重渲。重跑审计看新数字：`);
+      console.log(`    node --import tsx scripts\\audit-gallery.mts out\\gallery\\${dirName} ${size}`);
+      process.exit(0);
+    }
+  }
   console.log(`  重渲：$env:GALLERY_SIZE='${size}'; node scripts\\gallery.mjs   （去掉 GALLERY_ONLY 才会渲全部）`);
+  console.log(`  或只重渲这几页：$env:GALLERY_PAGES='${names.join(",")}'; node scripts\\gallery.mjs`);
+  console.log(
+    `  或加 AUDIT_FIX=1 自动重渲：$env:AUDIT_FIX='1'; node --import tsx scripts\\audit-gallery.mts out\\gallery\\${dirName} ${size}`,
+  );
   console.log(`  再审计：node --import tsx scripts\\audit-gallery.mts out\\gallery\\${dirName} ${size}`);
 }
