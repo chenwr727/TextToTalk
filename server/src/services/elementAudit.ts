@@ -460,6 +460,36 @@ export function auditCaptionTiming(
   ];
 }
 
+/**
+ * 字幕声明时长与**真实音频长度**是否一致。
+ *
+ * 为什么要核：字幕和画面切换全靠 `seconds`；如果 `seconds` 和实际音频不一样，
+ * 就是“声音已经说完、字幕还挂着”或“字幕已经切了、声音还在说”——观众一看就知道。
+ *
+ * 容差 0.15s：编码尾巴/静音会带来小偏差，但超过十分之一秒就能看出来。
+ */
+export function auditAudioDuration(
+  rows: readonly { text: string; declared: number; real: number | null }[],
+): ElementFinding[] {
+  const bad: string[] = [];
+  for (const r of rows) {
+    if (r.real == null) continue;
+    const d = r.real - r.declared;
+    if (Math.abs(d) <= 0.15) continue;
+    const head = Array.from(r.text.replace(/\s+/g, "")).slice(0, 8).join("");
+    bad.push(
+      `「${head}…」声明 ${r.declared.toFixed(2)}s、实际 ${r.real.toFixed(2)}s（差 ${d > 0 ? "+" : ""}${d.toFixed(2)}s）`,
+    );
+  }
+  if (bad.length === 0) return [];
+  return [
+    {
+      level: "warn",
+      message: `字幕时长和真实音频对不上：${bad.length} 句（${bad.slice(0, 2).join("；")}）——声音和字幕会错开`,
+    },
+  ];
+}
+
 export interface TruncationInfo {
   /** 有几条长文案被截断显示 */
   count: number;

@@ -12,6 +12,7 @@ import {
   auditOrder,
   measureTruncation,
   auditCaptionTiming,
+  auditAudioDuration,
 } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
@@ -382,4 +383,26 @@ test("auditCaptionTiming：该说 B 却显 A 要告警（字幕都是本页的�
   assert.deepEqual(auditCaptionTiming(timing[1].text, timing, 125, fps, 0.5), []);
   // 没有真实时长数据（只有 captions）就不核
   assert.deepEqual(auditCaptionTiming("任意", null, 60, fps), []);
+});
+
+test("auditAudioDuration：声明时长与真实音频差异要告警", () => {
+  // 实测真实 e2e 产物：16 句声明与真实音频长度完全一致（0.00s 差）
+  assert.deepEqual(
+    auditAudioDuration([
+      { text: "你写了三小时的周报", declared: 4.132, real: 4.13 },
+      { text: "问题真不在你干得少", declared: 2.52, real: 2.52 },
+    ]),
+    [],
+  );
+  // 声音比声明长 1.4 秒 → 字幕提前切走
+  const long = auditAudioDuration([{ text: "一句话", declared: 4.13, real: 5.56 }]);
+  assert.equal(long.length, 1);
+  assert.match(long[0].message, /字幕时长和真实音频对不上/);
+  assert.match(long[0].message, /\+1\.43s/);
+  // 声音比声明短 2.5 秒 → 字幕还挂着没人说
+  const short = auditAudioDuration([{ text: "另一句", declared: 4.13, real: 1.6 }]);
+  assert.match(short[0].message, /-2\.53s/);
+  // 容差内不告警、拿不到音频也不告警
+  assert.deepEqual(auditAudioDuration([{ text: "小偏差", declared: 4.0, real: 4.1 }]), []);
+  assert.deepEqual(auditAudioDuration([{ text: "无音频", declared: 4.0, real: null }]), []);
 });
