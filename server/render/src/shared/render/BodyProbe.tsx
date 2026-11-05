@@ -40,7 +40,11 @@ const readList = (root: HTMLElement, attr: string): string[] => {
 export const BodyProbe: React.FC<{
   pageIndex: number;
   sceneRef: RefObject<HTMLDivElement | null>;
-}> = ({ pageIndex, sceneRef }) => {
+  /** 字幕时长数据（真实 TTS 产物才有），供审计独立复算字幕选句 */
+  captionTimingData?: { seconds: number; text: string }[] | null;
+  fps?: number;
+  sentenceGap?: number;
+}> = ({ pageIndex, sceneRef, captionTimingData = null, fps = 30, sentenceGap = 0 }) => {
   const frame = useCurrentFrame();
   useEffect(() => {
     // 让出一拍，等 Remotion 把舞台尺寸/位置写好（见文件头注释）
@@ -184,6 +188,10 @@ export const BodyProbe: React.FC<{
         expectCaptions: readList(root, "data-expect-captions"),
         expectLongTexts: readList(root, "data-expect-long"),
         expectOrder: readList(root, "data-expect-order"),
+        captionTimingData,
+        pageFrame: frame,
+        fps,
+        sentenceGap,
         expectPairs: (() => {
           const raw = root.getAttribute("data-expect-pairs");
           if (!raw) return [];

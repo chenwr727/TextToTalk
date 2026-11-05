@@ -113,7 +113,15 @@ export const PageBody: React.FC<PageBodyProps> = ({ page, fps, subtitles, isFirs
             data-expect-order={JSON.stringify(expectedOrder(page))}
             style={{ position: "absolute", inset: 0 }}
           >
-            <BodyProbe pageIndex={pageIndex} sceneRef={sceneRef} />
+            <BodyProbe
+              pageIndex={pageIndex}
+              sceneRef={sceneRef}
+              captionTimingData={
+                page.sentences?.length ? page.sentences.map((x) => ({ seconds: x.seconds, text: x.text })) : null
+              }
+              fps={fps}
+              sentenceGap={page.sentenceGap || 0}
+            />
             <SceneTimingContext.Provider value={timing}>
               <AnnotationContext.Provider value={page.effects?.annotation}>
                 <Scene page={page} fps={fps} subtitles={subtitles} isFirst={isFirst} />

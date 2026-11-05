@@ -416,6 +416,50 @@ export function auditOrder(
   return [];
 }
 
+/**
+ * 字幕时长与口播对齐：第 frame 帧屏幕上显示的那句，必须是“该说那句”。
+ *
+ * 为什么要独立重算：渲染端自己算当前应显示第几句，审计再用 `seconds` 算一遍。
+ * 两边独立得出同一个结论才算对；不一致就是“声音说 A、字幕显 B”——观众会发现，但没有判据时没人知道。
+ *
+ * 容差：切换点前后各留 `TOL` 帧（fade 过渡），避免卡在边界上报假。
+ */
+export function auditCaptionTiming(
+  shownText: string | null | undefined,
+  timing: { seconds: number; text: string }[] | null | undefined,
+  pageFrame: number,
+  fps: number,
+  sentenceGap = 0,
+): ElementFinding[] {
+  if (!shownText || !timing || timing.length === 0 || !fps) return [];
+  const norm = (s: string) => s.replace(/\s+/g, "").replace(/[…⋯]+/g, "");
+  const shown = norm(shownText);
+  if (!shown) return [];
+  const TOL = 3;
+  // 独立复算：逐句累加 "seconds*fps + gap"
+  const starts: { start: number; end: number; text: string }[] = [];
+  let off = 0;
+  const gapFrames = Math.round(sentenceGap * fps);
+  for (const s of timing) {
+    const dur = Math.max(1, Math.round(s.seconds * fps));
+    starts.push({ start: off, end: off + dur, text: s.text });
+    off += dur + gapFrames;
+  }
+  const hit = starts.find((s) => pageFrame >= s.start - TOL && pageFrame <= s.end + TOL);
+  if (!hit) return []; // 落在句间间隔里，不评价
+  const expect = norm(hit.text);
+  const ok = expect === shown || expect.includes(shown) || shown.includes(expect);
+  if (ok) return [];
+  const head = Array.from(shown).slice(0, 12).join("");
+  const want = Array.from(expect).slice(0, 12).join("");
+  return [
+    {
+      level: "warn",
+      message: `字幕与口播错位：第 ${pageFrame} 帧该说「${want}…」，画面却显示「${head}…」`,
+    },
+  ];
+}
+
 export interface TruncationInfo {
   /** 有几条长文案被截断显示 */
   count: number;

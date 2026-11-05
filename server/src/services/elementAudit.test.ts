@@ -11,6 +11,7 @@ import {
   auditPrefix,
   auditOrder,
   measureTruncation,
+  auditCaptionTiming,
 } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
@@ -362,4 +363,23 @@ test("measureTruncation：算出被截掉的字数", () => {
     hiddenChars: 0,
     samples: [],
   });
+});
+
+test("auditCaptionTiming：该说 B 却显 A 要告警（字幕都是本页的）", () => {
+  const timing = [
+    { seconds: 4, text: "第一句：审批链路卡在中间一层。" },
+    { seconds: 4, text: "第二句：所以下层干脆绕着走。" },
+  ];
+  const fps = 30;
+  // 第 1 句 = 0..120，第 2 句 = 120..240（gap=0）
+  assert.deepEqual(auditCaptionTiming(timing[0].text, timing, 60, fps), []);
+  assert.deepEqual(auditCaptionTiming(timing[1].text, timing, 180, fps), []);
+  // 第 180 帧该说第二句，却显示第一句
+  const f = auditCaptionTiming(timing[0].text, timing, 180, fps);
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /字幕与口播错位/);
+  // gap 区间不评价
+  assert.deepEqual(auditCaptionTiming(timing[1].text, timing, 125, fps, 0.5), []);
+  // 没有真实时长数据（只有 captions）就不核
+  assert.deepEqual(auditCaptionTiming("任意", null, 60, fps), []);
 });

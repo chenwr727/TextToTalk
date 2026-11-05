@@ -24,6 +24,7 @@ import {
   auditPrefix,
   auditOrder,
   measureTruncation,
+  auditCaptionTiming,
 } from "../src/services/elementAudit.js";
 
 const FF = process.env.E2E_FFMPEG || "ffmpeg";
@@ -170,6 +171,7 @@ for (const file of readdirSync(dir)
         ...auditIcons(els.icons, els.expectIcons),
         ...auditPairs(els.boxes, els.expectPairs),
         ...auditCaption(els.captionText, els.expectCaptions),
+        ...auditCaptionTiming(els.captionText, els.captionTimingData, els.pageFrame, els.fps, els.sentenceGap),
         ...auditOrder(els.expectOrder, els.boxes),
         ...auditPrefix(
           els.expectLongTexts,

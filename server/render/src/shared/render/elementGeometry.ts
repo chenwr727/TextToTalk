@@ -68,4 +68,16 @@ export interface ElementGeometryPayload {
   expectLongTexts: string[];
   /** 竖排要点的数据顺序，由 `auditOrder` 核对“没被互换” */
   expectOrder: string[];
+  /**
+   * 字幕时长与口播对齐所需的原始信息（由 `auditCaptionTiming` 独立复算）。
+   *
+   * 字幕应该“说哪句就显哪句”。现在只能核“显示的是本页的句子”，
+   * 核不出“对不上时间”。把 `seconds` 报上来，审计就能自己重算一遍。
+   */
+  captionTimingData: { seconds: number; text: string }[] | null;
+  /** 页内帧号与帧率，用来把 `seconds` 换成帧 */
+  pageFrame: number;
+  fps: number;
+  /** 句间间隔（秒） */
+  sentenceGap: number;
 }

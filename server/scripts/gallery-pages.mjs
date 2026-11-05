@@ -30,6 +30,31 @@ export const PAGES = [
   }),
   page({ layout: "section", role: "transition", title: "第一部分 · 症状", accent: 1 }),
   /*
+   * 带**真实时长**的字幕样本（模拟 TTS 产物）。
+   *
+   * 字幕对不对、显示时机对不对，都需要 `sentences[].seconds`——
+   * 之前全部样本只有 `captions`，所以这类判据根本无法在 gallery 上验证。
+   * 两句时长相加占满整页，中间留 0.12s 句间隔。
+   */
+  page({
+    layout: "points",
+    _name: "caption-timing",
+    title: "字幕时长样本",
+    points: [
+      { text: "第一句话说完就应该切到第二句" },
+      { text: "切得太晚就会嘴巴说东字幕显西" },
+      { text: "所以要拿真实时长算一遍" },
+    ],
+    captions: ["第一句：审批链路卡在中间一层。", "第二句：所以下层干脆绕着走。"],
+    sentences: [
+      { text: "第一句：审批链路卡在中间一层。", seconds: 3.94 },
+      { text: "第二句：所以下层干脆绕着走。", seconds: 4.06 },
+    ],
+    sentenceGap: 0.12,
+    durationSec: 8.12,
+    accent: 2,
+  }),
+  /*
    * 页面级图标（右上角装饰）的样本。
    *
    * 之前一个都没有，`auditIcons` 在 gallery 上从不触发——判据写了却没人验证。
