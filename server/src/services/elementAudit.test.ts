@@ -14,6 +14,7 @@ import {
   auditCaptionTiming,
   auditAudioDuration,
   auditSentenceCoverage,
+  auditNarrationMatchesCaptions,
 } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
@@ -419,4 +420,20 @@ test("auditSentenceCoverage：有字幕没配音要告警（TTS 部分失败只 
   assert.equal(f.length, 1);
   assert.match(f[0].message, /有 1 句没有配音/);
   assert.match(f[0].message, /字幕 4 句、配音 3 句/);
+});
+
+test("auditNarrationMatchesCaptions：口播稿与字幕分歧要告警", () => {
+  // 实测真实 e2e 产物 11 页全部同一份
+  const same = ["你写了三小时的周报。问题真不在你。", ["你写了三小时的周报。", "问题真不在你。"]] as const;
+  assert.deepEqual(auditNarrationMatchesCaptions(same[0], same[1]), []);
+  // 空白不算分歧
+  assert.deepEqual(auditNarrationMatchesCaptions("第一句 第二句", ["第一句第", "二句"]), []);
+  // 一个标点不一样也要报（实测用这个做反向验证）
+  const f = auditNarrationMatchesCaptions("第一句。第二句", ["第一句？第二句"]);
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /口播稿与字幕不是同一句话/);
+  assert.match(f[0].message, /第 4 个字/);
+  // 缺字段时不核（没必要报）
+  assert.deepEqual(auditNarrationMatchesCaptions("", ["x"]), []);
+  assert.deepEqual(auditNarrationMatchesCaptions("x", []), []);
 });

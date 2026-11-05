@@ -508,6 +508,41 @@ export function auditSentenceCoverage(captions: number, sentences: number): Elem
   ];
 }
 
+/** 去掉所有空白，用来比对“是不是同一句话” */
+function compactText(t: string): string {
+  return t.replace(/\s+/g, "");
+}
+
+/**
+ * 口播稿（`narration`）与字幕（`captions`）是否是**同一份文本**。
+ *
+ * 为什么要核：两者是分开存的字段。一旦它们分歧，观众就会**听到一套、看到另一套**——
+ * 声音说“回复率从 12% 到 68%”，字幕却写着另一句。这不需要语义理解：同一句话必然逐字相等。
+ *
+ * 实测两份真实 e2e 产物（共 11 页）：**全部同一份**。
+ */
+export function auditNarrationMatchesCaptions(narration: string, captions: readonly string[]): ElementFinding[] {
+  if (!narration || captions.length === 0) return [];
+  const a = compactText(narration);
+  const b = compactText(captions.join(""));
+  if (a === b) return [];
+  /*
+   * 报“从第几个字开始不一样”——比报两段长文字有用得多。
+   */
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  const at = i + 1;
+  const tail = (s: string) => Array.from(s.slice(i)).slice(0, 10).join("");
+  return [
+    {
+      level: "warn",
+      message:
+        `口播稿与字幕不是同一句话（从第 ${at} 个字开始分歧）：` +
+        `口播「${tail(a)}」、字幕「${tail(b)}」——观众会听到一套、看到另一套`,
+    },
+  ];
+}
+
 export interface TruncationInfo {
   /** 有几条长文案被截断显示 */
   count: number;

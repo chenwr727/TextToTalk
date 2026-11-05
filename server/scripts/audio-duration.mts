@@ -7,7 +7,11 @@
  * \u5b9e\u6d4b\u4e24\u4efd\u771f\u5b9e e2e \u4ea7\u7269\uff08\u5404 16 \u53e5\uff09\uff1a\u58f0\u660e\u65f6\u957f\u4e0e\u771f\u5b9e\u97f3\u9891**\u5b8c\u5168\u4e00\u81f4**\uff080.00s\uff09\u3002
  */
 import { readFileSync, existsSync } from "node:fs";
-import { auditAudioDuration, auditSentenceCoverage } from "../src/services/elementAudit.js";
+import {
+  auditAudioDuration,
+  auditSentenceCoverage,
+  auditNarrationMatchesCaptions,
+} from "../src/services/elementAudit.js";
 
 /**
  * \u8bfb RIFF chunk \u5f97\u771f\u5b9e\u65f6\u957f\u3002
@@ -42,6 +46,7 @@ if (!existsSync(pagesJson)) {
 }
 const pages = Object.values(JSON.parse(readFileSync(pagesJson, "utf8"))) as {
   pageIndex?: number;
+  narration?: string;
   captions?: string[];
   sentences?: { text: string; seconds: number; audioUrl?: string }[];
 }[];
@@ -65,7 +70,15 @@ const coverage = pages.flatMap((p) =>
     message: `第 ${(p.pageIndex ?? 0) + 1} 页：${f.message}`,
   })),
 );
-const findings = [...coverage, ...auditAudioDuration(rows)];
+/* 口播稿 vs 字幕：分歧就是“听到一套、看到另一套” */
+const narrationChecks = pages.flatMap((p) =>
+  auditNarrationMatchesCaptions(p.narration ?? "", p.captions ?? []).map((f) => ({
+    ...f,
+    message: `第 ${(p.pageIndex ?? 0) + 1} 页：${f.message}`,
+  })),
+);
+
+const findings = [...coverage, ...narrationChecks, ...auditAudioDuration(rows)];
 if (findings.length === 0) {
   console.log(
     "\u2713 \u58f0\u660e\u65f6\u957f\u4e0e\u771f\u5b9e\u97f3\u9891\u4e00\u81f4\uff08\u5bb9\u5dee 0.15s\uff09",
