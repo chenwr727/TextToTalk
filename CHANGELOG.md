@@ -54,6 +54,22 @@
 
 ### 修复
 
+- **成片体检一直跑不起来（真 bug，已修）**：`e2e.mts` 的 `auditMp4` 需要用
+  `-f rawvideo -pix_fmt gray` 把画面导成裸字节，但 **Remotion 自带的 ffmpeg 是精简版，
+  根本没有 rawvideo muxer**（`-muxers` 里只有 adts/avi/gif/h264/hevc/image2/image2pipe）。
+  报错是「Requested output format 'rawvideo' is not known」+ 「Error initializing the muxer」，
+  看起来像体检坏了，实际是选错了可执行文件。现在 `findFfmpeg()` 会**显式避开
+  Remotion 自带的那个**（按路径含 `@remotion`/`compositor-win32` 判断），优先用系统完整版。
+  修后两份真实成片都能体检完整（0 页告警）。
+- **成片体检的真实数据（之前从未跑过，现在有数了）**：
+  `e2e-1793254996507`：title 31% / comparison 100% / chart 100% / three_card 72% / end 40%；
+  `e2e-1793244004814`：title 22% / points 93% / three_card 65% / chart 100% / points 51% / end 40%。
+  两份的 title 与 end 都是最低（22–41%），与 gallery 静态图口径测出的结论一致。
+- **chart 页五点差异 20pp 是字幕引起的度量假象（已抽帧确认）**：
+  80/80/100/100/100%，把 30.57s 与 34.37s 两帧都抽出来看，柱状图、标题、轴标签完全一致，
+  差别只在**底部字幕条的文字长度不同**（「只把流水账换成三句话结论」vs
+  「被认真回复的比例，从12%涨到68%」），墨迹范围因此不同。
+  这是度量口径的假象，**不是内容问题**，不需要改。
 - **成片帧数与分镜是否对得上（`expectedFrames`，新能力）**：之前所有判据都只看静态图和数据，
   **没有一条核到最终 MP4 本身**。现在用 `ffprobe` 读成片帧数，
   与渲染端真实算法（页帧数之和 − 转场重叠，重叠用**下一页**的 transition 长度）对比。

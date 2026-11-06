@@ -360,7 +360,30 @@ const ensureApi = async (): Promise<import("node:child_process").ChildProcess | 
 
 /* ---------------------------------------------------------------- 体检 */
 
-const FFMPEG = process.env.E2E_FFMPEG || "ffmpeg";
+/*
+ * 用哪个 ffmpeg 很重要，实测踩过：
+ *
+ * Remotion 自带的那个精简版**没有 rawvideo muxer**（`ffmpeg -muxers` 里只有
+ * adts/avi/gif/h264/hevc/image2/image2pipe），拿它做灰度抽帧会报
+ * 「Requested output format 'rawvideo' is not known」+「Error initializing the muxer」，
+ * 看起来像体检坏了，其实是选错了可执行文件。
+ *
+ * 所以这里显式避开 Remotion 自带的那个：优先用 E2E_FFMPEG，其次系统 ffmpeg。
+ */
+const isRemotionBundledFfmpeg = (p: string) => /[\\/]@remotion[\\/]|compositor-win32/.test(p);
+
+const findFfmpeg = (): string => {
+  if (process.env.E2E_FFMPEG) return process.env.E2E_FFMPEG;
+  // 系统里先找到的 ffmpeg 才是完整版；找不到再退回裸 "ffmpeg" 让 spawn 自己报错
+  for (const dir of (process.env.PATH || "").split(path.delimiter)) {
+    if (!dir.trim()) continue;
+    const exe = path.join(dir, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+    if (existsSync(exe) && !isRemotionBundledFfmpeg(exe)) return exe;
+  }
+  return "ffmpeg";
+};
+
+const FFMPEG = findFfmpeg();
 
 const runFfmpeg = (args: string[]) =>
   new Promise<void>((resolve, reject) => {
