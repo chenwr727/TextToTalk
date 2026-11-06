@@ -418,3 +418,53 @@ test("bodyBand：竖屏与横屏各给出不含标题/字幕的正文带", () =>
   assert.equal(l.top, 200);
   assert.ok(l.bottom > 900 && l.bottom < 940, `横屏字幕条在 y≈929，实测 ${l.bottom}`);
 });
+test("auditVerdict：正文带顶端只有细装饰线时，上间距不能当成内容中间的洞", () => {
+  /*
+   * 真实误报（e2e-1793931367231 横屏 table 页，五个采样点一致）：
+   *   void 122px 从 y=209 起，ink 200..913，但**上方只有 9px 墨迹**、下方 583px。
+   *   那 9px 是标题下的细装饰线。旧判据报了「页面内部 122px 连续空白」，
+   *   而那张图四行三列俱全、文字无裁切。
+   */
+  const metrics = {
+    fill: 0.99,
+    voidPx: 122,
+    voidAt: 209,
+    inkRatio: 0.09,
+    inkTop: 200,
+    inkBottom: 913,
+    inkLeft: 100,
+    inkRight: 1800,
+    structTop: 200,
+    structBottom: 913,
+    structVoidPx: 122,
+    structVoidAt: 209,
+  };
+  const v = auditNs.auditVerdict(metrics as never, 1920, 1080, false);
+  assert.equal(v.filter((x) => x.level === "warn").length, 0, "上方只有 9px 细墨迹 → 不能报内部洞");
+  const info = v.find((x) => x.message.includes("标题到正文的上间距"));
+  assert.ok(info, "应该说清楚这是上间距，而不是静默");
+
+  /*
+   * 对照：真的内容中间被劈开——上方有成块内容（实测 title 页上方 87px），
+   * 必须仍然告警，不能把真问题一起消掉。
+   */
+  const hole = {
+    fill: 0.9,
+    voidPx: 300,
+    voidAt: 350,
+    inkRatio: 0.12,
+    inkTop: 250,
+    inkBottom: 900,
+    inkLeft: 100,
+    inkRight: 1800,
+    structTop: 250,
+    structBottom: 900,
+    structVoidPx: 300,
+    structVoidAt: 350,
+  };
+  const vh = auditNs.auditVerdict(hole as never, 1920, 1080, false);
+  assert.ok(
+    vh.some((x) => x.level === "warn" && x.message.includes("连续空白")),
+    "上方有 100px 成块内容时，300px 空洞必须仍告警",
+  );
+});

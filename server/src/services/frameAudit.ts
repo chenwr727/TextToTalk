@@ -292,6 +292,13 @@ export interface VerdictOptions {
 
 /** 标题底 → 正文顶允许的最大空隙（正常页面实测 12~91px） */
 export const HEAD_GAP_LIMIT = 120;
+/**
+ * void 上方至少要有这么高的墨迹，才算「成块内容」，进而把 void 判成内容中间的洞。
+ *
+ * 一行正文实测 26~40px 高；不足 24px 的墨迹只可能是标题下那条细装饰线。
+ * 实测（横屏 table 页 122px 误报）：上方只有 9px、下方 583px。
+ */
+export const VOID_MIN_CONTENT_ABOVE = 24;
 /** 正文底 → 正文带底允许的最大空白（正常页面实测 0~150px；720px 带里留超过 200px 就是下半截空着） */
 export const BOTTOM_AIR_LIMIT = 200;
 /** 竖屏「整页居中」路径的对称容忍度（相对正文带高） */
@@ -464,10 +471,36 @@ export function auditVerdict(
      * 头部空隙当作正常（HEAD_GAP_LIMIT）。同一份体检不应该一边说 110px 正常、
      * 一边说 110px 破了版面。
      */
-    out.push({
-      level: "warn",
-      message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）；没拿到 DOM 几何，这条可能是浅色结构引起的误报`,
-    });
+    /*
+     * 「内容中间的洞」要求 void 上方真的有成块内容。
+     *
+     * 实测（横屏 table 页，e2e-1793931367231，五个采样点一致）：
+     *   void 122px 从 y=209 起，ink 200..913 —— 但**上方只有 9px 墨迹**、下方 583px。
+     *   那 9px 是标题下面那条细装饰线。`voidPx` 只从 `inkTop` 量到 `inkBottom`，
+     *   这条线把 bbox 顶到了正文带顶端，于是「标题→正文的上间距」被算成了内容中间的洞，
+     *   而它只比 120px 阈值多 2px，就报了告警——一张四行三列俱全、文字无裁切的正常表格页。
+     *
+     * 之所以能靠这个特征区分：`voidPx` 定义上就在 bbox 内部。内容真的被往下压时
+     * （band 顶部没有任何墨迹），`inkTop` 就等于内容顶端，`voidPx` 会很小甚至为 0，
+     * 本来也不会从这条判据里冒出来。能在这里出现的「上间距」，只可能上方有零散细墨迹。
+     *
+     * 一行正文实测 26~40px 高，所以不足 VOID_MIN_CONTENT_ABOVE 的墨迹不可能是内容块。
+     */
+    const inkAboveVoid = inVoid > 0 ? inVoidAt - m.inkTop : 0;
+    if (inkAboveVoid < VOID_MIN_CONTENT_ABOVE) {
+      out.push({
+        level: "info",
+        message:
+          `正文带顶部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%），` +
+          `但上方只有 ${inkAboveVoid}px 细墨迹、下方 ${m.inkBottom - (inVoidAt + inVoid)}px 是内容——` +
+          `这是标题到正文的上间距，不是内容中间被劈开`,
+      });
+    } else {
+      out.push({
+        level: "warn",
+        message: `页面内部有 ${inVoid}px 连续空白（从 y=${inVoidAt} 起，占正文带 ${pct(inVoid)}%）；没拿到 DOM 几何，这条可能是浅色结构引起的误报`,
+      });
+    }
   }
   if (m.structTop > 0) {
     const headGap = m.structTop - b.top;
