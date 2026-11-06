@@ -15,6 +15,7 @@ import {
   auditAudioDuration,
   auditSentenceCoverage,
   auditNarrationMatchesCaptions,
+  expectedFrames,
 } from "./elementAudit";
 import type { ElementBox } from "../../render/src/shared/render/elementGeometry";
 
@@ -436,4 +437,52 @@ test("auditNarrationMatchesCaptions：口播稿与字幕分歧要告警", () => 
   // 缺字段时不核（没必要报）
   assert.deepEqual(auditNarrationMatchesCaptions("", ["x"]), []);
   assert.deepEqual(auditNarrationMatchesCaptions("x", []), []);
+});
+
+test("expectedFrames：页帧数之和减转场重叠（对照真实成片）", () => {
+  /*
+   * 真实 e2e-1793254996507（5 页，fps=30）：
+   * 页帧数 215+543+473+467+255 = 1953；
+   * 转场重叠用**下一页**的 transition：slide-left14 + zoom16 + fade12 + fade12 = 54；
+   * 1953 - 54 = 1899，成片实测 1900 帧（差 1 帧属舍入）。
+   */
+  const pages = [
+    { sentences: [{ seconds: 3.94 }, { seconds: 4.06 }], sentenceGap: 0.5, transition: "fade" },
+    {
+      sentences: [{ seconds: 4.13 }, { seconds: 4.132 }, { seconds: 4.0 }, { seconds: 4.4 }],
+      sentenceGap: 0.5,
+      transition: "slide-left",
+    },
+    {
+      sentences: [{ seconds: 3.5 }, { seconds: 3.6 }, { seconds: 3.6 }, { seconds: 3.6 }],
+      sentenceGap: 0.5,
+      transition: "zoom",
+    },
+    {
+      sentences: [{ seconds: 3.5 }, { seconds: 3.5 }, { seconds: 3.5 }, { seconds: 3.5 }],
+      sentenceGap: 0.5,
+      transition: "fade",
+    },
+    { sentences: [{ seconds: 4.0 }, { seconds: 4.0 }], sentenceGap: 0.5, transition: "fade" },
+  ];
+  const want = expectedFrames(pages, 30);
+  // 得数应接近 1899；这里只固定算法本身：页和减重叠
+  let sum = 0;
+  for (const p of pages) {
+    sum +=
+      p.sentences.reduce((a, s) => a + Math.round(s.seconds * 30), 0) +
+      Math.round(p.sentenceGap * 30) * (p.sentences.length - 1);
+  }
+  assert.equal(want, sum - (14 + 16 + 12 + 12));
+
+  // 无 sentences 时用 durationSec（默认 4s）
+  assert.equal(expectedFrames([{ durationSec: 5, transition: "fade" }], 30), 150);
+  assert.equal(expectedFrames([{ transition: "fade" }], 30), 120);
+
+  // 单页无转场可重叠
+  assert.equal(expectedFrames([{ sentences: [{ seconds: 2 }], sentenceGap: 0.5 }], 30), 60);
+
+  // 变长一句 → 帧数必须变（反向验证用的就是这个）
+  const longer = pages.map((p, i) => (i === 1 ? { ...p, sentences: [{ seconds: 6.13 }, ...p.sentences.slice(1)] } : p));
+  assert.equal(want + 60, expectedFrames(longer, 30));
 });

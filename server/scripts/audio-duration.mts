@@ -7,10 +7,12 @@
  * \u5b9e\u6d4b\u4e24\u4efd\u771f\u5b9e e2e \u4ea7\u7269\uff08\u5404 16 \u53e5\uff09\uff1a\u58f0\u660e\u65f6\u957f\u4e0e\u771f\u5b9e\u97f3\u9891**\u5b8c\u5168\u4e00\u81f4**\uff080.00s\uff09\u3002
  */
 import { readFileSync, existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import {
   auditAudioDuration,
   auditSentenceCoverage,
   auditNarrationMatchesCaptions,
+  expectedFrames,
 } from "../src/services/elementAudit.js";
 
 /**
@@ -77,6 +79,46 @@ const narrationChecks = pages.flatMap((p) =>
     message: `第 ${(p.pageIndex ?? 0) + 1} 页：${f.message}`,
   })),
 );
+
+/*
+ * 成片帧数核对：成片 = 页帧数之和 − 转场重叠。
+ *
+ * 页帧数与转场重叠均取自渲染端真实算法（DynamicVideo 第 49-54 行、
+ * TransitionSeries 用**下一页**的 transition 长度重叠）。
+ * 实测 e2e-1793254996507：页和 1953 帧、转场 54 帧（slide-left14+zoom16+fade12+fade12）
+ * → 预期 1899，成片实测 1900，差 1 帧属舍入。
+ * 若差异超过 2 帧，说明**字幕/语音时长与最终视频对不上**：声音和画面会越走越错。
+ */
+
+const fpsArg = Number(process.argv[3] || 30);
+const mp4Path = `out/${task}.mp4`;
+if (existsSync(mp4Path)) {
+  const probe = JSON.parse(
+    execFileSync("ffprobe", [
+      "-v",
+      "error",
+      "-show_entries",
+      "stream=codec_type,nb_frames",
+      "-select_streams",
+      "v:0",
+      "-of",
+      "json",
+      mp4Path,
+    ]).toString(),
+  ) as { streams?: { nb_frames?: string }[] };
+  const real = Number(probe.streams?.[0]?.nb_frames ?? NaN);
+  const want = expectedFrames(pages, fpsArg);
+  if (Number.isFinite(real) && Math.abs(real - want) <= 2) {
+    console.log(`✓ 成片帧数对得上：${real} 帧（分镜算出 ${want}）`);
+  } else {
+    console.log(
+      `✗ 成片帧数与分镜对不上：实测 ${real} 帧、分镜算出 ${want} 帧` +
+        `（差 ${real - want} 帧 ≈ ${((real - want) / fpsArg).toFixed(2)}s）——声音和画面会越走越错`,
+    );
+  }
+} else {
+  console.log(`（没有 ${mp4Path}，跳过成片帧数核对）`);
+}
 
 const findings = [...coverage, ...narrationChecks, ...auditAudioDuration(rows)];
 if (findings.length === 0) {

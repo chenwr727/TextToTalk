@@ -543,6 +543,46 @@ export function auditNarrationMatchesCaptions(narration: string, captions: reado
   ];
 }
 
+/** 转场帧数（与 shared/types.ts 的 TRANSITION_FRAME_MAP 一致） */
+const TRANSITION_FRAMES: Record<string, number> = {
+  none: 1,
+  fade: 12,
+  "slide-left": 14,
+  "slide-right": 14,
+  zoom: 16,
+};
+
+export interface FramePageLike {
+  durationSec?: number;
+  sentenceGap?: number;
+  transition?: string;
+  sentences?: { seconds: number }[];
+}
+
+/**
+ * 分镜应当炸出多少帧（与渲染端 DynamicVideo 的算法一致）。
+ *
+ * 页帧数 = Σ round(seconds×fps) + round(gap×fps)×(n−1)；
+ * TransitionSeries 用**下一页**的 transition 长度重叠，所以总数要减掉这些重叠。
+ *
+ * 实测两份真实 e2e 成片：预期 1899 / 2028 帧，成片实测 1900 / 2029（均差 1 帧，舍入）。
+ */
+export function expectedFrames(pages: readonly FramePageLike[], fps: number): number {
+  let total = 0;
+  for (const p of pages) {
+    const sentences = p.sentences ?? [];
+    total += sentences.length
+      ? sentences.reduce((a, s) => a + Math.max(1, Math.round(s.seconds * fps)), 0) +
+        Math.round((p.sentenceGap || 0) * fps) * Math.max(0, sentences.length - 1)
+      : Math.round((p.durationSec || 4) * fps);
+  }
+  let overlap = 0;
+  for (let i = 0; i < pages.length - 1; i++) {
+    overlap += TRANSITION_FRAMES[pages[i + 1].transition ?? "fade"] ?? 12;
+  }
+  return total - overlap;
+}
+
 export interface TruncationInfo {
   /** 有几条长文案被截断显示 */
   count: number;
