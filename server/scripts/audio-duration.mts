@@ -121,11 +121,25 @@ if (existsSync(mp4Path)) {
 }
 
 const findings = [...coverage, ...narrationChecks, ...auditAudioDuration(rows)];
-if (findings.length === 0) {
-  console.log(
-    "\u2713 \u58f0\u660e\u65f6\u957f\u4e0e\u771f\u5b9e\u97f3\u9891\u4e00\u81f4\uff08\u5bb9\u5dee 0.15s\uff09",
-  );
-} else {
+/*
+ * 只有真正核过才说「一致」。
+ *
+ * 实测踩过：把 `assets/tts/<task>` 移走后 16 句全缺音频，判据因为全都跳过而返回 []，
+ * 这里就打印了「✓ 声明时长与真实音频一致」——**一句都没核**。现在分开说。
+ */
+const checkedCount = rows.filter((r) => r.real != null).length;
+if (findings.length > 0) {
   for (const f of findings) console.log(`\u2717 ${f.message}`);
   process.exit(1);
+} else if (rows.length === 0) {
+  console.log("\uff08\u6ca1\u6709\u5b57\u5e55\u53ef\u6838\uff0c\u8df3\u8fc7\u65f6\u957f\u6838\u5bf9\uff09");
+} else if (checkedCount === 0) {
+  console.log(
+    `\u2717 ${rows.length} \u53e5\u5b57\u5e55\u4e00\u53e5\u90fd\u6ca1\u62ff\u5230\u771f\u5b9e\u97f3\u9891\uff0c\u65f6\u957f\u65e0\u6cd5\u6838\u5bf9\uff08\u4e0d\u662f\u201c\u4e00\u81f4\u201d\uff0c\u662f\u201c\u6ca1\u6838\u201d\uff09`,
+  );
+  process.exit(1);
+} else {
+  console.log(
+    `\u2713 \u58f0\u660e\u65f6\u957f\u4e0e\u771f\u5b9e\u97f3\u9891\u4e00\u81f4\uff08\u5bb9\u5dee 0.15s\uff0c\u5b9e\u6838 ${checkedCount} \u53e5\uff09`,
+  );
 }

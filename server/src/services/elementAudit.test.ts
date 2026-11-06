@@ -405,9 +405,16 @@ test("auditAudioDuration：声明时长与真实音频差异要告警", () => {
   // 声音比声明短 2.5 秒 → 字幕还挂着没人说
   const short = auditAudioDuration([{ text: "另一句", declared: 4.13, real: 1.6 }]);
   assert.match(short[0].message, /-2\.53s/);
-  // 容差内不告警、拿不到音频也不告警
+  // 容差内不告警
   assert.deepEqual(auditAudioDuration([{ text: "小偏差", declared: 4.0, real: 4.1 }]), []);
-  assert.deepEqual(auditAudioDuration([{ text: "无音频", declared: 4.0, real: null }]), []);
+  /*
+   * 拿不到音频时**要**告警（以前这里断言的是 []，那正是 bug）。
+   * 实测：assets/tts/<task> 移走后 16 句全缺音频，旧实现返回 []、
+   * CLI 打印「✓ 一致」——一句都没核。
+   */
+  const missing = auditAudioDuration([{ text: "无音频", declared: 4.0, real: null }]);
+  assert.equal(missing.length, 1);
+  assert.match(missing[0].message, /一句都没拿到真实音频/);
 });
 
 test("auditSentenceCoverage：有字幕没配音要告警（TTS 部分失败只 warn）", () => {
@@ -434,8 +441,11 @@ test("auditNarrationMatchesCaptions：口播稿与字幕分歧要告警", () => 
   assert.equal(f.length, 1);
   assert.match(f[0].message, /口播稿与字幕不是同一句话/);
   assert.match(f[0].message, /第 4 个字/);
-  // 缺字段时不核（没必要报）
-  assert.deepEqual(auditNarrationMatchesCaptions("", ["x"]), []);
+  /*
+   * 缺口播稿但有字幕：以前这里断言的是 []，那个“不核”是缺口。
+   * 现在要报（见专项测试）；而 captions 为空时确实没什么可比，仍保持静默。
+   */
+  assert.equal(auditNarrationMatchesCaptions("", ["x"]).length, 1);
   assert.deepEqual(auditNarrationMatchesCaptions("x", []), []);
 });
 
@@ -485,4 +495,62 @@ test("expectedFrames：页帧数之和减转场重叠（对照真实成片）", 
   // 变长一句 → 帧数必须变（反向验证用的就是这个）
   const longer = pages.map((p, i) => (i === 1 ? { ...p, sentences: [{ seconds: 6.13 }, ...p.sentences.slice(1)] } : p));
   assert.equal(want + 60, expectedFrames(longer, 30));
+});
+
+test("auditAudioDuration：一句都没拿到音频时不能报通过", () => {
+  /*
+   * 真实踩过：把 assets/tts/<task> 整个移走后，16 句全部拿不到音频，
+   * 旧实现因为全被 `real == null` 跳过而返回 []，CLI 打印了
+   * 「✓ 声明时长与真实音频一致」——**一句都没核**。
+   */
+  const allMissing = [
+    { text: "第一句", declared: 3.5, real: null },
+    { text: "第二句", declared: 4.2, real: null },
+  ];
+  const f = auditAudioDuration(allMissing);
+  assert.equal(f.length, 1, "全缺音频必须报一条");
+  assert.match(f[0].message, /一句都没拿到真实音频/);
+  assert.match(f[0].message, /不是“一致”，是“没核”/);
+
+  // 真核过、确实一致：保持静默
+  assert.deepEqual(
+    auditAudioDuration([
+      { text: "第一句", declared: 3.5, real: 3.52 },
+      { text: "第二句", declared: 4.2, real: 4.2 },
+    ]),
+    [],
+  );
+
+  // 部分缺音频、其余一致：已核过的那些没问题，不报
+  // （缺音频本身由 auditSentenceCoverage 负责，不在这里重复报）
+  assert.deepEqual(
+    auditAudioDuration([
+      { text: "第一句", declared: 3.5, real: null },
+      { text: "第二句", declared: 4.2, real: 4.2 },
+    ]),
+    [],
+  );
+
+  // 空表：没东西可核也不报（CLI 另有一条“没有字幕可核”）
+  assert.deepEqual(auditAudioDuration([]), []);
+});
+
+test("auditNarrationMatchesCaptions：有字幕却没口播稿要告警", () => {
+  /*
+   * 以前 `!narration || captions.length === 0` 一起直接放过。
+   * 但“有字幕、没口播稿”恰恰是最彻底的“有一套根本不存在”。
+   */
+  const f = auditNarrationMatchesCaptions("", ["第一句。", "第二句。"]);
+  assert.equal(f.length, 1);
+  assert.match(f[0].message, /没有口播稿/);
+  assert.match(f[0].message, /2 句字幕/);
+
+  // 只有空白也当成空
+  assert.equal(auditNarrationMatchesCaptions("   \n  ", ["句子。"]).length, 1);
+
+  // 整页没字幕：确实没什么可比，保持静默
+  assert.deepEqual(auditNarrationMatchesCaptions("", []), []);
+
+  // 正常情况仍然静默
+  assert.deepEqual(auditNarrationMatchesCaptions("第一句。第二句。", ["第一句。", "第二句。"]), []);
 });

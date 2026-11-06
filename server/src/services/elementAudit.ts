@@ -472,8 +472,10 @@ export function auditAudioDuration(
   rows: readonly { text: string; declared: number; real: number | null }[],
 ): ElementFinding[] {
   const bad: string[] = [];
+  let checked = 0;
   for (const r of rows) {
     if (r.real == null) continue;
+    checked++;
     const d = r.real - r.declared;
     if (Math.abs(d) <= 0.15) continue;
     const head = Array.from(r.text.replace(/\s+/g, "")).slice(0, 8).join("");
@@ -481,7 +483,25 @@ export function auditAudioDuration(
       `「${head}…」声明 ${r.declared.toFixed(2)}s、实际 ${r.real.toFixed(2)}s（差 ${d > 0 ? "+" : ""}${d.toFixed(2)}s）`,
     );
   }
-  if (bad.length === 0) return [];
+  if (bad.length === 0) {
+    /*
+     * 「一句都没核到」不能报通过。
+     *
+     * 实测踩过：把 `assets/tts/<task>` 整个移走后，16 句全部拿不到音频，
+     * 这里因为 rows 全被 `real == null` 跳过、bad 为空，于是返回 []，
+     * CLI 照样打印「✓ 声明时长与真实音频一致」——**什么都没核，却报告一致**。
+     * 和 auditMp4 那个 ffmpeg 选错、其实一次没跑通的问题是同一类。
+     */
+    if (rows.length > 0 && checked === 0) {
+      return [
+        {
+          level: "warn",
+          message: `${rows.length} 句字幕一句都没拿到真实音频，时长无法核对（不是“一致”，是“没核”）`,
+        },
+      ];
+    }
+    return [];
+  }
   return [
     {
       level: "warn",
@@ -522,7 +542,24 @@ function compactText(t: string): string {
  * 实测两份真实 e2e 产物（共 11 页）：**全部同一份**。
  */
 export function auditNarrationMatchesCaptions(narration: string, captions: readonly string[]): ElementFinding[] {
-  if (!narration || captions.length === 0) return [];
+  /*
+   * 有字幕却没有口播稿：以前这里是 `if (!narration || captions.length === 0) return [];` 直接放过。
+   *
+   * 但那是个缺口：narration 与 captions 是分开存的字段，模型漏生成 narration 时
+   * 就会得到「有字幕、无口播稿」——这套判据本来要防的就是"听到一套、看到另一套"，
+   * 而口播稿缺失恰恰是最彻底的"有一套根本不存在"。
+   *
+   * 反过来 captions 为空时确实没什么可比的（整页没字幕），那种情况静默跳过是对的。
+   */
+  if (captions.length === 0) return [];
+  if (!narration.trim()) {
+    return [
+      {
+        level: "warn",
+        message: `有 ${captions.length} 句字幕，但这一页没有口播稿（narration 为空）——无法核对“听到的和看到的是不是同一句”`,
+      },
+    ];
+  }
   const a = compactText(narration);
   const b = compactText(captions.join(""));
   if (a === b) return [];
